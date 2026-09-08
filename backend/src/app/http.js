@@ -1,8 +1,9 @@
+import { managementScope, canEditProfile, editProfile } from '../modules/identity-access/user-management.js'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { listUsers } from '../modules/identity-access/list-users.js'
 import { parseUsersQuery } from '../backoffice/settings/users/query.js'
 import { AccessError, normalizeEmail, checkInvitation, resolveMembership } from '../modules/identity-access/membership.js'
-import { can, profileInclude, publicProfile } from '../modules/identity-access/policy.js'
+import { profileInclude, publicProfile } from '../modules/identity-access/policy.js'
 import { SessionStore } from '../platform/auth/sessions.js'
 const digest = value => createHash('sha256').update(value).digest()
 const origins = ['http://localhost:5174', 'http://127.0.0.1:5174']
@@ -79,12 +80,22 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
           if (entry.purpose !== 'recovery') throw new AccessError('RECOVERY_REQUIRED')
           const profile = await prisma.userProfile.findUnique({ where: { id: user.id } })
           if (profile?.status !== 'ACTIVE') throw new AccessError('ACCOUNT_UNAVAILABLE')
-          await provider.password(entry.session, password(input.password, true))
+          const nextPassword = password(input.password, true)
+          const audit = await prisma.auditEvent.create({ data: { actorId: user.id, targetId: user.id, action: 'password.change.requested', details: {} } })
+          const outcome = await provider.password(entry.session, nextPassword)
           sessions.deleteUser(user.id)
-          await prisma.auditEvent.create({ data: { actorId: user.id, targetId: user.id, action: 'password.changed', details: {} } })
-          return send(200, { ok: true }, '')
+          let auditRecorded = true
+          try { await prisma.auditEvent.update({ where: { id: audit.id }, data: { action: 'password.changed', details: { providerRevoked: outcome.providerRevoked } } }) }
+          catch { auditRecorded = false; console.error('PASSWORD_CHANGE_AUDIT_FINALIZATION_PENDING') }
+          return send(200, { ok: true, warning: !outcome.providerRevoked || !auditRecorded ? 'PASSWORD_CHANGED_FOLLOW_UP_REQUIRED' : null }, '')
         }
         return send(404, { code: 'NOT_FOUND' })
+      }
+      const editMatch = path.match(/^\/api\/users\/([0-9a-f-]{36})\/profile$/)
+      if (req.method === 'POST' && editMatch) {
+        const { user, entry } = await sessions.authenticated(req, provider, pool)
+        if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED',401)
+        return send(200, await editProfile(prisma,user.id,editMatch[1],await body(req)))
       }
       if (req.method !== 'GET') return send(405, { code: 'METHOD_NOT_ALLOWED' })
       if (path === '/api/auth/recovery-status') {
@@ -98,10 +109,13 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
       const profile = await prisma.userProfile.findUnique({ where: { id: user.id }, include: profileInclude })
       if (profile?.status !== 'ACTIVE') throw new AccessError('ACCOUNT_UNAVAILABLE')
       if (path === '/api/me') return send(200, { user: publicProfile(profile, user.email) })
-      if (!can(profile, 'users.read')) throw new AccessError('PERMISSION_DENIED')
+      const scope = managementScope(profile)
+      if (!scope) throw new AccessError('PERMISSION_DENIED')
       let filters
       try { filters = parseUsersQuery(url.searchParams) } catch { throw new AccessError('INVALID_FILTER', 400) }
-      return send(200, { ...await users(pool, filters), database: 'UP', environment: 'preview' })
+      const directory = await users(pool, { ...filters, department: scope.department })
+      directory.users = directory.users.map(target => ({ ...target, canEdit: canEditProfile(profile,target) }))
+      return send(200, { ...directory, canChangeDepartment: scope.company, database: 'UP', environment: 'preview' })
     } catch (error) {
       if (error instanceof AccessError) return send(error.status, { code: error.code }, error.status === 401 ? '' : undefined)
       return send(503, { code: 'SERVICE_UNAVAILABLE' })

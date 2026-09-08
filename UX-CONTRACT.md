@@ -28,3 +28,9 @@ Business authority: docs/authentication.md and docs/identity-access.md. AuthLayo
 Sign in returns to the workspace; users without company directory rights see their own welcome screen. Unauthorized API responses never leave the directory accessible. Register is invitation-only and asks users to confirm email before signing in. Reset completes with an explicit sign-in link; it does not silently open the workspace. Inline status/error messages remain in the form. All auth routes have an English document title, keyboard focus and narrow-screen layout. Browser sessions are HttpOnly cookies; no client token persistence.
 
 The existing directory remains read-only behind actual authentication. Manager invitations, role changes and employee/team scope administration are the next phase. Public UI remains Thai; Backoffice remains English.
+
+## User Info and profile Actions
+
+Shared Dialog owns modal top-layer placement, focus containment/restoration, Escape and header X. UserInfo owns the account summary and Sign out/public website links. Users row Actions always use a three-dot button opening the action dialog; View and Edit are separate states. UserActions owns domain field validation, pending state, stale conflict recovery and before/after department confirmation. Native Department select intentionally uses the operating-system popup; it does not promise custom popup geometry. Dirty edits require an app-owned discard choice. Successful edits close the dialog, refresh the same list filter/page and refresh the signed-in profile without remounting the whole page. Email search remains transient.
+
+Capability owners: Dialog → core/ui/Dialog.jsx; User Info → core/ui/UserInfo.jsx; profile fields → core/ui/FormField.jsx; role/department authority → docs/authentication.md and backend modules/identity-access/user-management.js. Server `canEdit` determines whether the Edit action exists. Head list counts and results must never include another department.

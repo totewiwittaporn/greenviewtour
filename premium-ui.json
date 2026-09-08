@@ -1,9 +1,7 @@
 {
   "profile": "product-admin",
-  "sourceRoots": [
-    "frontend/public-web/src",
-    "frontend/backoffice/src"
-  ],
+  "sourceRoots": ["frontend/backoffice/src"],
+  "locale": "en-GB",
   "canonicalMap": "UX-CONTRACT.md",
-  "requiredCapabilities": []
+  "ownership": { "Select/Listbox": "native" }
 }

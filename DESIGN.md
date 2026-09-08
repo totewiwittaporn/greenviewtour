@@ -57,3 +57,5 @@ Backoffice canonical owners: Shell, Button, SearchField, DataTable and Icon unde
 Show real Preview data, including zero accounts. Authenticated identity comes from the backend. Never infer roles from email verification or user metadata. The application remains a local development environment.
 
 Authentication extends the existing sea palette: one island-photo panel anchors the team identity, while a quiet form panel owns the task. On narrow screens the photograph becomes a compact masthead. AuthLayout and FormField join the canonical UI owners; they reuse the existing runtime color, typography and focus tokens. No separate login theme or copied form-control implementations.
+
+User Info and row Actions use the shared 520px Dialog with a header X, quiet divider and natural scrolling. Keep account summary in a definition list, profile fields in FormField, and row Actions as a three-dot trigger. These additions reuse Backoffice runtime tokens; no account-specific color theme is introduced.
