@@ -106,7 +106,7 @@ Owner approval 2026-09-08 supersedes the earlier 3-card and most-recent-100 invi
 | --- | --- | --- | --- | --- |
 | Pagination | core/ui/Pagination.jsx | this contract | Users / Invitations / catalog | range, zero, unknown, boundaries, page clamp |
 | Summary | core/ui/SummaryCards.jsx | DESIGN.md | four meaningful per-dataset metrics | authorized totals, desktop four, portrait two columns |
-| Tabs | core/ui/Tabs.jsx | this contract | local datasets / route-backed settings | keyboard, direct links, history, dirty leave protection |
+| Tabs and TabPanel | core/ui/Tabs.jsx + core/ui/TabPanel.jsx | this contract | Users and all three route-backed settings groups | shared indicator/content motion, reduced motion, inactive inert/aria-hidden, optional layout reservation, keyboard, direct links, history, dirty leave protection |
 | Table states | core/ui/DataTable.jsx | this contract | loading / error / empty / populated | retry, overflow, stable geometry |
 
 Company remains a form. Company & Tours contains Company and Tour programs. Partners & Sales contains Business partners, Agent prices and Sales channels. Transport & Pickup contains Hotels & pickup points and Vehicles & boats. These are navigation groups only; domain tables and permissions remain independently owned. A tab reveals one dataset immediately, remembers its own committed filters/page for the session, and does not expose inactive content to keyboard or accessibility navigation. Switching from a dirty Company form opens the existing discard decision before navigation.

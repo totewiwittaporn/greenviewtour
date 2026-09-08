@@ -45,10 +45,10 @@
 /* Both datasets share one measured grid area; inactive content retains geometry only. */
 html{scrollbar-gutter:stable}
 .core-tabs{gap:8px;flex-wrap:wrap}.core-tabs [role=tab]{flex:0 1 auto;min-width:100px;padding:12px;overflow-wrap:anywhere}.core-tabs [role=tab][aria-selected=true]{border-bottom-color:var(--brand)}
-.directory-tab-stage{display:grid;isolation:isolate;min-width:0}.directory-tab-panel{grid-area:1/1;min-width:0;align-self:start;visibility:hidden;opacity:0;pointer-events:none;transform:translateY(5px);transition:opacity 180ms ease,transform 180ms ease}.directory-tab-panel[data-active=true]{visibility:visible;opacity:1;pointer-events:auto;transform:translateY(0)}
+.directory-tab-stage{display:grid;isolation:isolate;min-width:0}.directory-tab-panel{grid-area:1/1;min-width:0;align-self:start}.core-tab-panel[data-active=false]{visibility:hidden;pointer-events:none}
 .directory-tab-stage .metric{min-height:134px}.directory-tab-stage .invite-panel{margin-top:0}.directory-tab-stage .panel-heading{min-height:88px}.directory-tab-stage .filterbar{min-height:62px}.directory-tab-stage .table-scroll{height:clamp(272px,38svh,480px);min-height:272px}.directory-tab-stage .table-footer{min-height:60px}.directory-tab-stage .empty-state{min-height:200px}
 @media(max-width:640px){.directory-tab-stage .table-footer{min-height:100px}.directory-tab-stage .panel-heading{min-height:96px}.directory-tab-stage .filterbar{min-height:62px}}
-@media(prefers-reduced-motion:reduce){.directory-tab-panel,.core-tabs::after,.core-tabs [role=tab]{transition:none;transform:none}.core-tabs[data-active=invitations]::after{transform:translateX(122px)}}
+@media(prefers-reduced-motion:reduce){.core-tabs [role=tab]{transition:none;transform:none}}
 @media(max-width:1100px){.directory-tab-stage .panel-heading{min-height:128px}}
 /* Root gutter already reserves scrollbar width; do not reserve it again in Radix's body lock. */
 @supports(scrollbar-gutter:stable){html body[data-scroll-locked]{margin-right:0!important;--removed-body-scroll-bar-size:0px!important}}
@@ -141,6 +141,6 @@ html[data-core-modal-open], html[data-core-modal-open] body { overflow:hidden; o
 .core-tabs { position:relative; }
 .core-tabs [role=tab][aria-selected=true] { border-bottom-color:transparent; }
 .core-tab-indicator { position:absolute; pointer-events:none; left:var(--tab-indicator-x,0px); top:var(--tab-indicator-y,0px); width:var(--tab-indicator-width,0px); height:2px; background:var(--brand); transition:left 200ms ease,top 200ms ease,width 200ms ease; }
-.directory-tab-panel[data-active=true], .core-tab-panel[data-active=true] { animation:core-tab-enter 180ms ease both; }
+.core-tab-panel[data-active=true] { animation:core-tab-enter 180ms ease both; }
 @keyframes core-tab-enter { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
-@media(prefers-reduced-motion:reduce) { .core-tab-indicator { transition:none; }.directory-tab-panel,.core-tab-panel { animation:none!important; transition:none!important; transform:none!important; } }
+@media(prefers-reduced-motion:reduce) { .core-tab-indicator { transition:none; }.core-tab-panel { animation:none!important; transition:none!important; transform:none!important; } }

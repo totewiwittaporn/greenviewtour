@@ -1,3 +1,4 @@
+import { TabPanel } from '../../../core/ui/TabPanel.jsx'
 import { Pagination } from '../../../core/ui/Pagination.jsx'
 import { SummaryCards } from '../../../core/ui/SummaryCards.jsx'
 import { Tabs } from '../../../core/ui/Tabs.jsx'
@@ -54,7 +55,7 @@ export default function UsersPage({ onProfileSaved }) {
 
     <section className="page-heading"><div><p className="eyebrow">YOUR TEAM, IN ONE PLACE</p><h1>{tab === 'invitations' ? 'Invitations' : 'Users'}</h1><p className="muted">{tab === 'invitations' ? 'Invite employees and follow their account activation.' : 'A clear view of the people who access Greenview Tour.'}</p></div><div className="page-actions">{data?.canInvite && <Button className="button-primary" onClick={() => { setTab('invitations'); setInviteOpen(true) }}>+ Add employee</Button>}</div></section>
     <div className="directory-tab-stage">
-    <div className="directory-tab-panel" data-active={tab === 'users'} inert={tab !== 'users'} aria-hidden={tab !== 'users'} id="user-management-panel-users" role={data?.canInvite ? 'tabpanel' : undefined} aria-labelledby={data?.canInvite ? 'user-management-tab-users' : undefined}>
+    <TabPanel active={tab === 'users'} preserveLayout className="directory-tab-panel" id="user-management-panel-users" labelledBy={data?.canInvite ? 'user-management-tab-users' : undefined}>
     <SummaryCards label="Account summary" items={[
       { label: 'Total users', value: summary?.total, detail: 'Accounts in this workspace', icon: 'users' },
       { label: 'Verified emails', value: summary?.verified, detail: 'Email confirmation complete', icon: 'check' },
@@ -72,8 +73,8 @@ export default function UsersPage({ onProfileSaved }) {
       </DataTable>
       <Pagination page={data?.page ?? page} pageSize={25} total={error || loading ? undefined : data?.total} busy={loading} onPageChange={setPage} label="Users pagination" />
     </section>
-    </div>
-    {data?.canInvite && <div className="directory-tab-panel" data-active={tab === 'invitations'} inert={tab !== 'invitations'} aria-hidden={tab !== 'invitations'} id="user-management-panel-invitations" role="tabpanel" aria-labelledby="user-management-tab-invitations"><StaffInvitations open={inviteOpen} onClose={() => setInviteOpen(false)} /></div>}
+    </TabPanel>
+    {data?.canInvite && <TabPanel active={tab === 'invitations'} preserveLayout className="directory-tab-panel" id="user-management-panel-invitations" labelledBy="user-management-tab-invitations"><StaffInvitations open={inviteOpen} onClose={() => setInviteOpen(false)} /></TabPanel>}
     </div>
     {resetUser && <ResetPassword user={resetUser} onClose={() => setResetUser(null)} />}
     {notice && <p role="status">{notice}</p>}
