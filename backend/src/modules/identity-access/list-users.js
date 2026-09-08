@@ -11,7 +11,7 @@ export async function listUsers(pool, { search = '', page = 1, pageSize = 25, de
     const filter = `${scope} AND ($2 = '' OR position(lower($2) in lower(coalesce(email, '') || ' ' || p."displayName")) > 0)`
     const total = (await client.query(`SELECT count(*)::int AS total FROM ${source} WHERE ${filter}`, [department,search])).rows[0].total
     const currentPage = Math.min(page, Math.max(1, Math.ceil(total / pageSize)))
-    const { rows } = await client.query(`SELECT u.id, email, email_confirmed_at, created_at, last_sign_in_at, p."displayName", p.department, p.status, p."updatedAt",
+    const { rows } = await client.query(`SELECT u.id, email, email_confirmed_at, created_at, last_sign_in_at, p."displayName", p.department, p.status, p."updatedAt", p.address, p."primaryPhone", p."emergencyPhone", p."lineId",
       coalesce((SELECT json_agg(json_build_object('roleCode',r."roleCode",'scope',r.scope)) FROM app_private."UserRole" r WHERE r."userId"=p.id),'[]'::json) AS roles
       FROM ${source} WHERE ${filter} ORDER BY created_at DESC, u.id DESC LIMIT $3 OFFSET $4`,
     [department,search,pageSize,(currentPage - 1) * pageSize])

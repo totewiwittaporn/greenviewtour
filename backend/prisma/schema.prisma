@@ -20,6 +20,10 @@ model UserProfile {
   id String @id @db.Uuid
   displayName String @db.VarChar(100)
   department String? @db.VarChar(30)
+  address String? @db.VarChar(1000)
+  primaryPhone String? @db.VarChar(32)
+  emergencyPhone String? @db.VarChar(32)
+  lineId String? @db.VarChar(100)
   status AccountStatus @default(ACTIVE)
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)

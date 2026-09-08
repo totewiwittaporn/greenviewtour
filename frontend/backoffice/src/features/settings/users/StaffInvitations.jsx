@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../../core/auth/api.js'
+import { Icon } from '../../../core/ui/Icon.jsx'
 import { Button } from '../../../core/ui/Button.jsx'
 import { Dialog } from '../../../core/ui/Dialog.jsx'
 import { Dropdown } from '../../../core/ui/Dropdown.jsx'
@@ -82,13 +83,21 @@ export function StaffInvitations({ open, onClose }) {
     api('/api/invitations', undefined, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) }).then(data => { if (!controller.signal.aborted) setState({ data, loading: false }) }).catch(error => { if (!controller.signal.aborted) setState({ error: message(error), loading: false }) })
     return () => controller.abort()
   }, [revision])
-  return <><section className="panel invite-panel"><div className="panel-heading"><div><h2>Employee invitations</h2><p>Recent 100 invitations · Times shown in Bangkok time</p></div><Button busy={state.loading} disabled={state.loading} onClick={refresh}>Refresh invitations</Button></div>
-    {state.error ? <p className="inline-error" role="alert">{state.error}</p> : <DataTable columns={['Employee', 'Role / Department', 'Status', 'Expires', 'Actions']} busy={state.loading}>
-      {state.loading ? <tr><td colSpan="5"><p role="status">Loading invitations…</p></td></tr> : !state.data?.invitations.length ? <tr><td colSpan="5"><p>No invitations yet. Choose Add employee to invite your first team member.</p></td></tr> : state.data.invitations.map(item => <tr key={item.id}><td><strong>{item.displayName}</strong><small className="role-label">{item.email}</small></td><td>{item.roles.join(' · ')}<small className="role-label">{item.department}</small></td><td><span className={`badge ${item.status === 'Joined' ? 'verified' : ''}`}>{item.status}</span></td><td>{date(item.expiresAt)}</td><td>{item.status === 'Joined' ? <span className="muted">Joined</span> : <Dropdown label={`Invitation actions for ${item.email}`} items={[
+  const items = state.data?.invitations || []
+  return <>
+    <section className="metrics" aria-label="Invitation summary">{[
+      ['Recent invitations', items.length, 'Up to 100 most recent invitations', 'users'],
+      ['Awaiting staff', items.filter(item => ['Pending', 'Awaiting activation'].includes(item.status)).length, 'Invited employees yet to join', 'calendar'],
+      ['Joined', items.filter(item => item.status === 'Joined').length, 'Activated from these invitations', 'check'],
+    ].map(([label, value, detail, icon]) => <div className="metric" key={label}><div className="metric-label">{label}<span className="metric-icon"><Icon name={icon} /></span></div><strong>{state.loading || state.error ? '—' : value}</strong><span>{detail}</span></div>)}</section>
+    <section className="panel invite-panel"><div className="panel-heading"><div><h2>Employee invitations</h2><p>Recent 100 invitations · Times shown in Bangkok time</p></div></div><div className="filterbar"><Button busy={state.loading} disabled={state.loading} onClick={refresh}><Icon name="refresh" />Refresh invitations</Button></div>
+    {state.error ? <p className="inline-error" role="alert">{state.error}</p> : <DataTable label="Employee invitations" columns={['Employee', 'Role / Department', 'Status', 'Expires', 'Actions']} busy={state.loading}>
+      {state.loading ? <tr><td colSpan="5"><div className="empty-state" role="status"><span className="spinner" />Loading invitations…</div></td></tr> : !state.data?.invitations.length ? <tr><td colSpan="5"><div className="empty-state"><span className="empty-icon"><Icon name="users" width="30" height="30" /></span><h3>No invitations yet</h3><p>Choose Add employee to invite your first team member.</p></div></td></tr> : state.data.invitations.map(item => <tr key={item.id}><td><strong>{item.displayName}</strong><small className="role-label">{item.email}</small></td><td>{item.roles.join(' · ')}<small className="role-label">{item.department}</small></td><td><span className={`badge ${item.status === 'Joined' ? 'verified' : ''}`}>{item.status}</span></td><td>{date(item.expiresAt)}</td><td>{item.status === 'Joined' ? <span className="muted">Joined</span> : <Dropdown label={`Invitation actions for ${item.email}`} items={[
         { label: 'Create new link', onSelect: () => setSelection({ item, action: 'renew' }) },
         ...(!['Revoked','Expired'].includes(item.status) ? [{ label: 'Revoke invitation', danger: true, onSelect: () => setSelection({ item, action: 'revoke' }) }] : []),
       ]}><span aria-hidden="true">⋯</span></Dropdown>}</td></tr>)}
     </DataTable>}
+    <div className="table-footer"><span>{state.data ? `${items.length} invitations` : '—'}</span><span>Most recent 100</span></div>
   </section>
     {open && (state.data ? <InviteForm catalog={state.data} onClose={onClose} onCreated={refresh} /> : <Dialog title="Add employee" onClose={onClose}>{state.loading ? <p role="status">Loading available roles…</p> : <><p role="alert">{state.error}</p><Button onClick={refresh}>Retry</Button></>}</Dialog>)}
     {selection && <InvitationAction selection={selection} onClose={() => setSelection(null)} onChanged={refresh} />}
