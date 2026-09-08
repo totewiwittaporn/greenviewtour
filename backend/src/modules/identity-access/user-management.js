@@ -10,7 +10,11 @@ export function managementScope(actor) {
 }
 export function canEditProfile(actor, target) {
   const scope = managementScope(actor)
-  if (!scope || !target || !actor.roles.some(grant => grant.role.permissions.some(item => item.permissionCode === 'users.profile.edit'))) return false
+  if (!scope || !target) return false
+  const editable = actor.roles.some(grant => grant.role.permissions.some(item => item.permissionCode === 'users.profile.edit') && (scope.company
+    ? ['ADMIN_MANAGER','MANAGER'].includes(grant.roleCode) && grant.scope === 'COMPANY'
+    : heads[grant.roleCode] === scope.department))
+  if (!editable) return false
   if (scope.company) return true
   return target.department === scope.department && !target.roles.some(role => ['ADMIN_MANAGER','MANAGER'].includes(role.roleCode))
 }

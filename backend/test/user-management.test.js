@@ -51,3 +51,10 @@ test('reset handler clears local sessions and records password success despite p
     assert.equal(status,200);assert.equal(response.ok,true);assert.equal(cleared,true);assert.equal(finalized,true);assert.match(cookie,/Max-Age=0/)
   }
 })
+
+test('unrelated role scopes cannot combine into company editing permission',()=>{
+ const actor=profile('MANAGER','DRIVER','COMPANY')
+ actor.roles[0].role.permissions=[{permissionCode:'users.read'}]
+ actor.roles.push(...profile('HEAD_DRIVER','DRIVER').roles)
+ assert.equal(canEditProfile(actor,profile('GUIDE','GUIDE')),false)
+})
