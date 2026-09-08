@@ -4,14 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "npm run dev:public",
+    "dev:public": "npm run dev --workspace @greenviewtour/public-web",
+    "dev:backoffice": "npm run dev --workspace @greenviewtour/backoffice",
+    "build": "npm run build:public && npm run build:backoffice",
+    "build:public": "npm run build --workspace @greenviewtour/public-web",
+    "build:backoffice": "npm run build --workspace @greenviewtour/backoffice",
+    "preview": "npm run preview --workspace @greenviewtour/public-web",
+    "preview:backoffice": "npm run preview --workspace @greenviewtour/backoffice",
     "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "check": "npm run lint && npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
@@ -23,5 +25,13 @@
     "eslint-plugin-react-refresh": "^0.4.22",
     "globals": "^16.4.0",
     "vite": "^7.1.7"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10.9.0"
   }
 }

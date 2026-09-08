@@ -1,0 +1,5 @@
+# customers
+
+Customer records and contacts; keep booking passenger snapshots with bookings.
+
+Status: ownership reserved; business behavior is not implemented. Expose a module service boundary when implemented. Other modules must use it rather than modifying this module’s records directly.

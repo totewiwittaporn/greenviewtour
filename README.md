@@ -1,16 +1,47 @@
-# React + Vite
+# Greenview Tour
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Company-management monorepo with independent public-web and backoffice UI cores.
 
-Currently, two official plugins are available:
+## Current status
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Repository foundation only. Both React entry points render an intentionally empty shell. The API and business modules are documented ownership boundaries, not working services. Login, user management, bookings, accounting and deployment are not implemented.
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Use Node >=22.12 and npm >=10.9 (CI uses Node 22). From the repository root:
 
-## Expanding the ESLint configuration
+```sh
+npm ci
+npm run dev:public
+# In another terminal:
+npm run dev:backoffice
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Public web uses port 5173; backoffice uses 5174. Ports are strict to avoid silently opening the wrong app.
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Public-web development alias |
+| `npm run build` | Build both frontend applications |
+| `npm run build:public` | Build public web only |
+| `npm run build:backoffice` | Build backoffice only |
+| `npm run preview` | Serve built public web on 4173 |
+| `npm run preview:backoffice` | Serve built backoffice on 4174 |
+| `npm run lint` | Repository ESLint checks |
+| `npm run check` | Lint and build both frontends |
+
+Outputs: `apps/public-web/dist` and `apps/backoffice/dist`. There is one root package-lock.json; do not generate application-local lockfiles.
+
+## Project map
+
+- `apps/public-web`: customer website; independent `src/core/ui`.
+- `apps/backoffice`: company staff application; independent `src/core/ui`.
+- `apps/api`: backend module boundaries and composition locations.
+- `packages/contracts`: browser-safe API contracts only.
+- `packages/config`: shared development tooling only.
+- `database`: future schema/migrations/seeds.
+- `infrastructure`: hosting/environment configuration.
+- `scripts`: project utilities.
+- `docs`: architecture, access plan and deployment guidance.
+
+Read [architecture](docs/architecture.md), [identity and access](docs/identity-access.md), [deployment](docs/deployment.md), [design ownership](DESIGN.md) and [UI contract](UX-CONTRACT.md) before implementing features.

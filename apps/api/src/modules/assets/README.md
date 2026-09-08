@@ -1,0 +1,5 @@
+# assets
+
+Equipment, tools, consumables, custody and issue/return records. Fleet owns vehicle-specific records.
+
+Status: ownership reserved; business behavior is not implemented. Expose a module service boundary when implemented. Other modules must use it rather than modifying this module’s records directly.
