@@ -1,4 +1,4 @@
-import { validateThaiAddress } from '../../packages/contracts/thai-address.js'
+import { postalCodeFor, validateThaiAddress } from '../../packages/contracts/thai-address.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import areas from '../../packages/contracts/data/thai-areas.js'
@@ -40,4 +40,22 @@ test('Thai hierarchy rejects cross-province combinations and accepts empty optio
  assert.deepEqual(validateThaiAddress({},areas),{})
  assert.ok(validateThaiAddress({province:'กระบี่',district:'เมืองภูเก็ต',subdistrict:'ราไวย์'},areas).district)
  assert.ok(validateThaiAddress({houseNumber:'12/34'},areas).province)
+})
+
+test('postal code follows complete parent hierarchy, clears stale codes and matches Thai or English names',()=>{
+ assert.equal(postalCodeFor({province:'ภูเก็ต',district:'เมืองภูเก็ต',subdistrict:'ราไวย์'},areas),'83130')
+ assert.equal(postalCodeFor({province:'Phuket',district:'Mueang Phuket',subdistrict:'Karon'},areas),'83100')
+ assert.equal(postalCodeFor({province:'ภูเก็ต',district:'เมืองภูเก็ต'},areas),'')
+ assert.equal(postalCodeFor({province:'กระบี่',district:'เมืองภูเก็ต',subdistrict:'ราไวย์',postalCode:'83130'},areas),'')
+ assert.ok(areas.subdistricts.every(row=>/^\d{5}$/.test(row.postalCode)))
+})
+
+test('known Krabi delivery areas resolve by Moo without guessing a district default',()=>{
+ const value={province:'กระบี่',district:'เมืองกระบี่',subdistrict:'อ่าวนาง'}
+ assert.equal(postalCodeFor(value,areas),'')
+ assert.equal(postalCodeFor({...value,moo:'5'},areas),'81180')
+ assert.equal(postalCodeFor({...value,moo:'7'},areas),'81210')
+ assert.equal(postalCodeFor({...value,moo:'8'},areas),'81210')
+ assert.equal(postalCodeFor({...value,moo:'9'},areas),'')
+ assert.equal(postalCodeFor({...value,subdistrict:'หนองทะเล'},areas),'81180')
 })

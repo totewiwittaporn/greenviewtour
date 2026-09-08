@@ -4,7 +4,7 @@ import { addressKeys,validateAddress,safeMapUrl,mapLinks,formatAddress } from '.
 import { initialValues,validateCatalog } from '../../packages/contracts/catalog.js'
 import { validateProfilePatch } from '../src/modules/identity-access/user-management.js'
 test('structured addresses persist in company, partner, pickup and profile contracts without losing legacy address',()=>{
- const address={province:'ภูเก็ต',district:'เมืองภูเก็ต',subdistrict:'ราไวย์',houseNumber:'12/34',moo:'5',villageName:'บ้านตัวอย่าง',mapUrl:'https://maps.app.goo.gl/example',latitude:'7.8',longitude:'98.3'}
+ const address={province:'ภูเก็ต',district:'เมืองภูเก็ต',subdistrict:'ราไวย์',postalCode:'83130',houseNumber:'12/34',moo:'5',villageName:'บ้านตัวอย่าง',mapUrl:'https://maps.app.goo.gl/example',latitude:'7.8',longitude:'98.3'}
  for(const entity of ['company','partners','locations']){
   const result=validateCatalog(entity,{...initialValues(entity),name:'Fixture',code:'FIX',roles:['SALES_AGENT'],address:'Legacy address',...address})
   assert.deepEqual(result.errors,{});assert.equal(result.data.address,'Legacy address')

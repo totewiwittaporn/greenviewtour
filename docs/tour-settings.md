@@ -37,3 +37,7 @@ Company address is displayed as a summary and edited in the shared Quick address
 Tax ID uses 13 digits with 1-4-5-2-1 grouping; Thai phone presentation supports mobile, Bangkok and other landline lengths, plus +66. Editing accepts pasted separators, formatting occurs on blur, storage normalizes separators only and preserves leading zeros/country codes. Other international numbers retain their supplied form for display. Both fields are optional. This validates syntax, not registration or ownership.
 
 MapLocationField presents only a Google Maps share link. Removed coordinate inputs do not delete existing values. Company adopts the quick-address Core variant first; other address forms retain their current entry layout until their page review, while sharing the link-only Maps editor now.
+
+## Address entry clarification
+
+Owner clarification 2026-09-08: Keep the individual editable address fields on Company. Quick address is an optional helper, not a replacement summary. Save address applies the modal draft back to the named page fields; Save company details persists it. Postal code follows the subdistrict and is read-only, automatically derived from the complete province/district/subdistrict match for both manual and quick entry. Unknown/partial matches clear the derived code instead of retaining a stale one. Core and server use the same pinned postal dataset. Postal code is stored as an optional five-character field across the existing address models; no existing data is bulk-rewritten.

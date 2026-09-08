@@ -3,6 +3,7 @@ export const addressFields = [
  ['province','Province','e.g. Phuket',100],
  ['district','District / Amphoe','e.g. Mueang Phuket',100],
  ['subdistrict','Subdistrict / Tambon','e.g. Rawai',100],
+ ['postalCode','Postal code','Filled automatically from your address',5],
  ['houseNumber','House number','e.g. 12/34',50],
  ['moo','Moo number','e.g. 5',20],
  ['villageName','Village name (optional)','e.g. Baan Saiyuan',150],
@@ -30,7 +31,7 @@ export function validateAddress(input){
 }
 export function mapLinks(value){
  const valid=validateAddress(value),coordinates=value.latitude&&value.longitude&&!valid.latitude&&!valid.longitude?`${value.latitude},${value.longitude}`:null
- const saved=safeMapUrl(value.mapUrl),query=[value.houseNumber,value.moo?`Moo ${value.moo}`:'',value.villageName,value.subdistrict,value.district,value.province].filter(Boolean).join(' ')
+ const saved=safeMapUrl(value.mapUrl),query=[value.houseNumber,value.moo?`Moo ${value.moo}`:'',value.villageName,value.subdistrict,value.district,value.province,value.postalCode].filter(Boolean).join(' ')
  return {pin:saved||(coordinates?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coordinates)}`:null),directions:!saved&&coordinates?`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(coordinates)}&travelmode=driving`:null,search:query?`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`:'https://www.google.com/maps/'}
 }
-export function formatAddress(value){return[value.houseNumber,value.moo?`Moo ${value.moo}`:'',value.villageName,value.subdistrict,value.district,value.province].filter(Boolean).join(', ')||value.address||''}
+export function formatAddress(value){return[value.houseNumber,value.moo?`Moo ${value.moo}`:'',value.villageName,value.subdistrict,value.district,value.province,value.postalCode].filter(Boolean).join(', ')||value.address||''}

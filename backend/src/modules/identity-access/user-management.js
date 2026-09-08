@@ -1,3 +1,5 @@
+import thaiAreas from '../../../../packages/contracts/data/thai-areas.js'
+import { postalCodeFor } from '../../../../packages/contracts/thai-address.js'
 import { addressFields, addressKeys, validateAddress } from '../../../../packages/contracts/address.js'
 import { AccessError } from './membership.js'
 import { profileInclude } from './policy.js'
@@ -47,6 +49,7 @@ export async function editProfile(prisma, actorId, targetId, input) {
     const target = await tx.userProfile.findUnique({ where: { id: targetId }, include: profileInclude })
     if (!canEditProfile(actor,target)) throw new AccessError('PERMISSION_DENIED')
     const data = validateProfilePatch(input,managementScope(actor))
+    data.postalCode=postalCodeFor({...target,...data},thaiAreas)||null
     const result = await tx.userProfile.updateMany({ where: { id: targetId, updatedAt: new Date(input.updatedAt) }, data })
     if (result.count !== 1) throw new AccessError('PROFILE_CONFLICT',409)
     await tx.auditEvent.create({ data: { actorId, targetId, action: 'profile.updated', details: { fields: Object.keys(data) } } })
@@ -60,6 +63,7 @@ export async function editOwnProfile(prisma, actorId, input) {
     const actor = await tx.userProfile.findUnique({ where: { id: actorId } })
     if (actor?.status !== 'ACTIVE') throw new AccessError('ACCOUNT_UNAVAILABLE')
     const data = validateProfilePatch(input, { company: false })
+    data.postalCode=postalCodeFor({...actor,...data},thaiAreas)||null
     const updated = await tx.userProfile.updateMany({ where: { id: actorId, updatedAt: new Date(input.updatedAt) }, data })
     if (updated.count !== 1) throw new AccessError('PROFILE_CONFLICT', 409)
     await tx.auditEvent.create({ data: { actorId, targetId: actorId, action: 'profile.updated', details: { fields: Object.keys(data), source: 'self' } } })
