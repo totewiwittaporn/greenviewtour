@@ -14,11 +14,16 @@ export async function assertInvitationAuthority(tx, invitation) {
   const allowed = invitationRoles(actor).map(role => role.code)
   if (!invitation.roles.length || invitation.roles.some(role => !allowed.includes(role.roleCode))) throw new AccessError('INVITATION_UNAVAILABLE', 400)
 }
+export function assertDeliverableInvitationEmail(email) {
+  const domain = email.split('@')[1]?.toLowerCase()
+  if (domain === 'localhost' || domain === 'local' || domain?.endsWith('.local')) throw new AccessError('INVITATION_EMAIL_UNDELIVERABLE', 400)
+}
 export function validateInvitation(input, actor) {
   if (!input || Object.keys(input).some(key => !['email', 'displayName', 'department', 'roleCode'].includes(key))) throw new AccessError('INVALID_INVITATION_FIELDS', 400)
   if (!canInvite(actor)) throw new AccessError('PERMISSION_DENIED')
   if (!invitationRoles(actor).some(role => role.code === input.roleCode)) throw new AccessError('ROLE_ASSIGNMENT_DENIED')
   const email = normalizeEmail(input.email)
+  assertDeliverableInvitationEmail(email)
   if (typeof input.displayName !== 'string' || !input.displayName.trim() || input.displayName.trim().length > 100) throw new AccessError('INVALID_DISPLAY_NAME', 400)
   if (!departments.includes(input.department)) throw new AccessError('INVALID_DEPARTMENT', 400)
   const roleDepartment = { MANAGER: 'MANAGEMENT', HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER' }[input.roleCode]
@@ -75,6 +80,7 @@ export async function lookupInvitation(prisma, code) {
 async function registerInvitedUser(prisma, provider, code, password) {
   const invitation = await lookupInvitation(prisma, code)
   if (invitation.acceptedAt) throw new AccessError('INVITATION_ALREADY_SUBMITTED', 409)
+  assertDeliverableInvitationEmail(invitation.email)
   const result = await provider.register(invitation.email, password)
   if (result.session) await provider.logout(result.session).catch(() => {})
   // The provider is outside the transaction: recheck revocation/token rotation afterward.

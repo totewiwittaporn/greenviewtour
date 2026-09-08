@@ -1,4 +1,4 @@
-import { canInvite, canResetPassword, listInvitations, createInvitation, changeInvitation, lookupInvitation, acceptInvitation, requestUserReset } from '../modules/identity-access/invitations.js'
+import { assertDeliverableInvitationEmail, canInvite, canResetPassword, listInvitations, createInvitation, changeInvitation, lookupInvitation, acceptInvitation, requestUserReset } from '../modules/identity-access/invitations.js'
 import { managementScope, canEditProfile, editProfile, editOwnProfile } from '../modules/identity-access/user-management.js'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { listUsers } from '../modules/identity-access/list-users.js'
@@ -24,7 +24,7 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
   let attempts = 0, windowEnd = 0
   return async (req, res) => {
     const send = (status, data, cookie) => {
-      res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...(cookie !== undefined ? { 'Set-Cookie': sessions.cookie(cookie) } : {}) })
+      res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...(data.retryAfterSeconds ? { 'Retry-After': String(data.retryAfterSeconds) } : {}), ...(cookie !== undefined ? { 'Set-Cookie': sessions.cookie(cookie) } : {}) })
       res.end(JSON.stringify(data))
     }
     try {
@@ -38,7 +38,7 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
       if (req.method === 'POST' && !origins.includes(req.headers.origin)) return send(403, { code: 'ORIGIN_REQUIRED' })
       if (req.method === 'POST') {
         if (Date.now() > windowEnd) { attempts = 0; windowEnd = Date.now() + 60000 }
-        if (++attempts > 30) return send(429, { code: 'RATE_LIMITED' })
+        if (++attempts > 30) return send(429, { code: 'LOCAL_RATE_LIMITED', retryAfterSeconds: Math.max(1, Math.ceil((windowEnd - Date.now()) / 1000)) })
       }
       const path = url.pathname
       if (req.method === 'POST' && path.startsWith('/api/auth/')) {
@@ -60,6 +60,7 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
         if (path === '/api/auth/register') throw new AccessError('INVITE_LINK_REQUIRED', 410)
         if (path === '/api/auth/invitation') {
           const invitation = await lookupInvitation(prisma, input.invitationCode)
+          assertDeliverableInvitationEmail(invitation.email)
           return send(200, { email: invitation.email, displayName: invitation.displayName, department: invitation.department, expiresAt: invitation.expiresAt, accepted: Boolean(invitation.acceptedAt) })
         }
         if (path === '/api/auth/accept-invitation') {

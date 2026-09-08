@@ -88,3 +88,13 @@ test('profile password change verifies current credentials and identity before w
     if (scenario === 'audit-error') assert.equal(result.warning, 'PASSWORD_CHANGED_FOLLOW_UP_REQUIRED')
   }
 })
+
+test('provider error categories distinguish email quotas, recipient configuration and password rules', () => {
+  for (const [providerCode, status, code] of [
+    ['over_email_send_rate_limit', 429, 'AUTH_EMAIL_RATE_LIMITED'],
+    ['over_request_rate_limit', 429, 'AUTH_RATE_LIMITED'],
+    ['email_address_invalid', 400, 'AUTH_EMAIL_INVALID'],
+    ['email_address_not_authorized', 400, 'AUTH_EMAIL_NOT_AUTHORIZED'],
+    ['weak_password', 422, 'PASSWORD_POLICY_REJECTED'],
+  ]) assert.throws(() => checkAuthResult({ error: { code: providerCode, status, message: 'private details must not be forwarded' } }, 'REGISTRATION_FAILED'), { code, status: status === 429 ? 429 : 400 })
+})

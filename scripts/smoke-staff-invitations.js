@@ -4,10 +4,11 @@ import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 const output = new URL('../screenshots.local/', import.meta.url)
 await mkdir(output, { recursive: true })
-const browser = await chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
+const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ['--hide-scrollbars'], ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } }), errors = []
   page.on('pageerror', error => errors.push(error.message))
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://localhost:5174' })
   const user = { id: '00000000-0000-0000-0000-000000000001', displayName: 'Fixture Manager', email: 'manager@example.invalid', status: 'ACTIVE', department: 'MANAGEMENT', roles: [{ code: 'MANAGER', name: 'Manager', scope: 'COMPANY' }], updatedAt: new Date().toISOString(), management: { company: true } }
   const row = { ...user, id: '00000000-0000-0000-0000-000000000002', displayName: 'Fixture Guide', email: 'guide@example.invalid', department: 'GUIDE', roles: [{ roleCode: 'GUIDE', scope: 'SELF' }], canEdit: true, canResetPassword: true }
   let invites = [], created, ownPatch, reset = 0, link = 'a'.repeat(64), fail = true
@@ -59,9 +60,12 @@ try {
   await page.getByLabel('Email address').fill('new-staff@example.invalid')
   const roleTrigger = page.getByRole('combobox', { name: 'Role', exact: true })
   const roleHandle = await roleTrigger.elementHandle()
+  const geometry = () => page.evaluate(() => ({ bodyWidth: document.body.getBoundingClientRect().width, headingX: document.querySelector('.page-heading').getBoundingClientRect().x, headingWidth: document.querySelector('.page-heading').getBoundingClientRect().width, dialogX: document.querySelector('dialog').getBoundingClientRect().x, dialogY: document.querySelector('dialog').getBoundingClientRect().y, scrollY }))
+  const beforeSelect = await geometry()
   await roleTrigger.click()
   const rolePopup = page.getByRole('listbox')
   await rolePopup.waitFor()
+  assert.deepEqual(await geometry(), beforeSelect)
   assert.equal(await rolePopup.locator('[data-radix-select-viewport]').evaluate(el => getComputedStyle(el).scrollbarWidth), 'thin')
   const triggerBox = await roleHandle.boundingBox(), popupBox = await rolePopup.boundingBox()
   assert.ok(Math.abs(triggerBox.width - popupBox.width) <= 1)
@@ -74,6 +78,7 @@ try {
   await page.keyboard.press('Escape')
   assert.equal(await page.getByRole('dialog', { name: 'Add employee' }).count(), 1)
   assert.equal(await roleTrigger.evaluate(el => el === document.activeElement), true)
+  assert.deepEqual(await geometry(), beforeSelect)
   await roleTrigger.press('ArrowDown')
   await page.getByRole('option', { name: 'Guide', exact: true }).click()
   await page.getByRole('combobox', { name: 'Department', exact: true }).click()
@@ -88,6 +93,7 @@ try {
   assert.match(await page.getByLabel('Invitation link', { exact: true }).inputValue(), /accept-invitation#invitation=a{64}$/)
   await page.getByRole('button', { name: 'Copy invitation link' }).click()
   await page.getByText('Invitation link copied.', { exact: true }).waitFor()
+  assert.match(await page.evaluate(() => navigator.clipboard.readText()), /accept-invitation#invitation=a{64}$/)
   await page.screenshot({ path: fileURLToPath(new URL('invitation-ready-desktop.png', output)), fullPage: true })
   await page.getByRole('button', { name: 'Close dialog' }).click()
   await page.getByRole('button', { name: 'Invitation actions for new-staff@example.invalid' }).click()
@@ -121,7 +127,9 @@ try {
   await page.getByRole('menu').waitFor({ state: 'hidden' })
   await page.getByRole('button', { name: '+ Add employee', exact: true }).click()
   const mobileHandle = await page.getByRole('combobox', { name: 'Department', exact: true }).elementHandle()
+  const mobileBefore = await geometry()
   await mobileHandle.click()
+  assert.deepEqual(await geometry(), mobileBefore)
   const mobileTrigger = await mobileHandle.boundingBox()
   const mobilePopup = await page.getByRole('listbox').boundingBox()
   assert.ok(Math.abs(mobileTrigger.width - mobilePopup.width) <= 1)

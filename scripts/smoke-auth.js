@@ -37,7 +37,22 @@ try {
   await page.getByRole('button', { name: 'Set password', exact: true }).click()
   await page.getByText('Passwords must match.', { exact: true }).waitFor()
   await page.getByLabel('Confirm password', { exact: true }).fill('fixture-password-only')
-  await page.route('**/api/auth/accept-invitation', route => route.fulfill({ json: { message: 'CONFIRM_EMAIL_THEN_LOGIN' } }))
+  let acceptRequests = 0, acceptMode = 'quota'
+  await page.route('**/api/auth/accept-invitation', route => {
+    acceptRequests++
+    return acceptMode === 'quota' ? route.fulfill({ status: 429, headers: { 'Retry-After': '2' }, json: { code: 'AUTH_EMAIL_RATE_LIMITED' } }) : route.fulfill({ json: { message: 'CONFIRM_EMAIL_THEN_LOGIN' } })
+  })
+  await page.clock.install()
+  await page.getByRole('button', { name: 'Set password', exact: true }).click()
+  await page.getByText('Email delivery has reached its limit.', { exact: false }).waitFor()
+  assert.equal(await page.getByRole('button', { name: /Wait .*s/ }).isDisabled(), true)
+  assert.equal(await page.getByLabel('New password', { exact: true }).inputValue(), 'fixture-password-only')
+  await page.locator('form').evaluate(el => el.requestSubmit())
+  assert.equal(acceptRequests, 1)
+  acceptMode = 'success'
+  await page.clock.fastForward(2500)
+  await page.getByRole('button', { name: 'Set password', exact: true }).waitFor()
+
   await page.getByRole('button', { name: 'Set password', exact: true }).click()
   await page.getByRole('status').waitFor()
   await page.goto('http://localhost:5174/forgot-password')
