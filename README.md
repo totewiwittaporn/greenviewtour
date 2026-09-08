@@ -4,7 +4,7 @@ Company-management monorepo with independent public-web and backoffice UI cores.
 
 ## Current status
 
-Repository foundation only. Both React entry points render an intentionally empty shell. The Backend includes a Preview PostgreSQL connection adapter and diagnostic command; business modules remain ownership scaffolds, not working services. Login, user management, bookings, accounting and deployment are not implemented.
+Two initial websites and a local read-only DB-backed User directory are available. Staff login, account editing and business permissions are not implemented yet. See [Local development](docs/local-development.md) for startup and access boundaries.
 
 ## Development
 
@@ -12,16 +12,14 @@ Use Node >=22.12 and npm >=10.9 (CI uses Node 22). From the repository root:
 
 ```sh
 npm ci
-npm run dev:public
-# In another terminal:
-npm run dev:backoffice
+npm run dev
 ```
 
 Public web uses port 5173; backoffice uses 5174. Ports are strict to avoid silently opening the wrong app.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Public-web development alias |
+| `npm run dev` | Start Backend, Public and Backoffice together |
 | `npm run build` | Build both frontend applications |
 | `npm run build:public` | Build public web only |
 | `npm run build:backoffice` | Build backoffice only |

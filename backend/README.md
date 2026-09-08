@@ -1,5 +1,5 @@
-# Backend API
+# Backend
 
-The Preview PostgreSQL connection adapter is implemented in `src/platform/database`. Run `npm run db:check` from the repository root after supplying private environment configuration; see `docs/database-connection.md`.
+Start through root `npm run dev`. The local loopback HTTP server exposes liveness and a token-protected read-only User directory. Database configuration remains in src/platform/database. See docs/local-development.md and docs/database-connection.md at repository root.
 
-There is no HTTP server, authentication flow or business endpoint yet. `src/backoffice/<menu>/<page>` reserves page adapters and `src/modules` owns future business rules.
+Staff authentication, account writes and production deployment are not implemented. The menu/page folders still reserve future business endpoints.
