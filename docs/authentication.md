@@ -53,3 +53,13 @@ Logout removes the local session immediately, then attempts provider-session rev
 Supabase advisory review: the eight private tables intentionally have no client RLS policies (default deny). The pre-existing `public.rls_auto_enable()` function returns `event_trigger`, has a fixed pg_catalog search path and is not an ordinary callable RPC; its generic SECURITY DEFINER advisor warning is recorded rather than changing the platform's event trigger. No new SECURITY DEFINER function was introduced.
 
 Dependency audit reports Prisma toolchain advisories in deepmerge-ts/mysql2. This PostgreSQL-only local service does not use the MySQL driver or merge untrusted Prisma configuration. npm's proposed fix downgrades Prisma to version 6; no automatic major downgrade was applied. Resolve the toolchain findings before a hosted production release.
+
+## User Info and delegated profile editing (2026-09-08)
+
+User Info owns the authenticated name, email, department, status, role grants, public-site link and Sign out. The toolbar exposes one User Info trigger. It never displays credential/token values.
+
+Company-scoped ADMIN_MANAGER and MANAGER can edit display name/department for profiles of every role. HEAD_BOOKING, HEAD_GUIDE, HEAD_CAPTAIN and HEAD_DRIVER require an explicit matching department assignment; their directory, counts and search are restricted to that department. They can edit display names within that department, excluding Manager/Admin Manager profiles, and cannot change department. Department is a dedicated field, never inferred from user-editable Auth metadata. Unassigned/mismatched heads fail closed.
+
+These actions edit profile data only. Role grants, account suspension/deactivation, email and password administration are separate security operations; the owner's intended delegation for those operations must be clarified before adding them. No role-edit control is presented by this phase. Current role definitions are preserved. Department changes require a review step explaining the access consequence. Row versions prevent stale overwrites; writes re-read actor/target authorization inside a transaction and record before/after profile values.
+
+Transient Auth network/5xx/rate-limit failures preserve local sessions; invalid credentials on a protected token verification revoke the local session. A password-reset audit attempt is recorded before changing the provider password. Once the password changes, local sessions are always removed. Provider revocation failures are reported as follow-up warnings, not password-change failures; an audit-finalization outage leaves the durable attempt record for investigation.

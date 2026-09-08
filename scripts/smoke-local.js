@@ -18,7 +18,7 @@ try {
   await page.screenshot({ path: new URL('public-mobile.png', output).pathname.replace(/^\/(\w:)/, '$1'), fullPage: true })
   await page.setViewportSize({ width: 1440, height: 1000 })
   // Authenticated directory states use browser-only fixtures; real sign-in is verified separately.
-  await page.route('**/api/me', route => route.fulfill({ json: { user: { id: 'fixture', displayName: 'Fixture user', permissions: ['users.read:COMPANY'], roles: [] } } }))
+  await page.route('**/api/me', route => route.fulfill({ json: { user: { id: 'fixture', displayName: 'Fixture user', permissions: ['users.read:COMPANY'], management: {company:true}, roles: [] } } }))
   await page.route('**/api/users**', route => route.fulfill({ json: { users: [], total: 0, page: 1, pageSize: 25, summary: { total: 0, verified: 0, signed_in: 0 }, checkedAt: new Date().toISOString(), database: 'UP' } }))
   await page.goto('http://localhost:5174/settings/users')
   await page.getByText('Database connected', { exact: true }).waitFor({ timeout: 20000 })

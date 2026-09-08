@@ -54,7 +54,7 @@ export default function AuthPage({ mode = 'login' }) {
       if (mode === 'login') { await api('/api/auth/login', { email: values.email, password: values.password }); window.location.assign('/'); return }
       if (mode === 'register') { await api('/api/auth/register', { email: values.email, password: values.password, invitationCode: values.invitationCode.trim() }); setMessage('Check your inbox to confirm your email, then return here to sign in. If you already have an account, sign in with your existing password.') }
       if (mode === 'forgot') { await api('/api/auth/recover', { email: values.email }); setMessage('If your email can receive a reset message, a link will arrive shortly. Check your inbox and spam folder.') }
-      if (mode === 'reset') { await api('/api/auth/reset-password', { password: values.password }); setMessage('Your password has been updated. Sign in with your new password.') }
+      if (mode === 'reset') { const result = await api('/api/auth/reset-password', { password: values.password }); setMessage(result.warning ? 'Your password has been updated and you have been signed out of this workspace. Contact your administrator to check remaining session cleanup.' : 'Your password has been updated. Sign in with your new password.') }
       setValues(old => ({ ...old, password: '', confirm: '', invitationCode: '' }))
     } catch (error) { setFailure(authMessage(error)) }
     finally { lock.current = false; setBusy(false) }

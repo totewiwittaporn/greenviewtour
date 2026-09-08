@@ -19,6 +19,7 @@ enum AccessScope {
 model UserProfile {
   id String @id @db.Uuid
   displayName String @db.VarChar(100)
+  department String? @db.VarChar(30)
   status AccountStatus @default(ACTIVE)
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)

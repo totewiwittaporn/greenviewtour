@@ -34,7 +34,7 @@ export class SessionStore {
       return { user, entry, id }
     } catch (error) {
       // Temporary provider/DB outages do not erase a valid local session.
-      if (!(error instanceof AccessError) && error.message !== 'REVOKED') throw error
+      if (!(error instanceof AccessError && error.code === 'SESSION_EXPIRED' && error.status === 401) && error.message !== 'REVOKED') throw error
       this.entries.delete(id)
       throw new AccessError('SESSION_EXPIRED', 401)
     }
