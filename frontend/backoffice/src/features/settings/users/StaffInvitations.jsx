@@ -6,6 +6,9 @@ import { Dialog } from '../../../core/ui/Dialog.jsx'
 import { Dropdown } from '../../../core/ui/Dropdown.jsx'
 import { FormField } from '../../../core/ui/FormField.jsx'
 import { SelectField } from '../../../core/ui/SelectField.jsx'
+import { Pagination } from '../../../core/ui/Pagination.jsx'
+import { SummaryCards } from '../../../core/ui/SummaryCards.jsx'
+import { SearchField } from '../../../core/ui/SearchField.jsx'
 import { DataTable } from '../../../core/ui/DataTable.jsx'
 const date = value => new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }).format(new Date(value))
 const message = error => ({
@@ -77,28 +80,36 @@ function InvitationAction({ selection, onClose, onChanged }) {
 }
 export function StaffInvitations({ open, onClose }) {
   const [state, setState] = useState({ loading: true }), [revision, setRevision] = useState(0), [selection, setSelection] = useState(null)
+  const [page, setPage] = useState(1), [search, setSearch] = useState(''), [query, setQuery] = useState(''), [composing, setComposing] = useState(false)
+  useEffect(() => {
+    if (composing) return
+    if (!search) { setQuery(''); setPage(1); return }
+    const timer = setTimeout(() => { setQuery(search.trim()); setPage(1) }, 300)
+    return () => clearTimeout(timer)
+  }, [search, composing])
   const refresh = () => setRevision(n => n + 1)
   useEffect(() => {
     const controller = new AbortController()
     setState(old => ({ ...old, loading: true, error: '' }))
-    api('/api/invitations', undefined, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) }).then(data => { if (!controller.signal.aborted) setState({ data, loading: false }) }).catch(error => { if (!controller.signal.aborted) setState({ error: message(error), loading: false }) })
+    api(`/api/invitations?${new URLSearchParams({ page: String(page), pageSize: '25', search: query })}`, undefined, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) }).then(data => { if (!controller.signal.aborted) setState({ data, loading: false }) }).catch(error => { if (!controller.signal.aborted) setState({ error: message(error), loading: false }) })
     return () => controller.abort()
-  }, [revision])
+  }, [revision, page, query])
   const items = state.data?.invitations || []
   return <>
-    <section className="metrics" aria-label="Invitation summary">{[
-      ['Recent invitations', items.length, 'Up to 100 most recent invitations', 'users'],
-      ['Awaiting staff', items.filter(item => ['Pending', 'Awaiting activation'].includes(item.status)).length, 'Invited employees yet to join', 'calendar'],
-      ['Joined', items.filter(item => item.status === 'Joined').length, 'Activated from these invitations', 'check'],
-    ].map(([label, value, detail, icon]) => <div className="metric" key={label}><div className="metric-label">{label}<span className="metric-icon"><Icon name={icon} /></span></div><strong>{state.loading || state.error ? '—' : value}</strong><span>{detail}</span></div>)}</section>
-    <section className="panel invite-panel"><div className="panel-heading"><div><h2>Employee invitations</h2><p>Recent 100 invitations · Times shown in Bangkok time</p></div></div><div className="filterbar"><Button busy={state.loading} disabled={state.loading} onClick={refresh}><Icon name="refresh" />Refresh invitations</Button></div>
-    {state.error ? <p className="inline-error" role="alert">{state.error}</p> : <DataTable label="Employee invitations" columns={['Employee', 'Role / Department', 'Status', 'Expires', 'Actions']} busy={state.loading}>
-      {state.loading ? <tr><td colSpan="5"><div className="empty-state" role="status"><span className="spinner" />Loading invitations…</div></td></tr> : !state.data?.invitations.length ? <tr><td colSpan="5"><div className="empty-state"><span className="empty-icon"><Icon name="users" width="30" height="30" /></span><h3>No invitations yet</h3><p>Choose Add employee to invite your first team member.</p></div></td></tr> : state.data.invitations.map(item => <tr key={item.id}><td><strong>{item.displayName}</strong><small className="role-label">{item.email}</small></td><td>{item.roles.join(' · ')}<small className="role-label">{item.department}</small></td><td><span className={`badge ${item.status === 'Joined' ? 'verified' : ''}`}>{item.status}</span></td><td>{date(item.expiresAt)}</td><td>{item.status === 'Joined' ? <span className="muted">Joined</span> : <Dropdown label={`Invitation actions for ${item.email}`} items={[
+    <SummaryCards label="Invitation summary" items={[
+      { label: 'Total invitations', value: state.data?.summary?.total, detail: 'All invitations you can manage', icon: 'users' },
+      { label: 'Awaiting staff', value: state.data?.summary?.awaiting, detail: 'Active invitations yet to join', icon: 'calendar' },
+      { label: 'Joined', value: state.data?.summary?.joined, detail: 'Employees who have activated', icon: 'check' },
+      { label: 'Expired or revoked', value: state.data?.summary?.inactive, detail: 'Inactive invitation links', icon: 'globe' },
+    ]} />
+    <section className="panel table-panel invite-panel"><div className="panel-heading"><div><h2>Employee invitations</h2><p>Manage employee access · Times shown in Bangkok time</p></div></div><div className="filterbar"><SearchField value={search} onChange={setSearch} onCompositionChange={setComposing} label="Search invitations by name or email" placeholder="Search by name or email…" /><Button busy={state.loading} disabled={state.loading} onClick={refresh}><Icon name="refresh" />Refresh invitations</Button></div>
+    <DataTable label="Employee invitations" columns={['Employee', 'Role / Department', 'Status', 'Expires', 'Actions']} busy={state.loading} error={state.error} onRetry={refresh} loadingLabel="Loading invitations…" isEmpty={!items.length} empty={<><h3>{query ? 'No matching invitations' : 'No invitations yet'}</h3><p>{query ? 'Try another name or email, or clear the search.' : 'Choose Add employee to invite your first team member.'}</p>{query && <Button onClick={() => setSearch('')}>Clear search</Button>}</>}>
+      {items.map(item => <tr key={item.id}><td><strong>{item.displayName}</strong><small className="role-label">{item.email}</small></td><td>{item.roles.join(' · ')}<small className="role-label">{item.department}</small></td><td><span className={`badge ${item.status === 'Joined' ? 'verified' : ''}`}>{item.status}</span></td><td>{date(item.expiresAt)}</td><td>{item.status === 'Joined' ? <span className="muted">Joined</span> : <Dropdown label={`Invitation actions for ${item.email}`} items={[
         { label: 'Create new link', onSelect: () => setSelection({ item, action: 'renew' }) },
         ...(!['Revoked','Expired'].includes(item.status) ? [{ label: 'Revoke invitation', danger: true, onSelect: () => setSelection({ item, action: 'revoke' }) }] : []),
       ]}><span aria-hidden="true">⋯</span></Dropdown>}</td></tr>)}
-    </DataTable>}
-    <div className="table-footer"><span>{state.data ? `${items.length} invitations` : '—'}</span><span>Most recent 100</span></div>
+    </DataTable>
+    <Pagination page={state.data?.page ?? page} pageSize={25} total={state.loading || state.error ? undefined : state.data?.total} busy={state.loading} onPageChange={setPage} label="Invitations pagination" />
   </section>
     {open && (state.data ? <InviteForm catalog={state.data} onClose={onClose} onCreated={refresh} /> : <Dialog title="Add employee" onClose={onClose}>{state.loading ? <p role="status">Loading available roles…</p> : <><p role="alert">{state.error}</p><Button onClick={refresh}>Retry</Button></>}</Dialog>)}
     {selection && <InvitationAction selection={selection} onClose={() => setSelection(null)} onChanged={refresh} />}

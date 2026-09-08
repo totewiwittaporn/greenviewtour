@@ -10,6 +10,8 @@ async function authorize(tx, actorId) {
  if(!canManageCatalog(actor))throw new AccessError('PERMISSION_DENIED')
 }
 const referenceSelect={id:true,name:true,code:true}
+// Summary cards describe the full company-authorized dataset, independently of list filters.
+const summaryWhere={partners:{roles:{has:'SALES_AGENT'}},tours:{ownership:'GREENVIEW'},rates:{childPrice:{not:null}},locations:{kind:'HOTEL'},vehicles:{ownership:'GREENVIEW'},channels:{kind:'DIRECT'}}
 const includes={tours:{operator:{select:referenceSelect}},rates:{agent:{select:referenceSelect},tour:{select:referenceSelect}},vehicles:{provider:{select:referenceSelect}}}
 export async function listSettings(prisma,actorId,entity,params){
  if(!Object.hasOwn(catalog,entity))throw new AccessError('NOT_FOUND',404)
@@ -23,7 +25,11 @@ export async function listSettings(prisma,actorId,entity,params){
  return prisma.$transaction(async tx=>{
   const total=await tx[model].count({where}),pages=Math.max(1,Math.ceil(total/25)),page=Math.min(requested,pages)
   const rows=await tx[model].findMany({where,include:includes[entity],orderBy:entity==='rates'?[{createdAt:'desc'},{id:'asc'}]:[{name:'asc'},{id:'asc'}],skip:(page-1)*25,take:25})
-  return{rows,total,page,pages}
+  const [all,active,inactive,featured]=await Promise.all([
+   tx[model].count(),tx[model].count({where:{status:'ACTIVE'}}),
+   tx[model].count({where:{status:'INACTIVE'}}),tx[model].count({where:summaryWhere[entity]}),
+  ])
+  return{rows,total,page,pages,pageSize:25,summary:{total:all,active,inactive,featured}}
  },{isolationLevel:'RepeatableRead'})
 }
 export async function saveSettings(prisma,actorId,entity,input){

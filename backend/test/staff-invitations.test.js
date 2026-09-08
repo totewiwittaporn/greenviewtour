@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { Readable } from 'node:stream'
 import { createHandler } from '../src/app/http.js'
 import { grantsFor } from '../src/modules/identity-access/policy.js'
-import { canInvite, invitationRoles, validateInvitation, canResetPassword, createInvitation, changeInvitation, lookupInvitation, acceptInvitation } from '../src/modules/identity-access/invitations.js'
+import { listInvitations, canInvite, invitationRoles, validateInvitation, canResetPassword, createInvitation, changeInvitation, lookupInvitation, acceptInvitation } from '../src/modules/identity-access/invitations.js'
 import { hashToken, resolveMembership } from '../src/modules/identity-access/membership.js'
 import { editOwnProfile } from '../src/modules/identity-access/user-management.js'
 const profile = (role = 'MANAGER', id = 'actor') => ({ id, status: 'ACTIVE', displayName: 'Name', roles: [{ roleCode: role, scope: role === 'ADMIN_MANAGER' || role === 'MANAGER' ? 'COMPANY' : 'SELF', role: { permissions: grantsFor(role).map(permissionCode => ({ permissionCode })) } }] })
@@ -113,4 +113,29 @@ test('local-only invitations fail before provider registration without consuming
   let calls = 0
   await assert.rejects(() => acceptInvitation(prisma, { register: async () => { calls++ } }, result.invitationCode, 'fixture-password-123'), { code: 'INVITATION_EMAIL_UNDELIVERABLE' })
   assert.equal(calls, 0); assert.equal(records.get('invite').acceptedAt, null)
+})
+
+
+test('invitation directory pages beyond 100, clamps emptied pages and scopes all summary counts', async () => {
+  const { prisma, actor } = database()
+  const counts = [], reads = []
+  prisma.invitation.count = async ({ where }) => { counts.push(where); return where.consumedAt?.not === null ? 10 : where.expiresAt ? 90 : 130 }
+  prisma.invitation.findMany = async options => { reads.push(options); return [] }
+  const result = await listInvitations(prisma, actor.id, new URLSearchParams('page=5&pageSize=25&search=guide'))
+  assert.equal(result.page, 5)
+  assert.equal(result.total, 130)
+  assert.equal(reads[0].skip, 100)
+  assert.equal(reads[0].take, 25)
+  assert.equal(reads[0].where.OR[0].email.contains, 'guide')
+  assert.deepEqual(result.summary, { total: 130, awaiting: 90, joined: 10, inactive: 30 })
+  for (const scope of counts) {
+    assert.deepEqual(scope.createdById, { not: null })
+    assert.equal(scope.roles.every.roleCode.in.includes('MANAGER'), false)
+  }
+  const clamped = await listInvitations(prisma, actor.id, new URLSearchParams('page=999'))
+  assert.equal(clamped.page, 6)
+  await assert.rejects(() => listInvitations(prisma, actor.id, new URLSearchParams('page=-1')), /INVALID_FILTER/)
+  await assert.rejects(() => listInvitations(prisma, actor.id, new URLSearchParams('pageSize=5000')), /INVALID_FILTER/)
+  actor.status = 'SUSPENDED'
+  await assert.rejects(() => listInvitations(prisma, actor.id), /PERMISSION_DENIED/)
 })
