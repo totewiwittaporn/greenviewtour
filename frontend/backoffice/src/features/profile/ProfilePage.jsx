@@ -19,14 +19,15 @@ export default function ProfilePage({ user, onSaved }) {
     return () => window.removeEventListener('beforeunload', guard)
   }, [dirty, hasSecrets, busy, done])
   function update(key, value) { setFields(old => ({ ...old, [key]: value })); setErrors(old => ({ ...old, [key]: '' })); setMessage('') }
-  function focusError(ref) { requestAnimationFrame(() => ref.current?.querySelector('[aria-invalid="true"]')?.focus()) }
+  useEffect(() => { if (!busy && Object.values(errors).some(Boolean)) form.current?.querySelector('[aria-invalid="true"]')?.focus() }, [errors, busy])
+  useEffect(() => { if (!busy && Object.values(passwordErrors).some(Boolean)) passwordForm.current?.querySelector('[aria-invalid="true"]')?.focus() }, [passwordErrors, busy])
   async function save(event) {
     event.preventDefault(); if (lock.current) return
     const invalid = {}
     if (!fields.displayName.trim()) invalid.displayName = 'Enter your name.'
     for (const key of ['primaryPhone', 'emergencyPhone']) if (!phoneValid(fields[key])) invalid[key] = 'Use 7–15 digits, with optional +, spaces, brackets or hyphens.'
     setErrors(invalid); setMessage(''); setError('')
-    if (Object.keys(invalid).length) { focusError(form); return }
+    if (Object.keys(invalid).length) { return }
     lock.current = true; setBusy(true)
     try {
       await api('/api/me/profile', { ...fields, updatedAt: saved.updatedAt })
@@ -51,14 +52,14 @@ export default function ProfilePage({ user, onSaved }) {
     else if (secrets.password === secrets.currentPassword) invalid.password = 'Choose a different password.'
     if (secrets.confirm !== secrets.password) invalid.confirm = 'Passwords do not match.'
     setPasswordErrors(invalid); setPasswordError('')
-    if (Object.keys(invalid).length) { focusError(passwordForm); return }
+    if (Object.keys(invalid).length) { return }
     if (dirty) { setPasswordError('Save or discard your profile changes first. Changing your password signs you out.'); return }
     lock.current = true; setBusy(true)
     try {
       const result = await api('/api/me/password', { currentPassword: secrets.currentPassword, password: secrets.password })
       setSecrets({ currentPassword: '', password: '', confirm: '' }); setDone(result)
     } catch (error) {
-      if (error.message === 'INVALID_CREDENTIALS') { setPasswordErrors({ currentPassword: 'The current password is incorrect.' }); focusError(passwordForm) }
+      if (error.message === 'INVALID_CREDENTIALS') { setPasswordErrors({ currentPassword: 'The current password is incorrect.' }) }
       else setPasswordError(authMessage(error))
     } finally { lock.current = false; setBusy(false) }
   }

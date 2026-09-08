@@ -39,3 +39,5 @@
 @media(max-width:1100px){.profile-layout{grid-template-columns:1fr}.profile-summary .profile-identity{flex-direction:row}.profile-summary .profile-details{margin:20px 0}}@media(max-width:640px){.profile-field-grid{grid-template-columns:1fr;gap:0}.profile-form{padding:0 18px 18px}.profile-summary{padding:18px}.profile-layout{gap:18px}}
 
 .profile-detail-pair{display:contents}
+
+.profile-form{font-size:13px}.profile-form .form-field label{font-size:12px;margin-bottom:6px}.profile-form .field-control input{min-height:44px;padding:10px 12px;font-size:14px}.profile-form .password-toggle{font-size:12px}.profile-form .field-help{font-size:10px}.profile-form-actions .button{text-decoration:none}@media(max-width:640px){.profile-form-actions>.muted{width:100%}.profile-form-actions>.button{flex:1}}

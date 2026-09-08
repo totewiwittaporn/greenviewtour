@@ -70,7 +70,7 @@ try {
   await page.getByLabel('Confirm new password', { exact: true }).fill('new-fixture-password')
   await page.getByRole('button', { name: 'Change password', exact: true }).click()
   await page.getByText('The current password is incorrect.', { exact: true }).waitFor()
-  assert.equal(await page.getByLabel('Current password', { exact: true }).evaluate(el => el === document.activeElement), true)
+  await page.waitForFunction(() => document.activeElement?.getAttribute('autocomplete') === 'current-password')
   wrongPassword = false
   await page.getByLabel('Current password', { exact: true }).fill('old-fixture-password')
   await page.getByRole('button', { name: 'Change password', exact: true }).click()

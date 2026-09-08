@@ -10,7 +10,7 @@ import { SearchField } from '../../../core/ui/SearchField.jsx'
 import { DataTable } from '../../../core/ui/DataTable.jsx'
 const formatDate = value => value ? new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'Asia/Bangkok' }).format(new Date(value)) : 'Not yet'
 export default function UsersPage({ onProfileSaved }) {
-  const [tab, setTab] = useState('users')
+  const [selectedTab, setTab] = useState('users')
   const [inviteOpen, setInviteOpen] = useState(false), [resetUser, setResetUser] = useState(null)
   const [selected,setSelected] = useState(null), [notice,setNotice] = useState('')
   const [search, setSearch] = useState('')
@@ -43,6 +43,7 @@ export default function UsersPage({ onProfileSaved }) {
     return () => { active = false; clearTimeout(timeout); controller.abort() }
   }, [query, page, refresh])
   const { data, loading, error } = state
+  const tab = data?.canInvite ? selectedTab : 'users'
   const summary = data?.summary
   const connected = Boolean(data && !error && !loading)
   return <>
