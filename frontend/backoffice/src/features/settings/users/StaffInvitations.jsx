@@ -9,6 +9,7 @@ import { SelectField } from '../../../core/ui/SelectField.jsx'
 import { DataTable } from '../../../core/ui/DataTable.jsx'
 const date = value => new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Bangkok' }).format(new Date(value))
 const message = error => ({
+  INVITATION_EMAIL_UNDELIVERABLE: 'Use an email address that can receive confirmation messages. Local-only addresses such as @system.local cannot activate through this invitation flow.',
   INVITATION_ALREADY_EXISTS: 'An invitation already exists for this email. Close this form and use its Actions menu to create a new link.',
   ACCOUNT_ALREADY_EXISTS: 'This employee already has an account. Use the user directory to manage it.',
   ROLE_ASSIGNMENT_DENIED: 'Your permission to assign this role has changed. Refresh the page.',
@@ -53,7 +54,7 @@ function InviteForm({ catalog, onClose, onCreated }) {
     {discard ? <><p>This invitation has not been created.</p><div className="dialog-actions"><Button autoFocus onClick={() => setDiscard(false)}>Keep editing</Button><Button onClick={onClose}>Discard changes</Button></div></> : result ? <InvitationLink result={result} /> : <form ref={form} noValidate onSubmit={submit} aria-busy={busy}>
       <p>Create a private invitation. The employee sets their own password after opening the link.</p>
       <FormField label="Full name" value={values.displayName} onChange={change('displayName')} error={errors.displayName} maxLength={100} autoComplete="off" disabled={busy} />
-      <FormField label="Email address" type="email" value={values.email} onChange={change('email')} error={errors.email} maxLength={254} autoComplete="off" disabled={busy} />
+      <FormField label="Email address" hint="Use an address that can receive the confirmation email." type="email" value={values.email} onChange={change('email')} error={errors.email} maxLength={254} autoComplete="off" disabled={busy} />
       <SelectField label="Role" value={values.roleCode} onChange={change('roleCode')} error={errors.roleCode} disabled={busy}><option value="">Choose a role</option>{catalog.roles.map(role => <option key={role.code} value={role.code}>{role.name}</option>)}</SelectField>
       <SelectField label="Department" value={values.department} onChange={change('department')} error={errors.department} disabled={busy}><option value="">Choose a department</option>{catalog.departments.map(department => <option key={department}>{department}</option>)}</SelectField>
       <p className="field-help">The invitation expires in 72 hours. No email is sent when you create this link.</p>

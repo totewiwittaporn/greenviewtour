@@ -4,9 +4,22 @@ import { PREVIEW_PROJECT_REF } from '../database/config.js'
 export function checkAuthResult(result, code = 'AUTH_FAILED') {
   if (result.error) {
     const status = result.error.status
-    if (status === 429) throw new AccessError('RATE_LIMITED', 429)
+    const known = {
+      over_email_send_rate_limit: 'AUTH_EMAIL_RATE_LIMITED',
+      over_request_rate_limit: 'AUTH_RATE_LIMITED',
+      email_address_invalid: 'AUTH_EMAIL_INVALID',
+      email_address_not_authorized: 'AUTH_EMAIL_NOT_AUTHORIZED',
+      weak_password: 'PASSWORD_POLICY_REJECTED',
+      user_already_exists: 'ACCOUNT_ALREADY_EXISTS',
+      signup_disabled: 'SIGNUP_DISABLED',
+      email_provider_disabled: 'SIGNUP_DISABLED',
+    }
+    const mapped = known[result.error.code]
+    // Keep provider diagnostics useful without logging addresses, tokens or passwords.
+    console.warn(JSON.stringify({ event: 'AUTH_PROVIDER_REJECTED', operation: code, status: Number.isInteger(status) ? status : null, providerCode: mapped ? result.error.code : 'unclassified' }))
+    if (status === 429) throw new AccessError(mapped || 'AUTH_RATE_LIMITED', 429)
     if (!status || status >= 500 || result.error.name === 'AuthRetryableFetchError') throw new AccessError('AUTH_UNAVAILABLE', 503)
-    throw new AccessError(code, code === 'SESSION_EXPIRED' ? 401 : 400)
+    throw new AccessError(mapped || code, code === 'SESSION_EXPIRED' ? 401 : 400)
   }
   return result.data
 }

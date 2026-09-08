@@ -104,3 +104,13 @@ test('uninvited registration endpoint is disabled without calling the auth provi
   await createHandler({ token: 'a'.repeat(64), provider: { register: async () => { called = true } } })(req, { writeHead(code) { status = code }, end() {} })
   assert.equal(status, 410); assert.equal(called, false)
 })
+
+test('local-only invitations fail before provider registration without consuming the link', async () => {
+  assert.throws(() => validateInvitation({ ...input, email: 'manager@system.local' }, profile()), { code: 'INVITATION_EMAIL_UNDELIVERABLE' })
+  const { prisma, records } = database()
+  const result = await createInvitation(prisma, 'actor', input)
+  records.get('invite').email = 'manager@system.local'
+  let calls = 0
+  await assert.rejects(() => acceptInvitation(prisma, { register: async () => { calls++ } }, result.invitationCode, 'fixture-password-123'), { code: 'INVITATION_EMAIL_UNDELIVERABLE' })
+  assert.equal(calls, 0); assert.equal(records.get('invite').acceptedAt, null)
+})

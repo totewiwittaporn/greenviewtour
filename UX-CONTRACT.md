@@ -54,3 +54,6 @@ Owner refinement 2026-09-08: clear menu items on pointer opening; sea-tint hover
 - Contact edits retain existing department permissions and optimistic version checks. Audit stores changed field names, never contact values or passwords.
 
 - Dataset tab transitions reserve both panels' geometry, with inactive panels inert and aria-hidden. Use aligned summary/toolbar/table/footer sizes, stable page scrollbar gutter, 180–200ms motion and reduced-motion opt-out. Both datasets have a bounded responsive table scroll region.
+
+- Select scroll lock: stable root gutter is the width owner; suppress duplicate body margin compensation only when supported. Popup open/close must preserve page and dialog geometry with visible scrollbars.
+- Auth throttling: preserve safe provider error categories, send Retry-After for the known local window, and show a countdown before manual retry. An unknown provider limit uses a conservative UI delay without claiming the provider quota has reset. `.local` invitation addresses are rejected before creating a link or submitting a password; existing bootstrap account login remains available.

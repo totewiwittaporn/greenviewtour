@@ -21,6 +21,13 @@ export default function AuthPage({ mode = 'login' }) {
   const [errors, setErrors] = useState({}), [busy, setBusy] = useState(false), [message, setMessage] = useState('')
   const [failure, setFailure] = useState(callbackError ? 'This link is invalid or expired. Request a new link.' : '')
   const [ready, setReady] = useState(!['reset','register'].includes(mode)), form = useRef(null), lock = useRef(false)
+  const [retryUntil, setRetryUntil] = useState(0), [now, setNow] = useState(Date.now())
+  const retrySeconds = Math.max(0, Math.ceil((retryUntil - now) / 1000))
+  useEffect(() => {
+    if (!retryUntil) return
+    const timer = setInterval(() => { const current = Date.now(); setNow(current); if (current >= retryUntil) setRetryUntil(0) }, 250)
+    return () => clearInterval(timer)
+  }, [retryUntil])
   const [title, description, action] = content[mode]
   useEffect(() => {
     document.title = `${title} · Greenview Tour`
@@ -51,7 +58,7 @@ export default function AuthPage({ mode = 'login' }) {
   const change = name => event => { setValues(old => ({ ...old, [name]: event.target.value })); setErrors(old => ({ ...old, [name]: '' })) }
   async function submit(event) {
     event.preventDefault()
-    if (event.nativeEvent.isComposing || lock.current || message) return
+    if (event.nativeEvent.isComposing || lock.current || message || Date.now() < retryUntil) return
     const next = {}
     if (mode !== 'reset' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) next.email = 'Enter a valid email address.'
     if (mode !== 'forgot' && (!values.password || values.password.length > 128)) next.password = 'Enter your password (up to 128 characters).'
@@ -68,7 +75,7 @@ export default function AuthPage({ mode = 'login' }) {
       if (mode === 'forgot') { await api('/api/auth/recover', { email: values.email }); setMessage('If your email can receive a reset message, a link will arrive shortly. Check your inbox and spam folder.') }
       if (mode === 'reset') { const result = await api('/api/auth/reset-password', { password: values.password }); setMessage(result.warning ? 'Your password has been updated and you have been signed out of this workspace. Contact your administrator to check remaining session cleanup.' : 'Your password has been updated. Sign in with your new password.') }
       setValues(old => ({ ...old, password: '', confirm: '' }))
-    } catch (error) { setFailure(authMessage(error)) }
+    } catch (error) { setFailure(authMessage(error)); if (error.status === 429) { const current = Date.now(); setNow(current); setRetryUntil(current + Math.min(3600, Math.max(1, error.retryAfterSeconds || 60)) * 1000) } }
     finally { lock.current = false; setBusy(false) }
   }
   return <AuthLayout title={title} description={description}>
@@ -79,7 +86,7 @@ export default function AuthPage({ mode = 'login' }) {
         {mode !== 'forgot' && <FormField label={mode === 'login' ? 'Password' : 'New password'} name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} maxLength={128} value={values.password} onChange={change('password')} error={errors.password} hint={mode === 'login' ? '' : 'Use 12–128 characters. Password managers and paste are welcome.'} disabled={busy} />}
         {['register','reset'].includes(mode) && <FormField label="Confirm password" name="confirm" type="password" autoComplete="new-password" maxLength={128} value={values.confirm} onChange={change('confirm')} error={errors.confirm} disabled={busy} />}
         {mode === 'login' && <a className="forgot-link" href="/forgot-password">Forgot password?</a>}
-        <Button type="submit" className="button-primary auth-submit" busy={busy} disabled={busy || !ready}>{action}<span aria-hidden="true">{busy ? '…' : '→'}</span></Button>
+        <Button type="submit" className="button-primary auth-submit" busy={busy} disabled={busy || !ready || retrySeconds > 0}>{retrySeconds > 0 ? `Wait ${retrySeconds}s` : action}<span aria-hidden="true">{busy ? '…' : '→'}</span></Button>
       </>}
     </form>}
     <div className="auth-switch">{mode === 'login' ? <>Need access? Ask your Manager for an invitation.</> : <a href="/login">Back to sign in</a>}</div>

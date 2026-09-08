@@ -63,3 +63,16 @@ test('session cookies are opaque and HttpOnly; revocation denies reuse', () => {
   sessions.deleteUser('one')
   assert.throws(() => sessions.get(req))
 })
+
+test('local throttling identifies its source and supplies a bounded Retry-After header', async () => {
+  const handler = createHandler({ token, provider: { recover: async () => {} } })
+  let status, headers, data
+  for (let index = 0; index < 31; index++) {
+    const req = Readable.from([JSON.stringify({ email: 'fixture@example.invalid' })])
+    Object.assign(req, { method: 'POST', url: '/api/auth/recover', headers: { host: '127.0.0.1:5000', origin: 'http://localhost:5174', 'x-greenview-local-token': token, 'content-type': 'application/json' } })
+    await handler(req, { writeHead: (s,h) => { status=s;headers=h }, end: body => { data=JSON.parse(body) } })
+  }
+  assert.equal(status, 429); assert.equal(data.code, 'LOCAL_RATE_LIMITED')
+  assert.ok(data.retryAfterSeconds > 0 && data.retryAfterSeconds <= 60)
+  assert.equal(headers['Retry-After'], String(data.retryAfterSeconds))
+})
