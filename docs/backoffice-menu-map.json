@@ -1,0 +1,330 @@
+{
+  "status": "scaffold-only",
+  "frontendRoot": "frontend/backoffice/src/features",
+  "backendRoot": "backend/src/backoffice",
+  "menus": [
+    {
+      "id": "dashboard",
+      "label": "Dashboard",
+      "pages": [
+        {
+          "id": "overview",
+          "label": "Overview",
+          "modules": [
+            "operations",
+            "bookings",
+            "finance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bookings",
+      "label": "Bookings",
+      "pages": [
+        {
+          "id": "reservations",
+          "label": "Reservations",
+          "modules": [
+            "bookings"
+          ]
+        },
+        {
+          "id": "reception",
+          "label": "Reception",
+          "modules": [
+            "bookings",
+            "operations",
+            "finance"
+          ]
+        },
+        {
+          "id": "insurance",
+          "label": "Insurance",
+          "modules": [
+            "bookings"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sales",
+      "label": "Sales",
+      "pages": [
+        {
+          "id": "quotations",
+          "label": "Quotations",
+          "modules": [
+            "sales",
+            "service-catalog"
+          ]
+        },
+        {
+          "id": "sales-orders",
+          "label": "Sales Orders",
+          "modules": [
+            "sales",
+            "bookings",
+            "finance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tour-operations",
+      "label": "Tour Operations",
+      "pages": [
+        {
+          "id": "work-schedule",
+          "label": "Work Schedule",
+          "modules": [
+            "operations"
+          ]
+        },
+        {
+          "id": "trips",
+          "label": "Trips",
+          "modules": [
+            "operations",
+            "bookings"
+          ]
+        },
+        {
+          "id": "assignments",
+          "label": "Assignments",
+          "modules": [
+            "operations",
+            "employees",
+            "fleet",
+            "assets"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "customers",
+      "label": "Customers",
+      "pages": [
+        {
+          "id": "customers",
+          "label": "Customers",
+          "modules": [
+            "customers"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "services",
+      "label": "Services",
+      "pages": [
+        {
+          "id": "tours",
+          "label": "Tours",
+          "modules": [
+            "service-catalog"
+          ]
+        },
+        {
+          "id": "other-services",
+          "label": "Other Services",
+          "modules": [
+            "service-catalog"
+          ]
+        },
+        {
+          "id": "pricing",
+          "label": "Pricing",
+          "modules": [
+            "service-catalog"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "employees",
+      "label": "Employees",
+      "pages": [
+        {
+          "id": "employee-directory",
+          "label": "Employee Directory",
+          "modules": [
+            "employees"
+          ]
+        },
+        {
+          "id": "teams-positions",
+          "label": "Teams & Positions",
+          "modules": [
+            "organization"
+          ]
+        },
+        {
+          "id": "leave",
+          "label": "Leave",
+          "modules": [
+            "employees",
+            "operations"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "assets-equipment",
+      "label": "Assets & Equipment",
+      "pages": [
+        {
+          "id": "asset-register",
+          "label": "Asset Register",
+          "modules": [
+            "assets"
+          ]
+        },
+        {
+          "id": "supplies",
+          "label": "Supplies",
+          "modules": [
+            "assets"
+          ]
+        },
+        {
+          "id": "issue-return",
+          "label": "Issue & Return",
+          "modules": [
+            "assets"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fleet",
+      "label": "Fleet",
+      "pages": [
+        {
+          "id": "vehicles-boats",
+          "label": "Vehicles & Boats",
+          "modules": [
+            "fleet"
+          ]
+        },
+        {
+          "id": "maintenance",
+          "label": "Maintenance",
+          "modules": [
+            "fleet"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "finance",
+      "label": "Finance",
+      "pages": [
+        {
+          "id": "receivables",
+          "label": "Receivables",
+          "modules": [
+            "finance"
+          ]
+        },
+        {
+          "id": "billing",
+          "label": "Billing",
+          "modules": [
+            "finance"
+          ]
+        },
+        {
+          "id": "receipts",
+          "label": "Receipts",
+          "modules": [
+            "finance"
+          ]
+        },
+        {
+          "id": "tax-invoices",
+          "label": "Tax Invoices",
+          "modules": [
+            "finance"
+          ]
+        },
+        {
+          "id": "cash-handover",
+          "label": "Cash Handover",
+          "modules": [
+            "finance"
+          ]
+        },
+        {
+          "id": "expenses",
+          "label": "Expenses",
+          "modules": [
+            "finance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reports",
+      "label": "Reports",
+      "pages": [
+        {
+          "id": "sales",
+          "label": "Sales",
+          "modules": [
+            "sales"
+          ]
+        },
+        {
+          "id": "operations",
+          "label": "Operations",
+          "modules": [
+            "operations"
+          ]
+        },
+        {
+          "id": "finance",
+          "label": "Finance",
+          "modules": [
+            "finance"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "pages": [
+        {
+          "id": "company",
+          "label": "Company",
+          "modules": [
+            "organization"
+          ]
+        },
+        {
+          "id": "users",
+          "label": "Users",
+          "modules": [
+            "identity-access",
+            "employees"
+          ]
+        },
+        {
+          "id": "roles-permissions",
+          "label": "Roles & Permissions",
+          "modules": [
+            "identity-access"
+          ]
+        },
+        {
+          "id": "activity-log",
+          "label": "Activity Log",
+          "modules": [
+            "identity-access"
+          ]
+        }
+      ]
+    }
+  ]
+}

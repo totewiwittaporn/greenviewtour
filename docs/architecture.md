@@ -6,7 +6,7 @@ Source: owner discussion on 2026-09-08. Scope: a company operations system, not 
 
 Use one npm-workspaces repository and an initially modular, single backend. Keep the existing React/Vite stack. Public web and backoffice have separate UI cores inside their own source trees. Do not create packages/ui or import another application's UI. Reuse contracts, not business data copies.
 
-Frontend `app` composes routes/providers, `features/<capability>` owns business screens/adapters, and `core/ui` owns that application's repeated presentation and interaction. Add features only as they are implemented; do not expose nonfunctional menus.
+Frontend `app` composes routes/providers, `features/<menu>/<page>` owns Backoffice screens/adapters, and `core/ui` owns that application's repeated presentation and interaction. Backoffice menu/page folders may be reserved before implementation; expose navigation only when the feature works. Public Web remains unchanged.
 
 Backend `app` composes runtime; `platform` contains technical adapters; `modules/<capability>` owns business rules. Each module should expose services/contracts and retain ownership of its writes. API authorization is mandatory for every protected action, regardless of UI visibility.
 
@@ -44,3 +44,7 @@ Chalin Clothes is a conceptual reference supplied by the owner; this change does
 ## Folder naming
 
 The owner requested frontend/backend naming aligned with Chalin Clothes. Frontend applications live in `frontend/public-web` and `frontend/backoffice`; the shared API lives in `backend`. The workspace package name `@greenviewtour/api` remains stable because its responsibility is still the API. UI cores remain separate.
+
+## Backoffice page adapters
+
+`backend/src/backoffice/<menu>/<page>` mirrors Backoffice features for discoverability and delegates business behavior to the existing domain modules. This layer owns request/response composition only. The exact 12-menu/34-page map is maintained in `docs/backoffice-menu-map.md` and its JSON inventory.

@@ -45,3 +45,7 @@ Outputs: `frontend/public-web/dist` and `frontend/backoffice/dist`. There is one
 - `docs`: architecture, access plan and deployment guidance.
 
 Read [architecture](docs/architecture.md), [identity and access](docs/identity-access.md), [deployment](docs/deployment.md), [design ownership](DESIGN.md) and [UI contract](UX-CONTRACT.md) before implementing features.
+
+## Backoffice page structure
+
+The [menu/page map](docs/backoffice-menu-map.md) reserves 12 menus and 34 pages under both `frontend/backoffice/src/features` and `backend/src/backoffice`. These are folder scaffolds, not working screens or API endpoints. Backend domain modules remain the owners of business rules.
