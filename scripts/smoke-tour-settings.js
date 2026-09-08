@@ -102,10 +102,21 @@ try{
  assert.equal(await pagination.getByRole('button',{name:'Previous',exact:true}).isDisabled(),true)
  assert.equal(await pagination.getByRole('button',{name:'Next',exact:true}).isDisabled(),true)
  assert.deepEqual(await summary.locator('.metric strong').allTextContents(),['60','45','15','60'],'Filtered list must not replace summary totals')
+ await page.emulateMedia({reducedMotion:'no-preference'})
  for(const[group,tabs]of[['Company & Tours',['Company','Tour programs']],['Partners & Sales',['Business partners','Agent prices','Sales channels']],['Transport & Pickup',['Hotels & pickup points','Vehicles & boats']]]){
   await page.getByRole('link',{name:group,exact:true}).click()
   assert.deepEqual(await page.getByRole('tab').allTextContents(),tabs)
-  for(const tab of tabs){await page.getByRole('tab',{name:tab,exact:true}).click();await page.getByRole('heading',{level:1,name:tab,exact:true}).waitFor();assert.equal(await page.getByRole('tabpanel').count(),1)}
+  for(const tab of tabs){await page.getByRole('tab',{name:tab,exact:true}).click();await page.getByRole('heading',{level:1,name:tab,exact:true}).waitFor();assert.equal(await page.getByRole('tabpanel').count(),1)
+   assert.equal(await page.getByRole('tabpanel').evaluate(el=>getComputedStyle(el).animationName),'core-tab-enter')
+   assert.equal(await page.getByRole('tabpanel').evaluate(el=>getComputedStyle(el).animationDuration),'0.18s')
+   const marker=page.locator('.core-tab-indicator')
+   await marker.evaluate(el=>Promise.all(el.getAnimations().map(a=>a.finished)))
+   assert.equal(await marker.evaluate(el=>Math.round(el.getBoundingClientRect().width)),await page.getByRole('tab',{name:tab,exact:true}).evaluate(el=>el.offsetWidth))
+  }
+  await page.emulateMedia({reducedMotion:'reduce'})
+  assert.equal(await page.getByRole('tabpanel').evaluate(el=>getComputedStyle(el).animationName),'none')
+  assert.equal(await page.locator('.core-tab-indicator').evaluate(el=>getComputedStyle(el).transitionDuration),'0s')
+  await page.emulateMedia({reducedMotion:'no-preference'})
  }
  assert.deepEqual(errors,[])
  console.log(JSON.stringify({result:'PASS',created:Object.keys(rows),checks:['validation','failed save retains values','unsaved discard','view only','independent agent price','search/clear','read retry','keyboard select','mobile overflow','reduced motion','60-row pagination boundaries and empty results','summary totals and 4/2/2 column layouts','manual keyboard tabs','tab query/page restoration','group tab reachability','one accessible active table panel'],realDatabaseWrites:0}))
