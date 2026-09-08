@@ -44,6 +44,14 @@ try {
   await page.getByRole('status').waitFor()
   await page.goto('http://localhost:5174/reset-password')
   await page.getByText('Open the password reset link from your email to continue.').waitFor()
+  await page.route('**/api/auth/recovery-status', route => route.fulfill({ json: { ok: true } }))
+  await page.reload()
+  await page.getByLabel('New password', { exact: true }).waitFor()
+  await page.getByLabel('New password', { exact: true }).fill('fixture-new-password')
+  await page.getByLabel('Confirm password', { exact: true }).fill('fixture-new-password')
+  await page.route('**/api/auth/reset-password', route => route.fulfill({ json: { ok: true } }))
+  await page.getByRole('button', { name: 'Save password', exact: true }).click()
+  await page.getByText('Password updated', { exact: true }).waitFor()
   for (const route of ['login', 'register']) {
     await page.goto(`http://localhost:5174/${route}`)
     await page.setViewportSize({ width: 390, height: 844 })
@@ -51,5 +59,5 @@ try {
     await page.screenshot({ path: fileURLToPath(new URL(`${route}-mobile.png`, output)), fullPage: true })
   }
   assert.deepEqual(errors, [])
-  console.log(JSON.stringify({ result: 'PASS', live: ['anonymous users API denied', 'protected route redirects'], fixtures: ['credential error', 'registration confirmation', 'recovery confirmation'], checks: ['field validation', 'first-error focus', 'password visibility', 'password matching', 'reset without token denied', 'mobile layout'], providerEmailsSent: 0 }))
+  console.log(JSON.stringify({ result: 'PASS', live: ['anonymous users API denied', 'protected route redirects'], fixtures: ['credential error', 'registration confirmation', 'recovery confirmation', 'password update confirmation'], checks: ['field validation', 'first-error focus', 'password visibility', 'password matching', 'reset without token denied', 'mobile layout'], providerEmailsSent: 0 }))
 } finally { await browser.close() }

@@ -4,7 +4,7 @@ Company-management monorepo with independent public-web and backoffice UI cores.
 
 ## Current status
 
-Two initial websites and a local read-only DB-backed User directory are available. Staff login, account editing and business permissions are not implemented yet. See [Local development](docs/local-development.md) for startup and access boundaries.
+Both websites, Prisma identity models and local invitation-based Login/Register/password recovery are available. Users requires authenticated company-directory permission. Manager account editing and business-module permissions are the next phase. See [Local development](docs/local-development.md) for startup and access boundaries.
 
 ## Development
 
@@ -26,6 +26,8 @@ Public web uses port 5173; backoffice uses 5174. Ports are strict to avoid silen
 | `npm run preview` | Serve built public web on 4173 |
 | `npm run preview:backoffice` | Serve built backoffice on 4174 |
 | `npm run lint` | Repository ESLint checks |
+| `npm run db:migrate` | Apply reviewed Prisma migrations to Preview |
+| `npm run owner:invite -- "email" "name"` | Prepare the explicitly identified first owner invitation |
 | `npm run db:check` | Verify Preview DB using private Backend environment |
 | `npm run test:backend` | Backend configuration and DB probe unit tests |
 | `npm run check` | Lint, Backend unit tests and both frontend builds |
@@ -39,7 +41,8 @@ Outputs: `frontend/public-web/dist` and `frontend/backoffice/dist`. There is one
 - `backend`: backend module boundaries and composition locations.
 - `packages/contracts`: browser-safe API contracts only.
 - `packages/config`: shared development tooling only.
-- `database`: future schema/migrations/seeds.
+- `backend/prisma`: canonical identity schema and Prisma migrations.
+- `database`: database architecture/reference placeholders; no duplicate migration ledger.
 - `infrastructure`: hosting/environment configuration.
 - `scripts`: project utilities.
 - `docs`: architecture, access plan and deployment guidance.

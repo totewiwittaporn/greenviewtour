@@ -18,10 +18,11 @@ try {
     if (assigned || pending) throw new Error('OWNER_ALREADY_CONFIGURED')
     const invitation = await tx.invitation.create({ data: { email, displayName, tokenHash: hashToken(code), expiresAt: new Date(Date.now() + 72 * 3600000), roles: { create: { roleCode: 'ADMIN_MANAGER', scope: 'COMPANY' } } } })
     await tx.auditEvent.create({ data: { action: 'owner.invitation.created', targetId: invitation.id, details: { source: 'local-bootstrap' } } })
-  })
   const directory = new URL('../bootstrap.local/', import.meta.url)
   await mkdir(directory, { recursive: true })
   await writeFile(new URL('owner-invitation.txt', directory), `Open http://localhost:5174/register\nEmail: ${email}\nInvitation code: ${code}\nExpires in 72 hours. Keep this file private; delete it after activation.\n`, { mode: 0o600 })
+
+  })
   console.log('OWNER_INVITATION_READY: backend/bootstrap.local/owner-invitation.txt. No password has been created.')
 } catch (error) {
   console.error(['OWNER_ALREADY_CONFIGURED','DISPLAY_NAME_REQUIRED','INVALID_EMAIL'].includes(error.message) ? error.message : 'BOOTSTRAP_FAILED')

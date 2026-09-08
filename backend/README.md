@@ -1,5 +1,7 @@
 # Backend
 
-Start through root `npm run dev`. The local loopback HTTP server exposes liveness and a token-protected read-only User directory. Database configuration remains in src/platform/database. See docs/local-development.md and docs/database-connection.md at repository root.
+Start through root `npm run dev`. The loopback BFF handles Supabase Auth sessions, invitation registration and password recovery. Current database grants protect the read-only User directory. Credentials remain server-side.
 
-Staff authentication, account writes and production deployment are not implemented. The menu/page folders still reserve future business endpoints.
+`src/platform/database` owns verified PostgreSQL and Prisma connections. `prisma/schema.prisma` and `prisma/migrations` own application models in app_private. Supabase owns auth.users and passwords.
+
+See docs/authentication.md and docs/local-development.md. Manager administration UI, team scopes and hosted production deployment remain future phases.
