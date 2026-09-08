@@ -27,3 +27,13 @@ Province, district, subdistrict, house number, Moo and optional village are stor
 Company already has a singleton database constraint. Its UI now opens the sole record directly or presents the same setup form when empty, without Add/list actions. Optimistic versions and singleton enforcement continue to reject competing initial setup or stale edits.
 
 Internal navigation preserves the authenticated workspace and does not refetch /api/me on each menu click. Server authorization still runs for every protected API call. Shared typed-address fields and placeholders apply to employee/profile forms as well as settings. No new read permissions are granted for employee location data.
+
+## Company page refinement — quick entry
+
+Company access is Manager-only among ordinary roles. The existing ADMIN_MANAGER owner role retains full company access and is implicit in future permission discussions. Server authorization remains authoritative; suspended accounts and department heads cannot access Company. No grants or account records are changed.
+
+Company address is displayed as a summary and edited in the shared Quick address dialog. Province → district → subdistrict dropdowns filter by parent codes; optional house number, Moo and village follow the selection. Clearing a parent clears its children. Apply changes updates the form draft; the page save commits the company record. All-empty addresses are allowed. Unrecognized existing names remain visible for deliberate replacement. New/changed company addresses validate their hierarchy on the server; unchanged legacy data is retained. The pinned MIT dataset and maintenance instructions are in packages/contracts/data/README.md.
+
+Tax ID uses 13 digits with 1-4-5-2-1 grouping; Thai phone presentation supports mobile, Bangkok and other landline lengths, plus +66. Editing accepts pasted separators, formatting occurs on blur, storage normalizes separators only and preserves leading zeros/country codes. Other international numbers retain their supplied form for display. Both fields are optional. This validates syntax, not registration or ownership.
+
+MapLocationField presents only a Google Maps share link. Removed coordinate inputs do not delete existing values. Company adopts the quick-address Core variant first; other address forms retain their current entry layout until their page review, while sharing the link-only Maps editor now.

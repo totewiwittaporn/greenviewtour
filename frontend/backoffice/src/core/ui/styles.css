@@ -86,3 +86,10 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .company-form { max-width: none; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 24px; padding: 24px; }
 .company-form > .address-section, .company-form > .dialog-actions, .company-form > [role="alert"], .company-form > .sr-only { grid-column: 1 / -1; }
 @media(max-width:600px) { .company-form { grid-template-columns: minmax(0,1fr); padding: 20px 16px; } }
+
+/* Shared quick-address summary; Dialog and SelectField own popup geometry. */
+.address-summary { display:flex; gap:16px; align-items:center; justify-content:space-between; padding-block:12px; }
+.address-summary p { margin:0; }
+.address-summary .button { flex-shrink:0; }
+.address-loading { min-height:180px; display:grid; place-content:center; }
+@media (max-width:760px) { .address-summary { align-items:flex-start; flex-direction:column; } }

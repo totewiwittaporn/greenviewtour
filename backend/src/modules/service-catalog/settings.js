@@ -1,3 +1,5 @@
+import thaiAreas from '../../../../packages/contracts/data/thai-areas.js'
+import { validateThaiAddress } from '../../../../packages/contracts/thai-address.js'
 import { catalog, validateCatalog } from '../../../../packages/contracts/catalog.js'
 import { AccessError } from '../identity-access/membership.js'
 import { profileInclude } from '../identity-access/policy.js'
@@ -35,6 +37,7 @@ export async function saveSettings(prisma,actorId,entity,input){
   const{data,errors}=validateCatalog(entity,input)
   if(Object.keys(errors).length)throw new AccessError('INVALID_SETTINGS',400)
   const existing=await tx[definition.model].findUnique({where:{id:input.id}})
+  if(entity==='company'&&['province','district','subdistrict','houseNumber','moo','villageName'].some(key=>(data[key]||'')!==(existing?.[key]||''))&&Object.keys(validateThaiAddress(data,thaiAreas)).length)throw new AccessError('INVALID_SETTINGS',400)
   if(existing&&input.version===0){
    const same=definition.fields.every(f=>f.type==='money' && existing[f.key]!==null && data[f.key]!==null ? Number(existing[f.key])===Number(data[f.key]) : String(existing[f.key]??'')===String(data[f.key]??''))
    if(same)return{row:existing}

@@ -1,3 +1,4 @@
+import { FormattedField } from '../../../core/ui/FormattedField.jsx'
 import { AddressFields } from '../../../core/ui/AddressFields.jsx'
 import { addressKeys, mapLinks } from '../../../../../../packages/contracts/address.js'
 import { useUnsavedChanges } from '../../../core/navigation/Navigation.jsx'
@@ -43,8 +44,9 @@ function Editor({entity,row,onClose,onSaved,readOnly=false,inline=false}){
  {entity==='rates'&&<p>Prices charged by Greenview to this agent, per passenger. These do not change direct customer prices. Leave an unavailable passenger price empty.</p>}
  {entity==='tours'&&<p>Prices are per passenger in THB. Empty means not set; zero is an explicit free price. Booking and Public publishing are configured separately.</p>}
  {definition.fields.filter(f=>!f.hidden&&visibleField(f,values)).map(field=>{
- if(addressKeys.includes(field.key))return field.key==='province'?<AddressFields key="address" values={values} onChange={update} errors={errors} disabled={busy} legacyAddress={row?.address}/>:null
+ if(addressKeys.includes(field.key))return field.key==='province'?<AddressFields quick={entity==='company'} key="address" values={values} onChange={update} errors={errors} disabled={busy} legacyAddress={row?.address}/>:null
  const props={label:field.label,placeholder:field.placeholder,value:values[field.key],onChange:e=>update(field.key,e.target.value),error:errors[field.key],disabled:busy}
+ if(entity==='company'&&['taxId','phone'].includes(field.key))return <FormattedField key={field.key} {...props} format={field.key}/>
  if(field.type==='select')return <SelectField key={field.key} {...props}>{field.options.map(option=><option key={option} value={option}>{labelFor(option)}</option>)}</SelectField>
  if(field.type==='reference')return <Related key={field.key} field={field} value={values[field.key]} label={row?.[field.key==='agentId'?'agent':field.key==='tourId'?'tour':field.key==='operatorId'?'operator':'provider']?.name} onChange={props.onChange} error={props.error} disabled={busy}/>
  if(field.type==='roles')return <fieldset key={field.key} className="catalog-roles" aria-describedby="partner-role-error"><legend>{field.label}</legend>{field.options.map(role=><label key={role}><input type="checkbox" disabled={busy} checked={values.roles.includes(role)} aria-invalid={Boolean(errors.roles)} onChange={e=>update('roles',e.target.checked?[...values.roles,role]:values.roles.filter(item=>item!==role))}/>{labelFor(role)}</label>)}<span id="partner-role-error" className="field-error">{errors.roles}</span></fieldset>
