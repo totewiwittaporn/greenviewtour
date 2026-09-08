@@ -12,7 +12,7 @@ try {
   if (!displayName || displayName.length > 100) throw new Error('DISPLAY_NAME_REQUIRED')
   const code = randomBytes(32).toString('hex')
   await prisma.$transaction(async tx => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(7082026)`
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082026)`
     const assigned = await tx.userRole.count({ where: { roleCode: 'ADMIN_MANAGER' } })
     const pending = await tx.invitation.count({ where: { consumedAt: null, expiresAt: { gt: new Date() }, roles: { some: { roleCode: 'ADMIN_MANAGER' } } } })
     if (assigned || pending) throw new Error('OWNER_ALREADY_CONFIGURED')

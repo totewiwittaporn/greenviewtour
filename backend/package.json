@@ -16,7 +16,8 @@
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
-    "owner:invite": "node scripts/bootstrap-owner.js"
+    "owner:invite": "node scripts/bootstrap-owner.js",
+    "db:identity-check": "node scripts/check-identity.js"
   },
   "devDependencies": {
     "prisma": "7.10.0"

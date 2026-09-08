@@ -87,6 +87,11 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
         return send(404, { code: 'NOT_FOUND' })
       }
       if (req.method !== 'GET') return send(405, { code: 'METHOD_NOT_ALLOWED' })
+      if (path === '/api/auth/recovery-status') {
+        const { entry } = await sessions.authenticated(req, provider, pool)
+        if (entry.purpose !== 'recovery') throw new AccessError('RECOVERY_REQUIRED')
+        return send(200, { ok: true })
+      }
       if (!['/api/me', '/api/users'].includes(path)) return send(404, { code: 'NOT_FOUND' })
       const { user, entry } = await sessions.authenticated(req, provider, pool)
       if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)

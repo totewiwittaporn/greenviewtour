@@ -47,3 +47,9 @@ Logout removes the local session immediately, then attempts provider-session rev
 ## Migration ownership
 
 `backend/prisma/migrations` is the only application migration ledger. Apply with `npm run db:migrate`; do not apply the same SQL through Supabase's separate migration ledger. Seeded capability definitions do not grant any actual account access until an explicit UserRole is created. Do not create business/financial rights merely because a role name exists.
+
+## Audit notes
+
+Supabase advisory review: the eight private tables intentionally have no client RLS policies (default deny). The pre-existing `public.rls_auto_enable()` function returns `event_trigger`, has a fixed pg_catalog search path and is not an ordinary callable RPC; its generic SECURITY DEFINER advisor warning is recorded rather than changing the platform's event trigger. No new SECURITY DEFINER function was introduced.
+
+Dependency audit reports Prisma toolchain advisories in deepmerge-ts/mysql2. This PostgreSQL-only local service does not use the MySQL driver or merge untrusted Prisma configuration. npm's proposed fix downgrades Prisma to version 6; no automatic major downgrade was applied. Resolve the toolchain findings before a hosted production release.

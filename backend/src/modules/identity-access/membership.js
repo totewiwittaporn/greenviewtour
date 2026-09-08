@@ -18,7 +18,7 @@ export async function resolveMembership(prisma, user) {
   if (!user.email_confirmed_at || !user.email) throw new AccessError('EMAIL_CONFIRMATION_REQUIRED')
   return prisma.$transaction(async tx => {
     // Serialize invitation consumption for this identity, including concurrent sign-ins.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id}))`
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id}))`
     let profile = await tx.userProfile.findUnique({ where: { id: user.id }, include: profileInclude })
     if (!profile) {
       const invitation = await tx.invitation.findUnique({ where: { email: normalizeEmail(user.email) }, include: { roles: true } })

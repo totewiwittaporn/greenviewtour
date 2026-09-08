@@ -24,9 +24,13 @@ export default function AuthPage({ mode = 'login' }) {
   useEffect(() => {
     document.title = `${title} · Greenview Tour`
     if (mode !== 'reset') return
-    if (!recovery?.access_token || !recovery?.refresh_token) return
+    if (!recovery?.access_token || !recovery?.refresh_token) {
+      let active = true
+      api('/api/auth/recovery-status').then(() => { if (active) setReady(true) }).catch(() => {})
+      return () => { active = false }
+    }
     // A module-level promise prevents duplicate exchange under React StrictMode.
-    recovery.promise ||= api('/api/auth/recovery-session', { access_token: recovery.access_token, refresh_token: recovery.refresh_token })
+    recovery.promise ||= api('/api/auth/recovery-session', { access_token: recovery.access_token, refresh_token: recovery.refresh_token }).finally(() => { delete recovery.access_token; delete recovery.refresh_token })
     let active = true
     recovery.promise.then(() => { if (active) setReady(true) }).catch(error => { if (active) setFailure(authMessage(error)) })
     return () => { active = false }
