@@ -1,3 +1,6 @@
+import thaiAreas from '../../../../packages/contracts/data/thai-areas.js'
+import { postalCodeFor } from '../../../../packages/contracts/thai-address.js'
+import { addressFields, addressKeys, validateAddress } from '../../../../packages/contracts/address.js'
 import { AccessError } from './membership.js'
 import { profileInclude } from './policy.js'
 export const departments = ['MANAGEMENT', 'BOOKING', 'ACCOUNT', 'GUIDE', 'CAPTAIN', 'DRIVER']
@@ -19,11 +22,11 @@ export function canEditProfile(actor, target) {
   return target.department === scope.department && !target.roles.some(role => ['ADMIN_MANAGER','MANAGER'].includes(role.roleCode))
 }
 export function validateProfilePatch(input, scope) {
-  if (!input || Object.keys(input).some(key => !['displayName','department','updatedAt','address','primaryPhone','emergencyPhone','lineId'].includes(key))) throw new AccessError('INVALID_PROFILE_FIELDS', 400)
+  if (!input || Object.keys(input).some(key => !['displayName','department','updatedAt','address','primaryPhone','emergencyPhone','lineId',...addressKeys].includes(key))) throw new AccessError('INVALID_PROFILE_FIELDS', 400)
   if (typeof input.displayName !== 'string' || !input.displayName.trim() || input.displayName.trim().length > 100) throw new AccessError('INVALID_DISPLAY_NAME',400)
   if (typeof input.updatedAt !== 'string' || !Number.isFinite(Date.parse(input.updatedAt))) throw new AccessError('PROFILE_VERSION_REQUIRED',400)
   const data = { displayName: input.displayName.trim() }
-  for (const [key, limit] of Object.entries({ address: 1000, primaryPhone: 32, emergencyPhone: 32, lineId: 100 })) {
+  for (const [key, limit] of Object.entries({ address: 1000, primaryPhone: 32, emergencyPhone: 32, lineId: 100, ...Object.fromEntries(addressFields.map(f=>[f.key,f.max])) })) {
     if (!(key in input)) continue
     if (input[key] !== null && typeof input[key] !== 'string') throw new AccessError('INVALID_CONTACT_DETAILS', 400)
     const value = input[key]?.trim() || null
@@ -31,6 +34,7 @@ export function validateProfilePatch(input, scope) {
     if (value && key.endsWith('Phone') && (!/^\+?[0-9 ()-]+$/.test(value) || value.replace(/\D/g, '').length < 7 || value.replace(/\D/g, '').length > 15)) throw new AccessError('INVALID_PHONE', 400)
     data[key] = value
   }
+  if (Object.keys(validateAddress(input)).length) throw new AccessError('INVALID_ADDRESS',400)
   if ('department' in input) {
     if (!scope.company) throw new AccessError('DEPARTMENT_CHANGE_DENIED')
     if (input.department !== null && !departments.includes(input.department)) throw new AccessError('INVALID_DEPARTMENT',400)
@@ -45,6 +49,7 @@ export async function editProfile(prisma, actorId, targetId, input) {
     const target = await tx.userProfile.findUnique({ where: { id: targetId }, include: profileInclude })
     if (!canEditProfile(actor,target)) throw new AccessError('PERMISSION_DENIED')
     const data = validateProfilePatch(input,managementScope(actor))
+    data.postalCode=postalCodeFor({...target,...data},thaiAreas)||null
     const result = await tx.userProfile.updateMany({ where: { id: targetId, updatedAt: new Date(input.updatedAt) }, data })
     if (result.count !== 1) throw new AccessError('PROFILE_CONFLICT',409)
     await tx.auditEvent.create({ data: { actorId, targetId, action: 'profile.updated', details: { fields: Object.keys(data) } } })
@@ -58,6 +63,7 @@ export async function editOwnProfile(prisma, actorId, input) {
     const actor = await tx.userProfile.findUnique({ where: { id: actorId } })
     if (actor?.status !== 'ACTIVE') throw new AccessError('ACCOUNT_UNAVAILABLE')
     const data = validateProfilePatch(input, { company: false })
+    data.postalCode=postalCodeFor({...actor,...data},thaiAreas)||null
     const updated = await tx.userProfile.updateMany({ where: { id: actorId, updatedAt: new Date(input.updatedAt) }, data })
     if (updated.count !== 1) throw new AccessError('PROFILE_CONFLICT', 409)
     await tx.auditEvent.create({ data: { actorId, targetId: actorId, action: 'profile.updated', details: { fields: Object.keys(data), source: 'self' } } })

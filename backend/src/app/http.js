@@ -1,3 +1,4 @@
+import { listSettings, saveSettings } from '../modules/service-catalog/settings.js'
 import { assertDeliverableInvitationEmail, canInvite, canResetPassword, listInvitations, createInvitation, changeInvitation, lookupInvitation, acceptInvitation, requestUserReset } from '../modules/identity-access/invitations.js'
 import { managementScope, canEditProfile, editProfile, editOwnProfile } from '../modules/identity-access/user-management.js'
 import { createHash, timingSafeEqual } from 'node:crypto'
@@ -8,10 +9,10 @@ import { profileInclude, publicProfile } from '../modules/identity-access/policy
 import { SessionStore } from '../platform/auth/sessions.js'
 const digest = value => createHash('sha256').update(value).digest()
 const origins = ['http://localhost:5174', 'http://127.0.0.1:5174']
-async function body(req) {
+async function body(req, maxBytes = 8192) {
   if (!req.headers['content-type']?.startsWith('application/json')) throw new AccessError('JSON_REQUIRED', 415)
   let text = ''
-  for await (const chunk of req) { text += chunk; if (Buffer.byteLength(text) > 8192) throw new AccessError('REQUEST_TOO_LARGE', 413) }
+  for await (const chunk of req) { text += chunk; if (Buffer.byteLength(text) > maxBytes) throw new AccessError('REQUEST_TOO_LARGE', 413) }
   try { const value = JSON.parse(text); if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error(); return value }
   catch { throw new AccessError('INVALID_REQUEST', 400) }
 }
@@ -118,6 +119,14 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
           return send(200, { ok: true, warning: !outcome.providerRevoked || !finalized ? 'PASSWORD_CHANGED_FOLLOW_UP_REQUIRED' : null }, '')
         } finally { await provider.logout(verified.session).catch(() => {}) }
       }
+      const settingsMatch = path.match(/^\/api\/settings\/(company|partners|tours|rates|locations|vehicles|channels)$/)
+      if (settingsMatch) {
+        const { user, entry } = await sessions.authenticated(req, provider, pool)
+        if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
+        return send(200, req.method === 'GET'
+          ? await listSettings(prisma, user.id, settingsMatch[1], url.searchParams)
+          : await saveSettings(prisma, user.id, settingsMatch[1], await body(req, 32768)))
+      }
       const invitationMatch = path.match(/^\/api\/invitations\/([0-9a-f-]{36})\/(renew|revoke)$/)
       const resetMatch = path.match(/^\/api\/users\/([0-9a-f-]{36})\/reset-password$/)
       if (path === '/api/invitations' || invitationMatch || resetMatch || (path === '/api/me/profile' && req.method === 'POST')) {
@@ -125,7 +134,7 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
         if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
         if (req.method === 'GET' && path === '/api/invitations') return send(200, await listInvitations(prisma, user.id))
         if (req.method !== 'POST') return send(405, { code: 'METHOD_NOT_ALLOWED' })
-        const input = await body(req)
+        const input = await body(req, path === '/api/me/profile' ? 32768 : 8192)
         if (path === '/api/me/profile') return send(200, await editOwnProfile(prisma, user.id, input))
         if (resetMatch) return send(200, await requestUserReset(prisma, provider, user.id, resetMatch[1]))
         if (invitationMatch) return send(200, await changeInvitation(prisma, user.id, invitationMatch[1], invitationMatch[2]))
@@ -135,7 +144,7 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
       if (req.method === 'POST' && editMatch) {
         const { user, entry } = await sessions.authenticated(req, provider, pool)
         if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED',401)
-        return send(200, await editProfile(prisma,user.id,editMatch[1],await body(req)))
+        return send(200, await editProfile(prisma,user.id,editMatch[1],await body(req, 32768)))
       }
       if (req.method !== 'GET') return send(405, { code: 'METHOD_NOT_ALLOWED' })
       if (path === '/api/auth/recovery-status') {

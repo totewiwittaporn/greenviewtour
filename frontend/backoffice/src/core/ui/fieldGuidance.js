@@ -1,0 +1,8 @@
+const examples={
+ 'Company name':'e.g. Greenview Tour','Legal name':'Registered company name','Tax ID':'Company tax identification number','Code':'e.g. TOUR-001 — a unique reference','Name':'Enter the name your team will recognize','Contact name':'Name of the person your team should contact','Phone':'e.g. +66 81 234 5678','Primary phone':'e.g. +66 81 234 5678','Emergency phone':'Alternative contact number','Email':'e.g. contact@example.com','Email address':'e.g. name@example.com','Full name':'Employee’s full name','Display name':'Name shown to your team','Line ID':'e.g. greenviewtour','Association':'e.g. Southern Thailand tourism association','Payment terms':'e.g. Payment within 7 days after the tour','Route / itinerary':'e.g. Hotel pickup → pier → island tour → hotel drop-off','Departure times':'e.g. 08:00, 13:00','Child age / height policy':'e.g. Child rate applies to ages 4–11','Cancellation terms':'Enter this program’s cancellation and refund conditions','Booking cutoff':'e.g. Book by 18:00 on the day before departure','Zone':'e.g. Rawai / Kata / Patong','Pickup notes':'e.g. Meet in the lobby 10 minutes before pickup','Passenger capacity':'e.g. 10 — available passenger seats','Registration / boat number':'Vehicle registration or registered boat number','Notes':'Additional details your team needs',
+}
+export function fieldGuidance(label,type='text'){
+ if(type==='password')return label.toLowerCase().includes('confirm')?'Re-enter your new password':label.toLowerCase().includes('current')?'Enter your current password':'Enter your password'
+ if(label.includes('(THB)'))return 'e.g. 1500.00 — leave empty if not set'
+ return examples[label]||`Enter ${label.toLowerCase()}`
+}

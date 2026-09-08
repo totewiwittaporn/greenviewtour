@@ -57,3 +57,7 @@ The companion JSON is a development inventory only; it does not register navigat
 ## Scope and policy boundaries
 
 Screens, endpoints, authentication, migrations, billing rules, permissions and approvals are not implemented here. Dashboard and Reports will compose existing module services rather than own duplicate transaction data. Activity Log initially belongs to identity-access account administration; a company-wide audit expansion needs a separate contract. Leave ownership is reserved in employees, with scheduling integration through operations. Financial/legal workflows and exact scope checks require validated specifications before implementation.
+
+## Implemented master-data settings extension
+
+Owner approval dated 2026-09-08 adds `/settings/partners`, `/settings/tours`, `/settings/rates`, `/settings/locations`, `/settings/vehicles` and `/settings/channels`, and implements `/settings/company`. They share `features/settings/shared/CatalogPage.jsx` and the field contract in `packages/contracts/catalog.js`. See `docs/tour-settings.md` for scope. Existing reserved Services/Fleet folders are future operational pages, not duplicate active catalogue routes. The 34 folders above remain the original scaffold inventory.
