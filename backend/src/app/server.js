@@ -1,20 +1,24 @@
 import { createServer } from 'node:http'
 import { loadEnvFile } from 'node:process'
 import { createDatabasePool } from '../platform/database/pool.js'
+import { createPrisma } from '../platform/database/prisma.js'
+import { createAuthProvider } from '../platform/auth/provider.js'
 import { createHandler } from './http.js'
 
-let pool
+let pool, prisma
 try {
   if (process.env.NODE_ENV === 'production') throw new Error('LOCAL_ONLY')
   loadEnvFile(new URL('../../.env', import.meta.url))
   pool = createDatabasePool()
-  const server = createServer(createHandler({ pool, token: process.env.LOCAL_API_TOKEN }))
+  prisma = createPrisma(pool)
+  const provider = createAuthProvider()
+  const server = createServer(createHandler({ pool, prisma, provider, token: process.env.LOCAL_API_TOKEN }))
   server.requestTimeout = 10000
   server.headersTimeout = 10000
   server.on('error', async () => { console.error('API_START_FAILED: check port 5000.'); await pool.end(); process.exitCode = 1 })
   server.listen(5000, '127.0.0.1', () => console.log('Greenview Tour API: http://localhost:5000'))
   const stop = () => {
-    server.close(async () => { await pool.end(); process.exit(0) })
+    server.close(async () => { await prisma.$disconnect(); await pool.end(); process.exit(0) })
     setTimeout(() => process.exit(1), 5000).unref()
   }
   process.once('SIGINT', stop)

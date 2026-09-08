@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  schemas = ["app_private"]
+}
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+  @@schema("app_private")
+}
+enum AccessScope {
+  SELF
+  COMPANY
+  @@schema("app_private")
+}
+model UserProfile {
+  id String @id @db.Uuid
+  displayName String @db.VarChar(100)
+  status AccountStatus @default(ACTIVE)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  roles UserRole[]
+  @@schema("app_private")
+}
+model Role {
+  code String @id @db.VarChar(50)
+  name String @db.VarChar(100)
+  users UserRole[]
+  permissions RolePermission[]
+  invitations InvitationRole[]
+  @@schema("app_private")
+}
+model Permission {
+  code String @id @db.VarChar(100)
+  description String
+  roles RolePermission[]
+  @@schema("app_private")
+}
+model UserRole {
+  userId String @db.Uuid
+  roleCode String @db.VarChar(50)
+  scope AccessScope @default(SELF)
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleCode], references: [code], onDelete: Restrict)
+  @@id([userId, roleCode, scope])
+  @@index([roleCode])
+  @@schema("app_private")
+}
+model RolePermission {
+  roleCode String @db.VarChar(50)
+  permissionCode String @db.VarChar(100)
+  role Role @relation(fields: [roleCode], references: [code], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+  @@id([roleCode, permissionCode])
+  @@index([permissionCode])
+  @@schema("app_private")
+}
+model Invitation {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique @db.VarChar(254)
+  tokenHash String @unique @db.Char(64)
+  displayName String @db.VarChar(100)
+  createdById String? @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  expiresAt DateTime @db.Timestamptz(6)
+  consumedAt DateTime? @db.Timestamptz(6)
+  roles InvitationRole[]
+  @@schema("app_private")
+}
+model InvitationRole {
+  invitationId String @db.Uuid
+  roleCode String @db.VarChar(50)
+  scope AccessScope @default(SELF)
+  invitation Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleCode], references: [code], onDelete: Restrict)
+  @@id([invitationId, roleCode, scope])
+  @@index([roleCode])
+  @@schema("app_private")
+}
+model AuditEvent {
+  id String @id @default(uuid()) @db.Uuid
+  actorId String? @db.Uuid
+  action String @db.VarChar(100)
+  targetId String? @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  details Json
+  @@index([targetId, createdAt])
+  @@index([actorId, createdAt])
+  @@schema("app_private")
+}

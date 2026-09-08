@@ -1,0 +1,49 @@
+# Local authentication and identity
+
+## Implemented phase
+
+Prisma 7.10 uses the existing verified PostgreSQL pool through `@prisma/adapter-pg`. Application models live in `app_private`; Supabase exclusively owns `auth.users`, passwords, confirmation and provider sessions. The migration adds an application-profile foreign key to `auth.users` without managing Auth's tables in Prisma. Never run `db push`, `migrate reset`, or auto-generate a migration that drops Supabase-owned objects.
+
+Models: UserProfile, Role, Permission, UserRole, RolePermission, Invitation, InvitationRole, AuditEvent. All application tables have RLS and no Data API grants. The backend accesses them through the private database connection. No browser client receives database credentials or a service-role key.
+
+The 13 agreed roles and eight account-management permission definitions are seeded. A role grant has an explicit SELF or COMPANY scope. Undefined access is denied. Team/assigned-work scopes and Manager delegation UI need the later employee/team workflow; no team scope is silently treated as company scope. Only an owner invitation explicitly bootstrapped for a named email receives ADMIN_MANAGER/COMPANY. No first-signup promotion, hard-coded owner email, self-role changes or public role editor exists. Manager user-administration screens are the next phase.
+
+## First owner
+
+After the owner identifies their email and display name:
+
+```powershell
+npm run owner:invite -- "owner@example.com" "Owner name"
+```
+
+The command refuses if an owner already exists or an unexpired owner invitation is pending. It writes the one-time code to ignored `backend/bootstrap.local/owner-invitation.txt`; it does not create a password or send email. Open `/register`, enter the invited email, code and a private password. Confirm the Supabase email, then sign in. The login transaction consumes the invitation and creates the profile/grants atomically. Delete the local invitation file after activation. The code expires in 72 hours.
+
+## Supabase setup
+
+Backend requires `SUPABASE_URL=https://qplzgpyidszxbtbyknjc.supabase.co` and `SUPABASE_PUBLISHABLE_KEY` (the modern publishable key). No service-role key is needed in this phase.
+
+In Authentication → URL Configuration, set the local Preview Site URL to `http://localhost:5174` and allow exactly:
+
+- `http://localhost:5174/login`
+- `http://localhost:5174/reset-password`
+
+Keep email confirmation enabled. Confirm-signup and password-reset emails must retain Supabase's `{{ .ConfirmationURL }}` link. Sending to staff beyond the project's permitted recipients may require custom SMTP; delivery must be verified with the owner's actual mailbox before wider onboarding. No email was sent during automated tests.
+
+## Sessions and routes
+
+The BFF stores Supabase access/refresh tokens only in bounded server memory, never browser storage. The browser receives a random HttpOnly, SameSite=Strict cookie scoped to `/api` (eight-hour absolute lifetime). Backend restarts require signing in again. Secure cookies/HTTPS, distributed session storage and non-local deployment configuration must be implemented before hosted deployment; the server deliberately refuses production mode and remains loopback-only.
+
+Every protected request validates the user with Supabase, verifies that the underlying Auth session still exists and is not expired/banned, reads current profile status and checks current database role/permission/scope grants. User metadata is never authorization input. Local proxy tokens alone do not grant staff access. POST routes require the same-origin browser Origin, JSON content and a bounded body; local auth requests have an aggregate rate limit.
+
+- `/login`: email/password; uninvited and inactive accounts cannot enter.
+- `/register`: invitation code + bound email, password and confirmation; email verification precedes account activation.
+- `/forgot-password`: generic confirmation without revealing account existence.
+- `/reset-password`: exchanges an email-link session into a restricted BFF recovery session; updates password, revokes provider refresh sessions and all local sessions for the user.
+- `/`: own account workspace or Users for authorized administrators.
+- `/settings/users`: requires `users.read:COMPANY` on the server.
+
+Logout removes the local session immediately, then attempts provider-session revocation. No secret, password or reset link is logged. Auth pages have no analytics; URL fragments are removed before the page mounts. Password entry state is deliberately not persisted or restored after navigation.
+
+## Migration ownership
+
+`backend/prisma/migrations` is the only application migration ledger. Apply with `npm run db:migrate`; do not apply the same SQL through Supabase's separate migration ledger. Seeded capability definitions do not grant any actual account access until an explicit UserRole is created. Do not create business/financial rights merely because a role name exists.
