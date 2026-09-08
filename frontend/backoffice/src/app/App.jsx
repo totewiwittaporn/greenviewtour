@@ -1,3 +1,5 @@
+import CatalogPage from '../features/settings/shared/CatalogPage.jsx'
+import { catalog } from '../../../../packages/contracts/catalog.js'
 import { useEffect, useState } from 'react'
 import { Shell } from '../core/ui/Shell.jsx'
 import { Button } from '../core/ui/Button.jsx'
@@ -28,10 +30,13 @@ function Workspace() {
   const path = window.location.pathname.replace(/\/$/, '') || '/'
   const usersRoute = path === '/settings/users' || (path === '/' && allowed)
   const profileRoute = path === '/profile'
-  useEffect(() => { document.title = `${profileRoute ? 'Edit profile' : usersRoute ? 'Users' : 'Workspace'} · Greenview Tour` }, [usersRoute, profileRoute])
-  return <Shell user={state.user} onLogout={logout} signingOut={signingOut} canReadUsers={allowed} logoutError={logoutError} pageTitle={profileRoute ? 'Edit profile' : usersRoute ? 'Users' : 'Workspace'} onEditProfile={() => window.location.assign('/profile')}>
+  const entity = path.startsWith('/settings/') ? path.slice('/settings/'.length) : ''
+  const settingsRoute = Object.hasOwn(catalog, entity)
+  const title = settingsRoute ? catalog[entity].title : profileRoute ? 'Edit profile' : usersRoute ? 'Users' : 'Workspace'
+  useEffect(() => { document.title = `${title} · Greenview Tour` }, [title])
+  return <Shell user={state.user} onLogout={logout} signingOut={signingOut} canReadUsers={allowed} logoutError={logoutError} pageTitle={title} onEditProfile={() => window.location.assign('/profile')}>
     {state.loading ? <p role="status">Checking your account…</p> : state.error ? <section className="panel auth-result" role="alert"><h1>Unable to open workspace</h1><p>{state.error}</p><Button onClick={() => { setState({ loading: true }); setAttempt(n => n + 1) }}>Retry</Button><a href="/login">Return to sign in</a></section>
-      : profileRoute ? <ProfilePage user={state.user} onSaved={user => setState({ user })} /> : usersRoute ? allowed ? <UsersPage onProfileSaved={() => setAttempt(n => n + 1)} /> : <section className="panel auth-result"><h1>Access restricted</h1><p>Your account does not have permission to view the company user directory.</p><a href="/">Go to your workspace</a></section>
+      : settingsRoute ? state.user.management?.company ? <CatalogPage key={entity} entity={entity} /> : <section className="panel auth-result"><h1>Access restricted</h1><p>Company settings are available to company managers.</p><a href="/">Return to workspace</a></section> : profileRoute ? <ProfilePage user={state.user} onSaved={user => setState({ user })} /> : usersRoute ? allowed ? <UsersPage onProfileSaved={() => setAttempt(n => n + 1)} /> : <section className="panel auth-result"><h1>Access restricted</h1><p>Your account does not have permission to view the company user directory.</p><a href="/">Go to your workspace</a></section>
         : path === '/' ? <section className="panel auth-result"><span className="eyebrow">YOUR WORKSPACE</span><h1>Welcome, {state.user.displayName}</h1><p>You are signed in. Your work modules will appear here as they become available.</p><p>{state.user.roles.map(role => role.name).join(' · ')}</p></section>
           : <section className="panel auth-result"><h1>Page not found</h1><a href="/">Return to workspace</a></section>}
   </Shell>

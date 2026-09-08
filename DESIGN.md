@@ -71,3 +71,7 @@ User management uses Users and Invitations tabs above the page heading. Each tab
 Tab datasets use the same summary, toolbar, table viewport and footer rhythm. Inactive panels remain in one CSS grid area solely to reserve height; `inert`, visibility and aria-hidden remove interaction and accessibility exposure. Keep the page scrollbar gutter stable. A short opacity/vertical transition and sliding tab indicator are disabled for reduced motion. Tables scroll internally within a shared responsive viewport, preventing a long invitation list from resizing the entire page.
 
 The root scrollbar gutter owns width reservation. Radix body scroll locks must not add a second right margin when stable gutters are supported. Verify with visible classic scrollbars, since headless defaults hide them. Invitation activation errors distinguish local throttling, provider throttling, email quotas, recipient configuration and password policy; 429 pauses manual resubmission while preserving entries. No automatic retries.
+
+## Tour settings
+
+Company master-data pages extend the existing sea-green Backoffice, with the same page heading, bordered table, 36px dialog controls and three-dot actions. Search and status sit in a wrapping toolbar. Supplier and ownership fields appear only when relevant. All reference lookups use shared ReferenceField with an authored SelectField and explicit paged results. Natural document scrolling and the existing dialog scroll owner remain unchanged. Prices show THB and distinguish missing values from zero.

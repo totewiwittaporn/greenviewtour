@@ -99,3 +99,138 @@ model AuditEvent {
   @@index([actorId, createdAt])
   @@schema("app_private")
 }
+
+model SalesChannel {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ code String @db.VarChar(40) @unique
+ name String @db.VarChar(200)
+ status String @db.VarChar(50)
+ kind String @db.VarChar(50)
+ @@index([status])
+ @@schema("app_private")
+}
+
+model CompanySettings {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ name String @db.VarChar(200)
+ legalName String? @db.VarChar(200)
+ taxId String? @db.VarChar(30)
+ address String? @db.VarChar(1000)
+ phone String? @db.VarChar(32)
+ email String? @db.VarChar(254)
+ @@schema("app_private")
+}
+
+model BusinessPartner {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ code String @db.VarChar(40) @unique
+ name String @db.VarChar(200)
+ status String @db.VarChar(50)
+ roles String[]
+ contactName String? @db.VarChar(200)
+ phone String? @db.VarChar(32)
+ email String? @db.VarChar(254)
+ address String? @db.VarChar(1000)
+ association String? @db.VarChar(200)
+ paymentTerms String? @db.VarChar(1000)
+ tours TourProgram[]
+ agentPrices AgentTourPrice[]
+ vehicles FleetVehicle[]
+ @@index([status])
+ @@schema("app_private")
+}
+
+model TourProgram {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ code String @db.VarChar(40) @unique
+ name String @db.VarChar(200)
+ status String @db.VarChar(50)
+ ownership String @db.VarChar(50)
+ operatorId String? @db.Uuid
+ route String? @db.VarChar(2000)
+ departureTimes String? @db.VarChar(300)
+ childPolicy String? @db.VarChar(1000)
+ confirmationMode String @db.VarChar(50)
+ cancellationTerms String? @db.VarChar(2000)
+ bookingCutoff String? @db.VarChar(300)
+ adultPrice Decimal? @db.Decimal(10,2)
+ childPrice Decimal? @db.Decimal(10,2)
+ supplierPricing String @db.VarChar(50)
+ supplierAdultNet Decimal? @db.Decimal(10,2)
+ supplierChildNet Decimal? @db.Decimal(10,2)
+ supplierAdultCommission Decimal? @db.Decimal(10,2)
+ supplierChildCommission Decimal? @db.Decimal(10,2)
+ operator BusinessPartner? @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+ agentPrices AgentTourPrice[]
+ @@index([operatorId])
+ @@index([status])
+ @@schema("app_private")
+}
+
+model AgentTourPrice {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ agentId String @db.Uuid
+ tourId String @db.Uuid
+ adultPrice Decimal? @db.Decimal(10,2)
+ childPrice Decimal? @db.Decimal(10,2)
+ status String @db.VarChar(50)
+ agent BusinessPartner @relation(fields: [agentId], references: [id], onDelete: Restrict)
+ tour TourProgram @relation(fields: [tourId], references: [id], onDelete: Restrict)
+ @@unique([agentId, tourId])
+ @@index([tourId])
+ @@index([status])
+ @@schema("app_private")
+}
+
+model PickupLocation {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ code String @db.VarChar(40) @unique
+ name String @db.VarChar(200)
+ status String @db.VarChar(50)
+ kind String @db.VarChar(50)
+ zone String? @db.VarChar(200)
+ address String? @db.VarChar(1000)
+ latitude String? @db.VarChar(30)
+ longitude String? @db.VarChar(30)
+ pickupNotes String? @db.VarChar(1000)
+ @@index([status])
+ @@schema("app_private")
+}
+
+model FleetVehicle {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ code String @db.VarChar(40) @unique
+ name String @db.VarChar(200)
+ status String @db.VarChar(50)
+ kind String @db.VarChar(50)
+ capacity Int
+ ownership String @db.VarChar(50)
+ providerId String? @db.Uuid
+ registration String? @db.VarChar(100)
+ notes String? @db.VarChar(1000)
+ provider BusinessPartner? @relation(fields: [providerId], references: [id], onDelete: Restrict)
+ @@index([providerId])
+ @@index([status])
+ @@schema("app_private")
+}

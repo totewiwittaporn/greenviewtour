@@ -326,5 +326,19 @@
         }
       ]
     }
-  ]
+  ],
+  "implementedSettings": {
+    "routes": [
+      "/settings/company",
+      "/settings/partners",
+      "/settings/tours",
+      "/settings/rates",
+      "/settings/locations",
+      "/settings/vehicles",
+      "/settings/channels"
+    ],
+    "pageOwner": "frontend/backoffice/src/features/settings/shared/CatalogPage.jsx",
+    "contract": "docs/tour-settings.md",
+    "note": "Additional owner-approved master-data settings; reserved Services and Fleet operational pages remain inactive."
+  }
 }
