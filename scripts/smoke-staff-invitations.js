@@ -76,6 +76,7 @@ try {
   assert.equal(reset, 1)
   await page.getByRole('button', { name: 'Close dialog' }).click()
   await page.setViewportSize({ width: 390, height: 844 })
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
   await trigger.click()
   await page.getByRole('menu').waitFor()
   const box = await page.getByRole('menu').boundingBox()
