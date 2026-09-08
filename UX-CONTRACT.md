@@ -57,3 +57,19 @@ Owner refinement 2026-09-08: clear menu items on pointer opening; sea-tint hover
 
 - Select scroll lock: stable root gutter is the width owner; suppress duplicate body margin compensation only when supported. Popup open/close must preserve page and dialog geometry with visible scrollbars.
 - Auth throttling: preserve safe provider error categories, send Retry-After for the known local window, and show a countdown before manual retry. An unknown provider limit uses a conservative UI delay without claiming the provider quota has reset. `.local` invitation addresses are rejected before creating a link or submitting a password; existing bootstrap account login remains available.
+
+## Company master-data settings
+
+Business authority: docs/tour-settings.md and owner approval dated 2026-09-08. `CatalogPage` under settings/shared owns recurring create/view/edit behavior; shared contracts/catalog.js owns field definitions and validation. Core ReferenceField owns bounded lookup interaction, delegates domain fetching, and reuses SearchField and SelectField. SearchField now accepts a label/placeholder and unique ID; Users retains its existing defaults. DataTable, Dropdown, Dialog, FormField and TextAreaField remain canonical.
+
+Search/status/page restore from URL; remote requests debounce 300ms, defer during IME and cancel superseded work. Lookups are active-role filtered and page through 25 results. Success closes the form and refreshes the current list with inline status. Failed saves preserve values; stale conflicts require closing and refreshing before editing again. Unsaved closes require an app-owned discard choice; page unload uses beforeunload. Availability/role changes require explicit confirmation. No hard delete is exposed. View dialogs contain no mutations. Prices remain decimal strings across the API; empty fields are not coerced to zero. Local Backoffice only; no Public publishing control is shown.
+
+## Settings refinement: address, company and navigation
+
+Authority: owner message dated 2026-09-08 approving GitHub publication and requesting shared form/navigation improvements. Business details are recorded in docs/tour-settings.md.
+
+AddressFields (core/ui) owns ordered, optional structured address inputs and safe Google Maps links, backed by packages/contracts/address.js on both client and server. These are typed fields, not an unverified administrative-area dropdown. Legacy address remains preserved separately. Company is a singleton full-page form with Save company details and conflict reload recovery; there is no Add company button, company table or hard delete.
+
+FormField and TextAreaField use Core fieldGuidance for placeholders; an explicit field placeholder overrides the default. Placeholders complement permanent labels, disappear natively while typing and reappear when cleared. Map links open in a separate tab. A saved Google Maps pin takes priority over manually entered coordinates; no coordinate directions link is offered when a saved pin exists.
+
+NavigationProvider (core/navigation) owns same-document navigation, route location, popstate and shared unsaved-change guards. It intercepts ordinary internal workspace links, preserving Shell/profile, browser back/forward and modified clicks. Catalog query replacement preserves navigation history metadata. Link changes, history moves and sign-out requests consult registered drafts; document unload retains browser protection. Profile reload uses the shared Dialog rather than window.confirm. Successful profile saves still explicitly refresh account data.

@@ -1,3 +1,4 @@
+import { addressKeys } from '../../../../packages/contracts/address.js'
 import { managementScope } from './user-management.js'
 export const roles = {
   ADMIN_MANAGER: 'Admin Manager', MANAGER: 'Manager', BOOKING: 'Booking', ACCOUNT: 'Account',
@@ -24,7 +25,7 @@ export function can(profile, permission, scope = 'COMPANY') {
 }
 export const profileInclude = { roles: { include: { role: { include: { permissions: true } } } } }
 export function publicProfile(profile, email) {
-  return { id: profile.id, email, displayName: profile.displayName, status: profile.status, department: profile.department, updatedAt: profile.updatedAt, createdAt: profile.createdAt, address: profile.address, primaryPhone: profile.primaryPhone, emergencyPhone: profile.emergencyPhone, lineId: profile.lineId, management: managementScope(profile),
+  return { ...Object.fromEntries(addressKeys.map(key=>[key,profile[key]])), id: profile.id, email, displayName: profile.displayName, status: profile.status, department: profile.department, updatedAt: profile.updatedAt, createdAt: profile.createdAt, address: profile.address, primaryPhone: profile.primaryPhone, emergencyPhone: profile.emergencyPhone, lineId: profile.lineId, management: managementScope(profile),
     roles: profile.roles.map(item => ({ code: item.roleCode, name: item.role.name, scope: item.scope })),
     permissions: [...new Set(profile.roles.flatMap(grant => grant.role.permissions.map(item => `${item.permissionCode}:${grant.scope}`)))],
   }

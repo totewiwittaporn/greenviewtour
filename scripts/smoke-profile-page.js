@@ -71,7 +71,8 @@ try {
   await page.getByRole('button', { name: 'Save changes', exact: true }).click()
   await page.getByText('Unable to finish saving.', { exact: false }).waitFor()
   fail = 0
-  await page.getByLabel('Address', { exact: true }).fill('บ้านเลขที่ 12\nKrabi, Thailand')
+  await page.getByLabel('Province', { exact: true }).fill('กระบี่')
+  await page.getByLabel('House number', { exact: true }).fill('12')
   await page.getByRole('button', { name: 'Save changes', exact: true }).click()
   await page.getByText('Profile updated.', { exact: true }).waitFor()
   assert.equal(patch.primaryPhone, '+66 82 345 6789'); assert.equal(patch.emergencyPhone, '089 876 5432'); assert.equal(patch.lineId, 'fixture.line'); assert.equal('department' in patch, false)

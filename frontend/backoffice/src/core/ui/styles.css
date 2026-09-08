@@ -52,3 +52,37 @@ html{scrollbar-gutter:stable}
 @media(max-width:1100px){.directory-tab-stage .panel-heading{min-height:128px}}
 /* Root gutter already reserves scrollbar width; do not reserve it again in Radix's body lock. */
 @supports(scrollbar-gutter:stable){html body[data-scroll-locked]{margin-right:0!important;--removed-body-scroll-bar-size:0px!important}}
+
+/* Reusable master-data list/form layout; colors and controls remain Core-owned. */
+.catalog-toolbar { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 20px; }
+.catalog-toolbar .search-field { flex: 1; min-width: 180px; }
+.catalog-toolbar .form-field { width: 180px; }
+.catalog-paging { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 16px; }
+.catalog-paging > span:first-child { margin-right: auto; }
+.catalog-notice { padding: 0 20px; }
+.catalog-details { display: grid; gap: 16px; }
+.catalog-details dt { font-weight: 600; }
+.catalog-details dd { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.catalog-roles { border: 0; padding: 0; margin: 0 0 20px; }
+.catalog-roles legend { font-weight: 600; margin-bottom: 8px; }
+.catalog-roles label { display: flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; }
+.catalog-roles input { width: 16px; height: 16px; cursor: pointer; }
+.reference-field { margin-bottom: 20px; }
+.reference-field .catalog-paging { padding: 0; }
+.cell-sub { display: block; margin-top: 4px; }
+@media (max-width: 760px) { .catalog-toolbar { padding: 16px; } .catalog-toolbar .search-field { flex-basis: 100%; } }
+
+.address-section { border: 0; padding: 0; margin: 24px 0; min-width: 0; }
+.address-section legend { font-weight: 600; margin-bottom: 8px; }
+.address-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 16px; }
+.address-wide { grid-column: 1 / -1; }
+.map-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.legacy-address { white-space: pre-wrap; overflow-wrap: anywhere; }
+.company-form { max-width: 840px; }
+.company-form .address-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+.address-section summary { cursor: pointer; }
+@media(max-width:600px) { .address-grid, .company-form .address-grid { grid-template-columns: minmax(0,1fr); } }
+.company-form { max-width: none; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 24px; padding: 24px; }
+.company-form > .address-section, .company-form > .dialog-actions, .company-form > [role="alert"], .company-form > .sr-only { grid-column: 1 / -1; }
+@media(max-width:600px) { .company-form { grid-template-columns: minmax(0,1fr); padding: 20px 16px; } }

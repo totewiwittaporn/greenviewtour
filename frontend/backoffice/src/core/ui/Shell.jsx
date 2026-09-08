@@ -1,3 +1,4 @@
+import { catalog } from '../../../../../packages/contracts/catalog.js'
 import { useState } from 'react'
 import { UserInfo } from './UserInfo.jsx'
 import { Icon } from './Icon.jsx'
@@ -10,6 +11,7 @@ export function Shell({ children, user, onLogout, signingOut, canReadUsers, logo
       <div className="nav-label">WORKSPACE <span>LOCAL</span></div><nav aria-label="Main navigation">
         {planned.map(([label, icon]) => <span key={label} className="nav-item planned" title="Planned for a future release" aria-disabled="true"><Icon name={icon} />{label}<span className="planned-dot" /></span>)}
         <div className="nav-item settings"><Icon name="settings" />Settings</div>
+        {user?.management?.company && ['company','partners','tours','rates','locations','vehicles','channels'].map(key => [key, catalog[key]]).map(([key, item]) => <a key={key} href={`/settings/${key}`} aria-current={pageTitle === item.title ? 'page' : undefined} className={`nav-item ${pageTitle === item.title ? 'selected' : ''}`}><Icon name="briefcase" />{item.title}</a>)}
         {canReadUsers && <a href="/settings/users" aria-current={pageTitle === 'Users' ? 'page' : undefined} className={`nav-item ${pageTitle === 'Users' ? 'selected' : ''}`}><Icon name="users" />Users<span>→</span></a>}
       </nav>
       <div className="sidebar-foot"><span className="mode-dot" /> Local workspace</div>
