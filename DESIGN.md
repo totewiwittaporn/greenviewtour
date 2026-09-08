@@ -54,4 +54,6 @@ Backoffice canonical owners: Shell, Button, SearchField, DataTable and Icon unde
 
 ## Do's and Don'ts
 
-Show real Preview data, including zero accounts. Label the workspace read-only. Keep loading, error and empty distinct. Do not display an authenticated staff identity when local development has no staff session. Auth/RBAC and write actions remain a later implementation; this local owner tool must not be deployed as an authenticated admin system.
+Show real Preview data, including zero accounts. Authenticated identity comes from the backend. Never infer roles from email verification or user metadata. The application remains a local development environment.
+
+Authentication extends the existing sea palette: one island-photo panel anchors the team identity, while a quiet form panel owns the task. On narrow screens the photograph becomes a compact masthead. AuthLayout and FormField join the canonical UI owners; they reuse the existing runtime color, typography and focus tokens. No separate login theme or copied form-control implementations.

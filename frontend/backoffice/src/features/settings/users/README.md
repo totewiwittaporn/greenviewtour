@@ -1,6 +1,6 @@
 # Settings / Users
 
-Status: reserved page folder, not an implemented screen.
+Status: implemented read-only directory. The server requires an active authenticated profile and users.read:COMPANY; search/refresh/paging use the shared API client and UI Core.
 
 Keep this page’s entry component, page-specific modals, hooks and API adapters together here as they are implemented. Repeated menu-only code belongs in `../shared`; general components and behaviors belong in Backoffice `core/ui`. Do not create fake buttons or expose a route until the feature works.
 

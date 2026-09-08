@@ -1,3 +1,4 @@
+import { api } from '../../../core/auth/api.js'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../core/ui/Button.jsx'
 import { Icon } from '../../../core/ui/Icon.jsx'
@@ -24,13 +25,11 @@ export default function UsersPage() {
     setState(old => ({ ...old, loading: true, error: '' }))
     async function load() {
       try {
-        const response = await fetch(`/api/users?${new URLSearchParams({ search: query, page: String(page), pageSize: '25' })}`, { signal: controller.signal })
-        if (!response.ok) throw new Error(response.status === 401 ? 'Start the complete workspace using the Greenview Tour Local launcher.' : 'Unable to load users. Check the local Backend and database connection, then retry.')
-        const data = await response.json()
+        const data = await api(`/api/users?${new URLSearchParams({ search: query, page: String(page), pageSize: '25' })}`, undefined, { signal: controller.signal })
         if (!active) return
         setState({ loading: false, data, error: '' })
       } catch (error) {
-        if (active) setState({ loading: false, data: null, error: controller.signal.aborted ? 'The request timed out. Check your connection and retry.' : error.message })
+        if (active) setState({ loading: false, data: null, error: controller.signal.aborted ? 'The request timed out. Check your connection and retry.' : error.status === 403 ? 'Your access to this directory has changed. Contact your Manager.' : 'Unable to load users. Check your connection and retry.' })
       } finally { clearTimeout(timeout) }
     }
     load()
@@ -40,7 +39,7 @@ export default function UsersPage() {
   const summary = data?.summary
   const connected = Boolean(data && !error && !loading)
   return <>
-    <section className="page-heading"><div><p className="eyebrow">YOUR TEAM, IN ONE PLACE</p><h1>Users</h1><p className="muted">A clear view of the people who access Greenview Tour.</p></div><span className="read-only">Read-only preview</span></section>
+    <section className="page-heading"><div><p className="eyebrow">YOUR TEAM, IN ONE PLACE</p><h1>Users</h1><p className="muted">A clear view of the people who access Greenview Tour.</p></div><span className="read-only">Account directory</span></section>
     <section className="metrics" aria-label="Account summary">{[
       ['Total users', summary?.total, 'Accounts in this workspace', 'users'],
       ['Verified emails', summary?.verified, 'Email confirmation complete', 'check'],
@@ -54,7 +53,7 @@ export default function UsersPage() {
       </DataTable>
       <div className="table-footer"><span>{data ? `${data.total} ${data.total === 1 ? 'user' : 'users'}${query ? ' matching your search' : ''}` : '—'}<span className="page-size"> · 25 per page</span></span><div className="pagination"><Button disabled={loading || !data || data.page <= 1} onClick={() => setPage((data?.page || 1) - 1)}>Previous</Button><span>Page {data?.page || 1} of {Math.max(1, Math.ceil((data?.total || 0) / 25))}</span><Button disabled={loading || !data || data.page * 25 >= data.total} onClick={() => setPage((data?.page || 1) + 1)}>Next</Button></div></div>
     </section>
-    <div className="next-step"><span className="next-icon"><Icon name="settings" /></span><div><strong>Account management comes next</strong><p>Invitations, staff roles and access permissions will be added in the next step. No account changes can be made in this preview.</p></div></div>
+    <div className="next-step"><span className="next-icon"><Icon name="settings" /></span><div><strong>Account management comes next</strong><p>Sign-in and invitation activation are enabled. Manager account administration will be added in the next step.</p></div></div>
     {data && <p className="last-checked" role="status">Last updated {new Intl.DateTimeFormat('en-GB', { timeStyle: 'medium', timeZone: 'Asia/Bangkok' }).format(new Date(data.checkedAt))} · Bangkok time</p>}
   </>
 }

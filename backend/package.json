@@ -4,11 +4,22 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "@supabase/supabase-js": "2.116.0",
     "pg": "8.23.0"
   },
   "scripts": {
     "db:check": "node scripts/check-db.js",
     "test": "node --test test/*.test.js",
-    "dev": "node src/app/server.js"
+    "dev": "node src/app/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "db:migrate": "prisma migrate deploy",
+    "owner:invite": "node scripts/bootstrap-owner.js",
+    "db:identity-check": "node scripts/check-identity.js"
+  },
+  "devDependencies": {
+    "prisma": "7.10.0"
   }
 }

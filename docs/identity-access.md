@@ -1,6 +1,6 @@
 # Identity and access plan
 
-Source: owner discussion on 2026-09-08. This is the agreed starting design, not implemented authorization.
+Source: owner discussion on 2026-09-08. This is the agreed company-wide plan. The local identity/authentication subset is implemented as documented in authentication.md; future management operations and team scopes remain planned.
 
 ## Model
 
