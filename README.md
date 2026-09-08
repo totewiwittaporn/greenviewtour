@@ -4,7 +4,7 @@ Company-management monorepo with independent public-web and backoffice UI cores.
 
 ## Current status
 
-Both websites, Prisma identity models and local invitation-based Login/Register/password recovery are available. Users requires authenticated company-directory permission. User Info and scoped profile editing are available. Role assignment, account lifecycle administration and business-module permissions are the next phase. See [Local development](docs/local-development.md) for startup and access boundaries.
+Both websites, Prisma identity models and local invitation-based Login/Register/password recovery are available. Users requires authenticated company-directory permission. User Info and Actions dropdowns, self/scoped profile editing and Manager-led staff invitations are available. Role assignment, account lifecycle administration and business-module permissions are the next phase. See [Local development](docs/local-development.md) for startup and access boundaries.
 
 ## Development
 
