@@ -1,4 +1,2 @@
-// Routes and providers will be composed here when the first feature is implemented.
-export default function App() {
-  return null
-}
+import HomePage from '../features/home/HomePage.jsx'
+export default function App() { return <HomePage /> }

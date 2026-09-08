@@ -30,7 +30,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['backend/**/*.js'],
+    files: ['backend/**/*.js', 'scripts/**/*.js', '**/vite.config.js'],
     languageOptions: { globals: globals.node },
     rules: {
       'no-restricted-imports': ['error', { patterns: [
