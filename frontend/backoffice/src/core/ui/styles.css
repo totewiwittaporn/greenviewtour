@@ -51,4 +51,4 @@ html{scrollbar-gutter:stable}
 @media(prefers-reduced-motion:reduce){.directory-tab-panel,.core-tabs::after,.core-tabs [role=tab]{transition:none;transform:none}.core-tabs[data-active=invitations]::after{transform:translateX(122px)}}
 @media(max-width:1100px){.directory-tab-stage .panel-heading{min-height:128px}}
 /* Root gutter already reserves scrollbar width; do not reserve it again in Radix's body lock. */
-@supports(scrollbar-gutter:stable){body[data-scroll-locked]{margin-right:0!important;--removed-body-scroll-bar-size:0px!important}}
+@supports(scrollbar-gutter:stable){html body[data-scroll-locked]{margin-right:0!important;--removed-body-scroll-bar-size:0px!important}}
