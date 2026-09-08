@@ -72,8 +72,8 @@ html{scrollbar-gutter:stable}
 .cell-sub { display: block; margin-top: 4px; }
 @media (max-width: 760px) { .catalog-toolbar { padding: 16px; } .catalog-toolbar .search-field { flex-basis: 100%; } }
 
-.address-section { border: 0; padding: 0; margin: 24px 0; min-width: 0; }
-.address-section legend { font-weight: 600; margin-bottom: 8px; }
+.address-section { border: 0; border-top:1px solid var(--line); padding:10px 0 0; margin:12px 0; min-width:0; }
+.address-section legend { font-weight:600; padding-right:8px; margin-bottom:4px; }
 .address-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 16px; }
 .address-wide { grid-column: 1 / -1; }
 .map-actions { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -88,7 +88,7 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 @media(max-width:600px) { .company-form { grid-template-columns: minmax(0,1fr); padding: 20px 16px; } }
 
 /* Shared quick-address summary; Dialog and SelectField own popup geometry. */
-.address-summary { display:flex; gap:16px; align-items:center; justify-content:space-between; padding-block:12px; }
+.address-summary { display:flex; gap:16px; align-items:center; justify-content:space-between; padding-block:4px 8px; }
 .address-summary p { margin:0; }
 .address-summary .button { flex-shrink:0; }
 .address-loading { min-height:180px; display:grid; place-content:center; }
@@ -110,9 +110,7 @@ html[data-core-modal-open], html[data-core-modal-open] body { overflow:hidden; o
 .core-dialog > .dialog-header { flex:none; }
 .core-dialog > .dialog-content { min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
 .core-dialog[open]:not([data-core-modal-top]) > .dialog-content { overflow-y:hidden; }
-.dialog-content .address-section { border-top:1px solid var(--line); margin:12px 0; padding-top:10px; }
-.dialog-content .address-section legend { padding-right:8px; margin-bottom:4px; }
-.dialog-content .dialog-actions { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; flex-wrap:wrap; }
+:is(.dialog-content, .company-form) .dialog-actions { border-top:1px solid var(--line); padding-top:12px; margin-top:12px; flex-wrap:wrap; }
 .core-combobox-popup { display:flex; flex-direction:column; overflow:hidden; }
 .core-combobox-search { flex:none; }
 .core-combobox-list { min-height:0; overscroll-behavior:contain; scrollbar-gutter:stable; }
