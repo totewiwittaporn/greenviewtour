@@ -17,7 +17,7 @@ Business sources: docs/architecture.md, docs/identity-access.md, docs/local-deve
 
 ## Users behavior
 
-Read accounts from auth.users through Backend. Display only email, UUID, creation/sign-in timestamps and email verification; no password fields or user metadata. No business roles are inferred from email verification. Counts and timestamps come from DB-backed responses. There are currently no users; show honest empty state rather than fake rows.
+Read accounts from auth.users through Backend. Display only email, UUID, creation/sign-in timestamps and email verification; no password fields or user metadata. No business roles are inferred from email verification. Counts and timestamps come from DB-backed responses. Show honest empty states rather than fake rows.
 
 Search debounces 300ms after composition ends. Clear immediately resets search/page and returns focus. Abort superseded requests and timeout after 15 seconds. Refresh retains committed filters. Email search is transient component state rather than URL/history because it may contain personal data. Page size is fixed at 25, bounded server-side; empty/out-of-range pages clamp to valid bounds. Previous/Next are disabled at boundaries and while loading. Retry is available after failure. Dates display en-GB with Asia/Bangkok timezone.
 
@@ -27,10 +27,21 @@ Business authority: docs/authentication.md and docs/identity-access.md. AuthLayo
 
 Sign in returns to the workspace; users without company directory rights see their own welcome screen. Unauthorized API responses never leave the directory accessible. Register is invitation-only and asks users to confirm email before signing in. Reset completes with an explicit sign-in link; it does not silently open the workspace. Inline status/error messages remain in the form. All auth routes have an English document title, keyboard focus and narrow-screen layout. Browser sessions are HttpOnly cookies; no client token persistence.
 
-The existing directory remains read-only behind actual authentication. Manager invitations, role changes and employee/team scope administration are the next phase. Public UI remains Thai; Backoffice remains English.
+The directory supports scoped profile edits and Manager-led invitations. Role changes for existing accounts remain outside this change. Public UI remains Thai; Backoffice remains English.
 
 ## User Info and profile Actions
 
-Shared Dialog owns modal top-layer placement, focus containment/restoration, Escape and header X. UserInfo owns the account summary and Sign out/public website links. Users row Actions always use a three-dot button opening the action dialog; View and Edit are separate states. UserActions owns domain field validation, pending state, stale conflict recovery and before/after department confirmation. Native Department select intentionally uses the operating-system popup; it does not promise custom popup geometry. Dirty edits require an app-owned discard choice. Successful edits close the dialog, refresh the same list filter/page and refresh the signed-in profile without remounting the whole page. Email search remains transient.
+Shared Dialog owns modal top-layer placement, focus containment/restoration, Escape and header X. Dropdown owns anchored portal positioning outside table overflow, viewport collision, arrow/Home/End navigation, Escape, outside-click dismissal and focus restoration. UserInfo uses Dropdown for Open website, Edit profile and Sign out. Users row Actions always use a three-dot Dropdown; selecting View or Edit opens its dedicated Dialog state. UserActions owns domain field validation, pending state, stale conflict recovery and before/after department confirmation. Native Department select intentionally uses the operating-system popup; it does not promise custom popup geometry. Dirty edits require an app-owned discard choice. Successful edits close the dialog, refresh the same list filter/page and refresh the signed-in profile without remounting the whole page. Email search remains transient.
 
 Capability owners: Dialog → core/ui/Dialog.jsx; User Info → core/ui/UserInfo.jsx; profile fields → core/ui/FormField.jsx; role/department authority → docs/authentication.md and backend modules/identity-access/user-management.js. Server `canEdit` determines whether the Edit action exists. Head list counts and results must never include another department.
+
+## Invitation and self-profile flows
+
+Business authority: owner request dated 2026-09-08 and docs/authentication.md. All visible copy is English. Add employee creates a private invitation link without sending an email. StaffInvitations owns creation, recent 100 records, new-link generation and revocation. FormField and native SelectField own fields; Dropdown owns row actions. A successfully created link is shown once with Copy and manual selection fallback. Closing loses the raw link; create a new link to replace it. Regeneration invalidates the old link and is explicitly confirmed; revocation is confirmed. Invitation secrets remain transient and are removed from the URL fragment before assets load. Registration is unavailable without a valid invitation; the email is fixed and only passwords are entered. Existing email verification remains required. Failure preserves entered values; password fields are never persisted.
+
+Edit profile in User Info edits the signed-in user's display name only, with optimistic version checking. Send password reset is an explicit, confirmed request for a lower-role user; passwords are never visible. All permission checks are enforced in the BFF. Local links are local-machine-only until hosting is configured.
+
+| Capability | Canonical owner | Source of truth | Allowed variants | Verification |
+| --- | --- | --- | --- | --- |
+| Dropdown | frontend/backoffice/src/core/ui/Dropdown.jsx | this contract | account / row actions | keyboard, outside click, narrow collision |
+| Select/Listbox | frontend/backoffice/src/core/ui/SelectField.jsx | this contract | native | validation, keyboard, popup |

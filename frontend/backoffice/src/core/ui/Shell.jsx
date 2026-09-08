@@ -1,11 +1,9 @@
 import { useState } from 'react'
-import { Button } from './Button.jsx'
 import { UserInfo } from './UserInfo.jsx'
 import { Icon } from './Icon.jsx'
 const planned = [['Dashboard', 'grid'], ['Bookings', 'calendar'], ['Sales', 'briefcase'], ['Tour Operations', 'globe'], ['Customers', 'users'], ['Services', 'briefcase'], ['Employees', 'users'], ['Assets & Equipment', 'briefcase'], ['Fleet', 'briefcase'], ['Finance', 'briefcase'], ['Reports', 'grid']]
-export function Shell({ children, user, onLogout, signingOut, canReadUsers, logoutError }) {
+export function Shell({ children, user, onLogout, signingOut, canReadUsers, logoutError, onEditProfile }) {
   const [open, setOpen] = useState(false)
-  const [infoOpen, setInfoOpen] = useState(false)
   return <div className="workspace"><a className="skip-link" href="#main">Skip to content</a>
     <aside className={`sidebar ${open ? 'is-open' : ''}`} id="workspace-navigation">
       <a className="brand" href="/"><img src="https://greenviewtour.com/wp-content/uploads/2024/12/greenview-tour-logo-1.png" alt="Greenview Tour" /><span>COMPANY WORKSPACE</span></a>
@@ -16,7 +14,7 @@ export function Shell({ children, user, onLogout, signingOut, canReadUsers, logo
       </nav>
       <div className="sidebar-foot"><span className="mode-dot" /> Local workspace</div>
     </aside>
-    <div className="workspace-body"><header className="topbar"><div className="breadcrumbs"><button type="button" className="icon-button menu-toggle" aria-label="Toggle navigation" aria-controls="workspace-navigation" aria-expanded={open} onClick={() => setOpen(!open)}><Icon name="menu" /></button><span>Settings</span><span>/</span><strong>{canReadUsers ? 'Users' : 'Workspace'}</strong></div>{user && <div className="account-menu"><Button aria-label="Open user info" onClick={() => setInfoOpen(true)}><span className="avatar">{user.displayName.slice(0,1).toUpperCase()}</span>{user.displayName}<span aria-hidden="true">⌄</span></Button></div>}</header><main id="main">{children}</main><footer className="workspace-footer">Greenview Tour <span>Made for your everyday operations.</span></footer></div>
-    {infoOpen && user && <UserInfo user={user} onClose={() => setInfoOpen(false)} onLogout={onLogout} signingOut={signingOut} error={logoutError} />}
+    <div className="workspace-body"><header className="topbar"><div className="breadcrumbs"><button type="button" className="icon-button menu-toggle" aria-label="Toggle navigation" aria-controls="workspace-navigation" aria-expanded={open} onClick={() => setOpen(!open)}><Icon name="menu" /></button><span>Settings</span><span>/</span><strong>{canReadUsers ? 'Users' : 'Workspace'}</strong></div>{user && <div className="account-menu"><UserInfo user={user} onEdit={onEditProfile} onLogout={onLogout} signingOut={signingOut} /></div>}</header><main id="main">{children}</main><footer className="workspace-footer">Greenview Tour <span>Made for your everyday operations.</span></footer></div>
+    {logoutError && <p className="workspace-notice" role="alert">{logoutError}</p>}
   </div>
 }

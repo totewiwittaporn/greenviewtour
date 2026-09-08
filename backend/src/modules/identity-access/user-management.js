@@ -43,3 +43,16 @@ export async function editProfile(prisma, actorId, targetId, input) {
     return { ok: true }
   })
 }
+
+export async function editOwnProfile(prisma, actorId, input) {
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+    const actor = await tx.userProfile.findUnique({ where: { id: actorId } })
+    if (actor?.status !== 'ACTIVE') throw new AccessError('ACCOUNT_UNAVAILABLE')
+    const data = validateProfilePatch(input, { company: false })
+    const updated = await tx.userProfile.updateMany({ where: { id: actorId, updatedAt: new Date(input.updatedAt) }, data })
+    if (updated.count !== 1) throw new AccessError('PROFILE_CONFLICT', 409)
+    await tx.auditEvent.create({ data: { actorId, targetId: actorId, action: 'profile.updated', details: { before: { displayName: actor.displayName }, after: data, source: 'self' } } })
+    return { ok: true }
+  })
+}

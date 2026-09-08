@@ -1,8 +1,9 @@
-import { managementScope, canEditProfile, editProfile } from '../modules/identity-access/user-management.js'
+import { canInvite, canResetPassword, listInvitations, createInvitation, changeInvitation, lookupInvitation, acceptInvitation, requestUserReset } from '../modules/identity-access/invitations.js'
+import { managementScope, canEditProfile, editProfile, editOwnProfile } from '../modules/identity-access/user-management.js'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { listUsers } from '../modules/identity-access/list-users.js'
 import { parseUsersQuery } from '../backoffice/settings/users/query.js'
-import { AccessError, normalizeEmail, checkInvitation, resolveMembership } from '../modules/identity-access/membership.js'
+import { AccessError, normalizeEmail, resolveMembership } from '../modules/identity-access/membership.js'
 import { profileInclude, publicProfile } from '../modules/identity-access/policy.js'
 import { SessionStore } from '../platform/auth/sessions.js'
 const digest = value => createHash('sha256').update(value).digest()
@@ -35,10 +36,12 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
       if (typeof supplied !== 'string' || !timingSafeEqual(digest(supplied), digest(token))) return send(401, { code: 'LOCAL_ACCESS_REQUIRED' })
       if (!['GET', 'POST'].includes(req.method)) return send(405, { code: 'METHOD_NOT_ALLOWED' })
       if (req.method === 'POST' && !origins.includes(req.headers.origin)) return send(403, { code: 'ORIGIN_REQUIRED' })
-      const path = url.pathname
-      if (req.method === 'POST' && path.startsWith('/api/auth/')) {
+      if (req.method === 'POST') {
         if (Date.now() > windowEnd) { attempts = 0; windowEnd = Date.now() + 60000 }
         if (++attempts > 30) return send(429, { code: 'RATE_LIMITED' })
+      }
+      const path = url.pathname
+      if (req.method === 'POST' && path.startsWith('/api/auth/')) {
         const input = await body(req)
         if (path === '/api/auth/logout') {
           const id = sessions.id(req), entry = sessions.entries.get(id)
@@ -54,13 +57,13 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
           const previous = sessions.id(req); sessions.entries.delete(previous)
           return send(200, { user: publicProfile(profile, user.email) }, sessions.create(session))
         }
-        if (path === '/api/auth/register') {
-          const email = normalizeEmail(input.email)
-          await checkInvitation(prisma, email, input.invitationCode)
-          const result = await provider.register(email, password(input.password, true))
-          // Registration never bypasses the normal verified-email login and grant checks.
-          if (result.session) await provider.logout(result.session).catch(() => {})
-          return send(200, { message: 'CONFIRM_EMAIL_THEN_LOGIN' })
+        if (path === '/api/auth/register') throw new AccessError('INVITE_LINK_REQUIRED', 410)
+        if (path === '/api/auth/invitation') {
+          const invitation = await lookupInvitation(prisma, input.invitationCode)
+          return send(200, { email: invitation.email, displayName: invitation.displayName, department: invitation.department, expiresAt: invitation.expiresAt, accepted: Boolean(invitation.acceptedAt) })
+        }
+        if (path === '/api/auth/accept-invitation') {
+          return send(200, await acceptInvitation(prisma, provider, input.invitationCode, password(input.password, true)))
         }
         if (path === '/api/auth/recover') {
           await provider.recover(normalizeEmail(input.email))
@@ -91,6 +94,19 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
         }
         return send(404, { code: 'NOT_FOUND' })
       }
+      const invitationMatch = path.match(/^\/api\/invitations\/([0-9a-f-]{36})\/(renew|revoke)$/)
+      const resetMatch = path.match(/^\/api\/users\/([0-9a-f-]{36})\/reset-password$/)
+      if (path === '/api/invitations' || invitationMatch || resetMatch || (path === '/api/me/profile' && req.method === 'POST')) {
+        const { user, entry } = await sessions.authenticated(req, provider, pool)
+        if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
+        if (req.method === 'GET' && path === '/api/invitations') return send(200, await listInvitations(prisma, user.id))
+        if (req.method !== 'POST') return send(405, { code: 'METHOD_NOT_ALLOWED' })
+        const input = await body(req)
+        if (path === '/api/me/profile') return send(200, await editOwnProfile(prisma, user.id, input))
+        if (resetMatch) return send(200, await requestUserReset(prisma, provider, user.id, resetMatch[1]))
+        if (invitationMatch) return send(200, await changeInvitation(prisma, user.id, invitationMatch[1], invitationMatch[2]))
+        return send(201, await createInvitation(prisma, user.id, input))
+      }
       const editMatch = path.match(/^\/api\/users\/([0-9a-f-]{36})\/profile$/)
       if (req.method === 'POST' && editMatch) {
         const { user, entry } = await sessions.authenticated(req, provider, pool)
@@ -114,8 +130,8 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
       let filters
       try { filters = parseUsersQuery(url.searchParams) } catch { throw new AccessError('INVALID_FILTER', 400) }
       const directory = await users(pool, { ...filters, department: scope.department })
-      directory.users = directory.users.map(target => ({ ...target, canEdit: canEditProfile(profile,target) }))
-      return send(200, { ...directory, canChangeDepartment: scope.company, database: 'UP', environment: 'preview' })
+      directory.users = directory.users.map(target => ({ ...target, canEdit: canEditProfile(profile,target), canResetPassword: canResetPassword(profile,target) }))
+      return send(200, { ...directory, canChangeDepartment: scope.company, canInvite: canInvite(profile), database: 'UP', environment: 'preview' })
     } catch (error) {
       if (error instanceof AccessError) return send(error.status, { code: error.code }, error.status === 401 ? '' : undefined)
       return send(503, { code: 'SERVICE_UNAVAILABLE' })

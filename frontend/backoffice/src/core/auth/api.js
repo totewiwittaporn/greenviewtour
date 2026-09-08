@@ -12,7 +12,11 @@ export async function api(path, body, options = {}) {
 }
 export const authMessage = error => ({
   INVALID_CREDENTIALS: 'Unable to sign in. Check your email and password, and confirm your email if you have just registered.',
-  INVITATION_INVALID: 'Check the invitation code and invited email, or ask your Manager for a new invitation.',
+  INVITATION_INVALID: 'This invitation link is invalid, expired or revoked. Ask your Manager for a new link.',
+  INVITATION_UNAVAILABLE: 'This invitation is no longer authorized. Ask your Manager for a new link.',
+  INVITATION_IN_PROGRESS: 'This invitation is being processed. Wait for the current request to finish.',
+  INVITATION_ALREADY_SUBMITTED: 'This invitation has already been accepted. Confirm your email and sign in.',
+  INVITE_LINK_REQUIRED: 'Open the invitation link provided by your Manager.',
   INVITATION_REQUIRED: 'This account does not have an active staff invitation. Contact your Manager.',
   EMAIL_CONFIRMATION_REQUIRED: 'Confirm your email, then sign in again.',
   ACCOUNT_UNAVAILABLE: 'This account cannot access the workspace. Contact your Manager.',
