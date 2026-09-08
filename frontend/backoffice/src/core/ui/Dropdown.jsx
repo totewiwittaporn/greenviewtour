@@ -13,18 +13,18 @@ export function Dropdown({ label, children, items, heading, disabled = false }) 
       setPosition({ left: Math.max(8, Math.min(rect.right - menu.width, window.innerWidth - menu.width - 8)), top: Math.max(8, rect.bottom + menu.height + 6 <= window.innerHeight ? rect.bottom + 6 : rect.top - menu.height - 6) })
     }
     place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
     const options = popup.current.querySelectorAll('[role="menuitem"]:not(:disabled)')
-    options[initial.current < 0 ? options.length - 1 : 0]?.focus()
+    options[initial.current < 0 ? options.length - 1 : 0]?.focus({ preventScroll: true })
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true) }
   }, [open])
   useEffect(() => {
     if (!open) return
     const outside = event => { if (!popup.current?.contains(event.target) && !trigger.current?.contains(event.target)) setOpen(false) }
-    const movement = event => { if (!popup.current?.contains(event.target)) setOpen(false) }
     document.addEventListener('pointerdown', outside)
     document.addEventListener('focusin', outside)
-    window.addEventListener('resize', movement)
-    window.addEventListener('scroll', movement, true)
-    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('focusin', outside); window.removeEventListener('resize', movement); window.removeEventListener('scroll', movement, true) }
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('focusin', outside) }
   }, [open])
   function keydown(event) {
     if (event.key === 'Escape') { event.preventDefault(); close(true); return }
@@ -32,7 +32,7 @@ export function Dropdown({ label, children, items, heading, disabled = false }) 
     const options = [...popup.current.querySelectorAll('[role="menuitem"]:not(:disabled)')]
     const index = options.indexOf(document.activeElement)
     const next = event.key === 'ArrowDown' ? (index + 1) % options.length : event.key === 'ArrowUp' ? (index - 1 + options.length) % options.length : event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : -1
-    if (next >= 0) { event.preventDefault(); options[next]?.focus() }
+    if (next >= 0) { event.preventDefault(); options[next]?.focus({ preventScroll: true }) }
   }
   return <><span ref={trigger} className="dropdown-anchor" tabIndex={-1}><Button aria-label={label} aria-haspopup="menu" aria-expanded={open} aria-controls={open ? id : undefined} disabled={disabled} onClick={() => { initial.current = 0; setOpen(!open) }} onKeyDown={event => {
     if (['ArrowDown','ArrowUp'].includes(event.key)) { event.preventDefault(); initial.current = event.key === 'ArrowUp' ? -1 : 0; setOpen(true) }

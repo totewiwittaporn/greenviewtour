@@ -26,7 +26,7 @@ export function validateInvitation(input, actor) {
   return { email, displayName: input.displayName.trim(), department: input.department, roleCode: input.roleCode }
 }
 const publicInvite = item => ({ id: item.id, email: item.email, displayName: item.displayName, department: item.department, expiresAt: item.expiresAt, createdAt: item.createdAt,
-  status: item.consumedAt ? 'Joined' : item.revokedAt ? 'Revoked' : item.expiresAt <= new Date() ? 'Expired' : item.acceptedAt ? 'Awaiting email confirmation' : 'Pending', roles: item.roles.map(role => role.roleCode) })
+  status: item.consumedAt ? 'Joined' : item.revokedAt ? 'Revoked' : item.expiresAt <= new Date() ? 'Expired' : item.acceptedAt ? 'Awaiting activation' : 'Pending', roles: item.roles.map(role => role.roleCode) })
 export async function listInvitations(prisma, actorId) {
   return prisma.$transaction(async tx => {
     const actor = await tx.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
