@@ -49,3 +49,4 @@ html{scrollbar-gutter:stable}
 .directory-tab-stage .metric{min-height:134px}.directory-tab-stage .invite-panel{margin-top:0}.directory-tab-stage .panel-heading{min-height:88px}.directory-tab-stage .filterbar{min-height:62px}.directory-tab-stage .table-scroll{height:clamp(272px,38svh,480px);min-height:272px}.directory-tab-stage .table-footer{min-height:60px}.directory-tab-stage .empty-state{min-height:200px}
 @media(max-width:640px){.directory-tab-stage .table-footer{min-height:100px}.directory-tab-stage .panel-heading{min-height:96px}.directory-tab-stage .filterbar{min-height:62px}}
 @media(prefers-reduced-motion:reduce){.directory-tab-panel,.core-tabs::after,.core-tabs [role=tab]{transition:none;transform:none}.core-tabs[data-active=invitations]::after{transform:translateX(122px)}}
+@media(max-width:1100px){.directory-tab-stage .panel-heading{min-height:128px}}
