@@ -1,3 +1,7 @@
+import { TabPanel } from '../../../core/ui/TabPanel.jsx'
+import { Pagination } from '../../../core/ui/Pagination.jsx'
+import { SummaryCards } from '../../../core/ui/SummaryCards.jsx'
+import { Tabs } from '../../../core/ui/Tabs.jsx'
 import { Dropdown } from '../../../core/ui/Dropdown.jsx'
 import { StaffInvitations } from './StaffInvitations.jsx'
 import { ResetPassword } from './ResetPassword.jsx'
@@ -47,35 +51,30 @@ export default function UsersPage({ onProfileSaved }) {
   const summary = data?.summary
   const connected = Boolean(data && !error && !loading)
   return <>
-    {data?.canInvite && <div className="core-tabs" data-active={tab} role="tablist" aria-label="User management" onKeyDown={event => {
-      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
-      event.preventDefault()
-      const next = event.key === 'Home' ? 'users' : event.key === 'End' ? 'invitations' : tab === 'users' ? 'invitations' : 'users'
-      setTab(next); document.getElementById(`tab-${next}`)?.focus()
-    }}>{[['users', 'Users'], ['invitations', 'Invitations']].map(([id, label]) => <button key={id} id={`tab-${id}`} type="button" role="tab" aria-selected={tab === id} aria-controls={`panel-${id}`} tabIndex={tab === id ? 0 : -1} onClick={() => setTab(id)}>{label}</button>)}</div>}
+    {data?.canInvite && <Tabs items={[{ id: 'users', label: 'Users' }, { id: 'invitations', label: 'Invitations' }]} value={tab} onChange={setTab} label="User management" idPrefix="user-management" />}
 
     <section className="page-heading"><div><p className="eyebrow">YOUR TEAM, IN ONE PLACE</p><h1>{tab === 'invitations' ? 'Invitations' : 'Users'}</h1><p className="muted">{tab === 'invitations' ? 'Invite employees and follow their account activation.' : 'A clear view of the people who access Greenview Tour.'}</p></div><div className="page-actions">{data?.canInvite && <Button className="button-primary" onClick={() => { setTab('invitations'); setInviteOpen(true) }}>+ Add employee</Button>}</div></section>
     <div className="directory-tab-stage">
-    <div className="directory-tab-panel" data-active={tab === 'users'} inert={tab !== 'users'} aria-hidden={tab !== 'users'} id="panel-users" role={data?.canInvite ? 'tabpanel' : undefined} aria-labelledby={data?.canInvite ? 'tab-users' : undefined}>
-    <section className="metrics" aria-label="Account summary">{[
-      ['Total users', summary?.total, 'Accounts in this workspace', 'users'],
-      ['Verified emails', summary?.verified, 'Email confirmation complete', 'check'],
-      ['Have signed in', summary?.signed_in, 'Accounts with a sign-in record', 'globe'],
-    ].map(([label, value, detail, icon]) => <div className="metric" key={label}><div className="metric-label">{label}<span className="metric-icon"><Icon name={icon} /></span></div><strong>{value ?? '—'}</strong><span>{detail}</span></div>)}</section>
-    <section className="panel" aria-labelledby="directory-heading"><div className="panel-heading"><div><h2 id="directory-heading">User directory</h2><p>Manage your team’s access and profile details.</p></div><span className={`connection ${connected ? 'connected' : error ? 'disconnected' : ''}`} role="status"><span />{loading ? 'Checking connection' : connected ? 'Database connected' : 'Connection unavailable'}</span></div>
+    <TabPanel active={tab === 'users'} preserveLayout className="directory-tab-panel" id="user-management-panel-users" labelledBy={data?.canInvite ? 'user-management-tab-users' : undefined}>
+    <SummaryCards label="Account summary" items={[
+      { label: 'Total users', value: summary?.total, detail: 'Accounts in this workspace', icon: 'users' },
+      { label: 'Verified emails', value: summary?.verified, detail: 'Email confirmation complete', icon: 'check' },
+      { label: 'Have signed in', value: summary?.signed_in, detail: 'Accounts with a sign-in record', icon: 'globe' },
+      { label: 'Pending verification', value: summary ? summary.total - summary.verified : undefined, detail: 'Email confirmation incomplete', icon: 'calendar' },
+    ]} />
+    <section className="panel table-panel" aria-labelledby="directory-heading"><div className="panel-heading"><div><h2 id="directory-heading">User directory</h2><p>Manage your team’s access and profile details.</p></div><span className={`connection ${connected ? 'connected' : error ? 'disconnected' : ''}`} role="status"><span />{loading ? 'Checking connection' : connected ? 'Database connected' : 'Connection unavailable'}</span></div>
       <div className="filterbar"><SearchField value={search} onChange={setSearch} onCompositionChange={setComposing} /><Button busy={loading} disabled={loading} onClick={() => setRefresh(n => n + 1)}><Icon name="refresh" />Refresh</Button></div>
-      {error && <div className="inline-error" role="alert"><span>{error}</span><Button onClick={() => setRefresh(n => n + 1)}>Retry</Button></div>}
-      <DataTable columns={['User', 'Phone', 'Department / Role', 'Email verification', 'Last sign-in', 'Actions']} busy={loading}>
-        {loading ? <tr><td colSpan="6"><div className="empty-state" role="status"><span className="spinner" />Loading users…</div></td></tr> : error ? <tr><td colSpan="6"><div className="empty-state"><Icon name="globe" /><h3>Users are temporarily unavailable</h3><p>Retry when the connection is ready.</p></div></td></tr> : data?.users.length ? data.users.map(user => <tr key={user.id}><td><div className="user-cell"><span className="avatar">{(user.email || '?')[0].toUpperCase()}</span><div><strong>{user.displayName || user.email}</strong><small>{user.email}</small></div></div></td><td><div className="phone-cell">{user.primaryPhone ? <a href={`tel:${user.primaryPhone.replace(/[^+0-9]/g, '')}`} aria-label={`Call ${user.displayName}: ${user.primaryPhone}`}>{user.primaryPhone}</a> : <span className="muted">Not provided</span>}{user.emergencyPhone && <><small>Emergency</small><a href={`tel:${user.emergencyPhone.replace(/[^+0-9]/g, '')}`} aria-label={`Call emergency number for ${user.displayName}: ${user.emergencyPhone}`}>{user.emergencyPhone}</a></>}</div></td><td><strong>{user.department || 'Not assigned'}</strong><small className="role-label">{user.roles?.map(role => role.roleCode).join(' · ')}</small></td><td><span className={`badge ${user.email_confirmed_at ? 'verified' : ''}`}>{user.email_confirmed_at ? 'Verified' : 'Pending'}</span></td><td>{formatDate(user.last_sign_in_at)}</td><td><Dropdown label={`Actions for ${user.email}`} items={[
+      <DataTable label="Users table" columns={['User', 'Phone', 'Department / Role', 'Email verification', 'Last sign-in', 'Actions']} busy={loading} error={error} onRetry={() => setRefresh(n => n + 1)} isEmpty={!data?.users.length} loadingLabel="Loading users…" empty={<><h3>{query ? 'No matching users' : 'Your team starts here'}</h3><p>{query ? 'Try another email address or clear the search.' : 'No user accounts have been created yet.'}</p>{query && <Button onClick={() => setSearch('')}>Clear search</Button>}</>}>
+        {data?.users.map(user => <tr key={user.id}><td><div className="user-cell"><span className="avatar">{(user.email || '?')[0].toUpperCase()}</span><div><strong>{user.displayName || user.email}</strong><small>{user.email}</small></div></div></td><td><div className="phone-cell">{user.primaryPhone ? <a href={`tel:${user.primaryPhone.replace(/[^+0-9]/g, '')}`} aria-label={`Call ${user.displayName}: ${user.primaryPhone}`}>{user.primaryPhone}</a> : <span className="muted">Not provided</span>}{user.emergencyPhone && <><small>Emergency</small><a href={`tel:${user.emergencyPhone.replace(/[^+0-9]/g, '')}`} aria-label={`Call emergency number for ${user.displayName}: ${user.emergencyPhone}`}>{user.emergencyPhone}</a></>}</div></td><td><strong>{user.department || 'Not assigned'}</strong><small className="role-label">{user.roles?.map(role => role.roleCode).join(' · ')}</small></td><td><span className={`badge ${user.email_confirmed_at ? 'verified' : ''}`}>{user.email_confirmed_at ? 'Verified' : 'Pending'}</span></td><td>{formatDate(user.last_sign_in_at)}</td><td><Dropdown label={`Actions for ${user.email}`} items={[
           { label: 'View user', onSelect: () => setSelected({ user, mode: 'view' }) },
           ...(user.canEdit ? [{ label: 'Edit user', onSelect: () => setSelected({ user, mode: 'edit' }) }] : []),
           ...(user.canResetPassword ? [{ label: 'Send password reset', onSelect: () => setResetUser(user) }] : []),
-        ]}><span aria-hidden="true">⋯</span></Dropdown></td></tr>) : <tr><td colSpan="6"><div className="empty-state"><span className="empty-icon"><Icon name="users" width="30" height="30" /></span><h3>{query ? 'No matching users' : 'Your team starts here'}</h3><p>{query ? 'Try another email address or clear the search.' : 'The database is connected. No user accounts have been created yet.'}</p>{query && <Button onClick={() => setSearch('')}>Clear search</Button>}</div></td></tr>}
+        ]}><span aria-hidden="true">⋯</span></Dropdown></td></tr>)}
       </DataTable>
-      <div className="table-footer"><span>{data ? `${data.total} ${data.total === 1 ? 'user' : 'users'}${query ? ' matching your search' : ''}` : '—'}<span className="page-size"> · 25 per page</span></span><div className="pagination"><Button disabled={loading || !data || data.page <= 1} onClick={() => setPage((data?.page || 1) - 1)}>Previous</Button><span>Page {data?.page || 1} of {Math.max(1, Math.ceil((data?.total || 0) / 25))}</span><Button disabled={loading || !data || data.page * 25 >= data.total} onClick={() => setPage((data?.page || 1) + 1)}>Next</Button></div></div>
+      <Pagination page={data?.page ?? page} pageSize={25} total={error || loading ? undefined : data?.total} busy={loading} onPageChange={setPage} label="Users pagination" />
     </section>
-    </div>
-    {data?.canInvite && <div className="directory-tab-panel" data-active={tab === 'invitations'} inert={tab !== 'invitations'} aria-hidden={tab !== 'invitations'} id="panel-invitations" role="tabpanel" aria-labelledby="tab-invitations"><StaffInvitations open={inviteOpen} onClose={() => setInviteOpen(false)} /></div>}
+    </TabPanel>
+    {data?.canInvite && <TabPanel active={tab === 'invitations'} preserveLayout className="directory-tab-panel" id="user-management-panel-invitations" labelledBy="user-management-tab-invitations"><StaffInvitations open={inviteOpen} onClose={() => setInviteOpen(false)} /></TabPanel>}
     </div>
     {resetUser && <ResetPassword user={resetUser} onClose={() => setResetUser(null)} />}
     {notice && <p role="status">{notice}</p>}

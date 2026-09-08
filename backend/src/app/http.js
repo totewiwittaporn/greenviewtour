@@ -132,7 +132,7 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
       if (path === '/api/invitations' || invitationMatch || resetMatch || (path === '/api/me/profile' && req.method === 'POST')) {
         const { user, entry } = await sessions.authenticated(req, provider, pool)
         if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
-        if (req.method === 'GET' && path === '/api/invitations') return send(200, await listInvitations(prisma, user.id))
+        if (req.method === 'GET' && path === '/api/invitations') return send(200, await listInvitations(prisma, user.id, url.searchParams))
         if (req.method !== 'POST') return send(405, { code: 'METHOD_NOT_ALLOWED' })
         const input = await body(req, path === '/api/me/profile' ? 32768 : 8192)
         if (path === '/api/me/profile') return send(200, await editOwnProfile(prisma, user.id, input))

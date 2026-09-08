@@ -32,14 +32,27 @@ export function validateInvitation(input, actor) {
 }
 const publicInvite = item => ({ id: item.id, email: item.email, displayName: item.displayName, department: item.department, expiresAt: item.expiresAt, createdAt: item.createdAt,
   status: item.consumedAt ? 'Joined' : item.revokedAt ? 'Revoked' : item.expiresAt <= new Date() ? 'Expired' : item.acceptedAt ? 'Awaiting activation' : 'Pending', roles: item.roles.map(role => role.roleCode) })
-export async function listInvitations(prisma, actorId) {
+export async function listInvitations(prisma, actorId, params = new URLSearchParams()) {
   return prisma.$transaction(async tx => {
     const actor = await tx.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
     if (!canInvite(actor)) throw new AccessError('PERMISSION_DENIED')
     const allowed = invitationRoles(actor).map(role => role.code)
-    const rows = await tx.invitation.findMany({ where: { createdById: { not: null }, roles: { every: { roleCode: { in: allowed } } } }, include: { roles: true }, orderBy: { createdAt: 'desc' }, take: 100 })
-    return { invitations: rows.map(publicInvite), roles: invitationRoles(actor), departments }
-  })
+    const requestedPage = Number(params.get('page') || 1)
+    const pageSize = Number(params.get('pageSize') || 25)
+    const search = (params.get('search') || '').trim()
+    if (!Number.isSafeInteger(requestedPage) || requestedPage < 1 || ![25, 50, 100].includes(pageSize) || search.length > 200) throw new AccessError('INVALID_FILTER', 400)
+    const scope = { createdById: { not: null }, roles: { every: { roleCode: { in: allowed } } } }
+    const where = search ? { ...scope, OR: [{ email: { contains: search, mode: 'insensitive' } }, { displayName: { contains: search, mode: 'insensitive' } }] } : scope
+    const now = new Date()
+    const [total, all, awaiting, joined] = await Promise.all([
+      tx.invitation.count({ where }), tx.invitation.count({ where: scope }),
+      tx.invitation.count({ where: { ...scope, consumedAt: null, revokedAt: null, expiresAt: { gt: now } } }),
+      tx.invitation.count({ where: { ...scope, consumedAt: { not: null } } }),
+    ])
+    const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)))
+    const rows = await tx.invitation.findMany({ where, include: { roles: true }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: pageSize, skip: (page - 1) * pageSize })
+    return { invitations: rows.map(publicInvite), total, page, pageSize, summary: { total: all, awaiting, joined, inactive: all - awaiting - joined }, roles: invitationRoles(actor), departments }
+  }, { isolationLevel: 'RepeatableRead' })
 }
 export async function createInvitation(prisma, actorId, input) {
   return prisma.$transaction(async tx => {

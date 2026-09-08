@@ -97,3 +97,18 @@ Core Company phone entry converts complete local Thai numbers to +66 on blur and
 Owner refinement 2026-09-08: Core Dialog locks document scrolling until the final modal closes. Native top-layer modal semantics isolate background interaction; the Core stack enables only the frontmost dialog content scroller. Covered dialogs retain their scroll position and stable gutter. The header remains outside the content scroller. Dialog roots portal to body so nested dialogs remain independent. SearchableSelectField uses fixed positioning within its owning dialog portal, outside the scrolling body, with bounded option scrolling and no scroll chaining. Compact modal address sections and action groups use token-colored dividers with 12px spacing. Page form spacing remains owned by its existing layout.
 
 Owner correction 2026-09-08: Section dividers also apply to page content. Shared address-section fieldsets separate Address and Map location with the Core border token and 12px margins. Company save actions use the same divider rhythm as modal actions. The address helper row uses compact spacing.
+
+## Canonical dataset surfaces
+
+Owner approval 2026-09-08 supersedes the earlier 3-card and most-recent-100 invitation presentation. DataTable, Pagination, SummaryCards and Tabs in core/ui own all Users, Invitations and catalog presentation. Pagination uses 25 rows per page, honest zero/unknown ranges, disabled boundary/loading controls, and server-clamped pages. Invitations now supports complete server-paginated, scoped name/email search; employee PII search remains transient, never persisted in URL/storage. Summaries count all authorized records, independently of search/status/page, within a consistent read transaction. No permissions, mutation behavior or database schema change.
+
+| Capability | Canonical owner | Source of truth | Allowed variants | Verification |
+| --- | --- | --- | --- | --- |
+| Pagination | core/ui/Pagination.jsx | this contract | Users / Invitations / catalog | range, zero, unknown, boundaries, page clamp |
+| Summary | core/ui/SummaryCards.jsx | DESIGN.md | four meaningful per-dataset metrics | authorized totals, desktop four, portrait two columns |
+| Tabs and TabPanel | core/ui/Tabs.jsx + core/ui/TabPanel.jsx | this contract | Users and all three route-backed settings groups | shared indicator/content motion, reduced motion, inactive inert/aria-hidden, optional layout reservation, keyboard, direct links, history, dirty leave protection |
+| Table states | core/ui/DataTable.jsx | this contract | loading / error / empty / populated | retry, overflow, stable geometry |
+
+Company remains a form. Company & Tours contains Company and Tour programs. Partners & Sales contains Business partners, Agent prices and Sales channels. Transport & Pickup contains Hotels & pickup points and Vehicles & boats. These are navigation groups only; domain tables and permissions remain independently owned. A tab reveals one dataset immediately, remembers its own committed filters/page for the session, and does not expose inactive content to keyboard or accessibility navigation. Switching from a dirty Company form opens the existing discard decision before navigation.
+
+Tab motion correction: Tabs owns a measured sliding indicator for any tab label width or wrapped row. Users and all three settings groups share the 180ms content fade/5px slide; the indicator takes 200ms. Reduced motion disables both. Settings preserve native page/form height and existing dirty-navigation guards.

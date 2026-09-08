@@ -5,6 +5,8 @@ const Context=createContext(null)
 const current=()=>({pathname:window.location.pathname,search:window.location.search})
 export function NavigationProvider({children}){
  const [location,setLocation]=useState(current),[pending,setPending]=useState(null)
+ const savedLocations=useRef(new Map())
+ const hrefFor=useCallback(path=>savedLocations.current.get(path)||path,[])
  const guards=useRef(new Map()),index=useRef(0),restore=useRef(null),approved=useRef(false)
  useEffect(()=>{
   index.current=window.history.state?.gvIndex??0
@@ -12,6 +14,7 @@ export function NavigationProvider({children}){
  },[])
  const commit=useCallback(target=>{
   if(target.action){target.action();return}
+  savedLocations.current.set(window.location.pathname, window.location.pathname+window.location.search)
   if(target.delta!==undefined){approved.current=true;window.history.go(target.delta);return}
   index.current++
   window.history.pushState({gvIndex:index.current},'',target.href)
@@ -48,7 +51,7 @@ export function NavigationProvider({children}){
  },[navigate])
  useEffect(()=>{document.querySelector('#main h1')?.focus({preventScroll:true})},[location])
  const register=useCallback((id,dirty)=>{guards.current.set(id,dirty);return()=>guards.current.delete(id)},[])
- return <Context.Provider value={{location,navigate,runAction,register}}>{children}{pending&&<Dialog title="Unsaved changes" onClose={()=>setPending(null)}><p>Leave this page and discard your unsaved changes?</p><div className="dialog-actions"><Button autoFocus onClick={()=>setPending(null)}>Keep editing</Button><Button onClick={()=>{const target=pending;setPending(null);commit(target)}}>Discard and leave</Button></div></Dialog>}</Context.Provider>
+ return <Context.Provider value={{location,navigate,runAction,register,hrefFor}}>{children}{pending&&<Dialog title="Unsaved changes" onClose={()=>setPending(null)}><p>Leave this page and discard your unsaved changes?</p><div className="dialog-actions"><Button autoFocus onClick={()=>setPending(null)}>Keep editing</Button><Button onClick={()=>{const target=pending;setPending(null);commit(target)}}>Discard and leave</Button></div></Dialog>}</Context.Provider>
 }
 // Non-component hooks share the provider in this module intentionally.
 // eslint-disable-next-line react-refresh/only-export-components

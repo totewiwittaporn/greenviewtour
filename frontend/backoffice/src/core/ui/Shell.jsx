@@ -1,17 +1,20 @@
-import { catalog } from '../../../../../packages/contracts/catalog.js'
+import { settingsGroups } from '../../features/settings/shared/settingsGroups.js'
+import { useNavigation } from '../navigation/Navigation.jsx'
 import { useState } from 'react'
 import { UserInfo } from './UserInfo.jsx'
 import { Icon } from './Icon.jsx'
 const planned = [['Dashboard', 'grid'], ['Bookings', 'calendar'], ['Sales', 'briefcase'], ['Tour Operations', 'globe'], ['Customers', 'users'], ['Services', 'briefcase'], ['Employees', 'users'], ['Assets & Equipment', 'briefcase'], ['Fleet', 'briefcase'], ['Finance', 'briefcase'], ['Reports', 'grid']]
 export function Shell({ children, user, onLogout, signingOut, canReadUsers, logoutError, onEditProfile, pageTitle }) {
   const [open, setOpen] = useState(false)
+  const navigation = useNavigation()
+  const entity = navigation.location.pathname.split('/').at(-1)
   return <div className="workspace"><a className="skip-link" href="#main">Skip to content</a>
     <aside className={`sidebar ${open ? 'is-open' : ''}`} id="workspace-navigation">
       <a className="brand" href="/"><img src="https://greenviewtour.com/wp-content/uploads/2024/12/greenview-tour-logo-1.png" alt="Greenview Tour" /><span>COMPANY WORKSPACE</span></a>
       <div className="nav-label">WORKSPACE <span>LOCAL</span></div><nav aria-label="Main navigation">
         {planned.map(([label, icon]) => <span key={label} className="nav-item planned" title="Planned for a future release" aria-disabled="true"><Icon name={icon} />{label}<span className="planned-dot" /></span>)}
         <div className="nav-item settings"><Icon name="settings" />Settings</div>
-        {user?.management?.company && ['company','partners','tours','rates','locations','vehicles','channels'].map(key => [key, catalog[key]]).map(([key, item]) => <a key={key} href={`/settings/${key}`} aria-current={pageTitle === item.title ? 'page' : undefined} className={`nav-item ${pageTitle === item.title ? 'selected' : ''}`}><Icon name="briefcase" />{item.title}</a>)}
+        {user?.management?.company && settingsGroups.map(group => <a key={group.id} href={navigation.hrefFor(`/settings/${group.entities[0]}`)} aria-current={group.entities.includes(entity) ? 'page' : undefined} className={`nav-item ${group.entities.includes(entity) ? 'selected' : ''}`}><Icon name="briefcase" />{group.label}</a>)}
         {canReadUsers && <a href="/settings/users" aria-current={pageTitle === 'Users' ? 'page' : undefined} className={`nav-item ${pageTitle === 'Users' ? 'selected' : ''}`}><Icon name="users" />Users<span>→</span></a>}
       </nav>
       <div className="sidebar-foot"><span className="mode-dot" /> Local workspace</div>

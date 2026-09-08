@@ -12,11 +12,11 @@ try {
   const user = { id: '00000000-0000-0000-0000-000000000001', displayName: 'Fixture Manager', email: 'manager@example.invalid', status: 'ACTIVE', department: 'MANAGEMENT', roles: [{ code: 'MANAGER', name: 'Manager', scope: 'COMPANY' }], updatedAt: new Date().toISOString(), management: { company: true } }
   const row = { ...user, id: '00000000-0000-0000-0000-000000000002', displayName: 'Fixture Guide', email: 'guide@example.invalid', department: 'GUIDE', roles: [{ roleCode: 'GUIDE', scope: 'SELF' }], canEdit: true, canResetPassword: true }
   let invites = [], created, ownPatch, reset = 0, link = 'a'.repeat(64), fail = true
-  const catalog = () => ({ invitations: invites, roles: [['BOOKING','Booking'],['ACCOUNT','Account'],['GUIDE','Guide'],['ASSISTANT_TOUR_GUIDE','Assistant tour guide'],['CAPTAIN','Captain'],['ASSISTANT_CAPTAIN','Assistant Captain'],['DRIVER','Driver'],['HEAD_BOOKING','Head Booking'],['HEAD_GUIDE','Head Guide'],['HEAD_CAPTAIN','Head Captain'],['HEAD_DRIVER','Head Driver']].map(([code,name]) => ({ code, name })), departments: ['BOOKING','GUIDE','CAPTAIN','DRIVER'] })
+  const catalog = () => ({ invitations: invites, total: invites.length, page: 1, pageSize: 25, summary: {total: invites.length, awaiting: invites.filter(i=>i.status==='Pending').length, joined: invites.filter(i=>i.status==='Joined').length, inactive: invites.filter(i=>['Expired','Revoked'].includes(i.status)).length}, roles: [['BOOKING','Booking'],['ACCOUNT','Account'],['GUIDE','Guide'],['ASSISTANT_TOUR_GUIDE','Assistant tour guide'],['CAPTAIN','Captain'],['ASSISTANT_CAPTAIN','Assistant Captain'],['DRIVER','Driver'],['HEAD_BOOKING','Head Booking'],['HEAD_GUIDE','Head Guide'],['HEAD_CAPTAIN','Head Captain'],['HEAD_DRIVER','Head Driver']].map(([code,name]) => ({ code, name })), departments: ['BOOKING','GUIDE','CAPTAIN','DRIVER'] })
   await page.route('**/api/me', route => route.fulfill({ json: { user } }))
   await page.route('**/api/me/profile', route => { ownPatch = route.request().postDataJSON(); user.displayName = ownPatch.displayName; return route.fulfill({ json: { ok: true } }) })
   await page.route('**/api/users?*', route => route.fulfill({ json: { users: [row], total: 1, page: 1, pageSize: 25, summary: { total: 1, verified: 1, signed_in: 0 }, checkedAt: new Date().toISOString(), canChangeDepartment: true, canInvite: true } }))
-  await page.route('**/api/invitations', route => {
+  await page.route(/\/api\/invitations(?:\?.*)?$/, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: catalog() })
     created = route.request().postDataJSON()
     if (fail) { fail = false; return route.fulfill({ status: 503, json: { code: 'SERVICE_UNAVAILABLE' } }) }
@@ -46,7 +46,10 @@ try {
   await page.waitForURL('**/profile')
   await page.getByRole('heading', { name: 'Edit profile', exact: true }).waitFor()
   assert.equal(await page.getByRole('dialog').count(), 0)
-  assert.equal(await page.getByRole('combobox').count(), 0)
+  assert.equal(await page.getByRole('combobox', { name: 'Role', exact: true }).count(), 0)
+  assert.equal(await page.getByRole('combobox', { name: 'Department', exact: true }).count(), 0)
+  assert.equal(await page.getByRole('combobox').count(), 3)
+  for (const label of ['Province', 'District / Amphoe', 'Subdistrict / Tambon']) assert.equal(await page.getByRole('combobox', { name: label, exact: true }).count(), 1)
   await page.getByLabel('Display name').fill('Manager Edited')
   await page.getByRole('button', { name: 'Save changes' }).click()
   await page.getByText('Profile updated.', { exact: true }).waitFor()
@@ -104,8 +107,15 @@ try {
   await page.getByRole('button', { name: 'Invitation actions for new-staff@example.invalid' }).click()
   await page.getByRole('menuitem', { name: 'Revoke invitation', exact: true }).click()
   await page.getByRole('button', { name: 'Revoke invitation', exact: true }).click()
-  await page.getByText('Revoked', { exact: true }).waitFor()
+  await page.getByRole('cell', { name: 'Revoked', exact: true }).waitFor()
+  assert.equal(await page.getByRole('tabpanel').count(),1)
+  assert.deepEqual(await page.getByRole('region',{name:'Invitation summary',exact:true}).locator('.metric strong').allTextContents(),['1','0','0','1'])
+  await page.getByRole('navigation',{name:'Invitations pagination',exact:true}).getByText('Page 1 of 1',{exact:true}).waitFor()
   await page.getByRole('tab', { name: 'Users', exact: true }).click()
+  assert.equal(await page.getByRole('tabpanel').count(),1)
+  assert.equal(await page.getByRole('button',{name:'Invitation actions for new-staff@example.invalid'}).count(),0)
+  assert.deepEqual(await page.getByRole('region',{name:'Account summary',exact:true}).locator('.metric strong').allTextContents(),['1','1','0','0'])
+
   await page.getByRole('button', { name: 'Actions for guide@example.invalid', exact: true }).click()
   assert.equal(await page.getByRole('dialog').count(), 0)
   await page.getByRole('menuitem', { name: 'Send password reset' }).click()

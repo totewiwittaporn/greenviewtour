@@ -4,11 +4,24 @@ import { randomUUID } from 'node:crypto'
 import { catalog,initialValues,validateCatalog } from '../../packages/contracts/catalog.js'
 import { canManageCatalog,saveSettings,listSettings } from '../src/modules/service-catalog/settings.js'
 const profile={status:'ACTIVE',roles:[{roleCode:'MANAGER',scope:'COMPANY',role:{permissions:[{permissionCode:'users.read'}]}}]}
+function matches(row,where={}){
+ return Object.entries(where).every(([key,value])=>{
+  if(key==='OR')return value.some(condition=>matches(row,condition))
+  if(value&&typeof value==='object'){
+   if('has'in value)return row[key]?.includes(value.has)
+   if('not'in value)return row[key]!==value.not && row[key]!==undefined
+   if('contains'in value)return String(row[key]||'').toLowerCase().includes(value.contains.toLowerCase())
+   return matches(row[key]||{},value)
+  }
+  return row[key]===value
+ })
+}
 function fixture(){
  const records=Object.fromEntries(Object.keys(catalog).map(k=>[catalog[k].model,new Map()])),audit=[]
  const tx={userProfile:{findUnique:async()=>profile},$executeRaw:async()=>{},auditEvent:{create:async e=>audit.push(e)}}
  for(const[model,rows]of Object.entries(records))tx[model]={
-  findUnique:async({where})=>rows.get(where.id),count:async({where={}}={})=>[...rows.values()].filter(r=>Object.entries(where).every(([k,v])=>r[k]===v)).length,
+  findUnique:async({where})=>rows.get(where.id),count:async({where={}}={})=>[...rows.values()].filter(r=>matches(r,where)).length,
+  findMany:async({where={},skip=0,take=25})=>[...rows.values()].filter(r=>matches(r,where)).slice(skip,skip+take),
   create:async({data})=>{const row={...data,version:1};rows.set(row.id,row);return row},
   update:async({where,data})=>{const row={...rows.get(where.id),...data,version:rows.get(where.id).version+1};rows.set(row.id,row);return row},
  }
@@ -55,4 +68,26 @@ test('uncertain create retry does not duplicate records or audit; update increme
 test('lookup and listing reject unbounded pages and unsupported filters',async()=>{
  const{tx}=fixture()
  for(const query of ['page=-1','page=1.5','page=999999','status=INVALID','role=ADMIN'])await assert.rejects(listSettings(tx,'actor','partners',new URLSearchParams(query)),{code:'INVALID_FILTER'})
+})
+
+test('catalog summaries cover all authorized records independently of search, status and pagination',async()=>{
+ const{tx,records}=fixture()
+ const others={partners:{roles:['TOUR_OPERATOR']},tours:{ownership:'PARTNER'},rates:{childPrice:null},locations:{kind:'PIER'},vehicles:{ownership:'PARTNER'},channels:{kind:'AGENT'}}
+ const extras={partners:{roles:['SALES_AGENT']},tours:{ownership:'GREENVIEW'},rates:{childPrice:'0'},locations:{kind:'HOTEL'},vehicles:{ownership:'GREENVIEW'},channels:{kind:'DIRECT'}}
+ for(const entity of Object.keys(extras)){
+  const rows=records[catalog[entity].model]
+  for(let index=0;index<31;index++)rows.set(String(index),{id:String(index),name:index===0?'Match':'Other',code:String(index),status:index<28?'ACTIVE':'INACTIVE',...(index<7?extras[entity]:others[entity]),agent:{name:index===0?'Match':'Other'},tour:{name:'Tour'}})
+  const page=await listSettings(tx,'actor',entity,new URLSearchParams('page=2'))
+  assert.equal(page.rows.length,6);assert.equal(page.total,31);assert.equal(page.pageSize,25)
+  assert.deepEqual(page.summary,{total:31,active:28,inactive:3,featured:7})
+  const filtered=await listSettings(tx,'actor',entity,new URLSearchParams('q=Match&status=ACTIVE&page=99'))
+  assert.equal(filtered.rows.length,1);assert.equal(filtered.total,1);assert.equal(filtered.page,1)
+  assert.deepEqual(filtered.summary,page.summary)
+ }
+})
+test('catalog summary data remains behind company-management authorization',async()=>{
+ const{tx}=fixture();tx.userProfile.findUnique=async()=>({...profile,status:'SUSPENDED'})
+ let read=false;tx.tourProgram.count=async()=>{read=true;return 0}
+ await assert.rejects(listSettings(tx,'actor','tours',new URLSearchParams()),{code:'PERMISSION_DENIED'})
+ assert.equal(read,false)
 })
