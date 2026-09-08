@@ -59,6 +59,7 @@ try {
   await roleTrigger.click()
   const rolePopup = page.getByRole('listbox')
   await rolePopup.waitFor()
+  assert.equal(await rolePopup.locator('[data-radix-select-viewport]').evaluate(el => getComputedStyle(el).scrollbarWidth), 'thin')
   const triggerBox = await roleHandle.boundingBox(), popupBox = await rolePopup.boundingBox()
   assert.ok(Math.abs(triggerBox.width - popupBox.width) <= 1)
   assert.ok(Math.abs(triggerBox.x - popupBox.x) <= 1)

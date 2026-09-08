@@ -13,11 +13,9 @@ export function SelectField({ label, error, hint, children, value, onChange, dis
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal container={host}>
         <SelectPrimitive.Content className="core-dropdown core-select-popup" position="popper" sideOffset={6} align="start" collisionPadding={8} data-keyboard={keyboard || undefined} onKeyDown={() => setKeyboard(true)} onPointerMove={() => setKeyboard(false)} onEscapeKeyDown={event => event.stopPropagation()}>
-          <SelectPrimitive.ScrollUpButton className="select-scroll" aria-label="Scroll up">⌃</SelectPrimitive.ScrollUpButton>
           <SelectPrimitive.Viewport className="select-viewport">{options.map(option => <SelectPrimitive.Item className="core-select-option" key={option.value} value={option.value || emptyValue} disabled={option.disabled}>
             <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText><SelectPrimitive.ItemIndicator className="select-check" aria-hidden="true">✓</SelectPrimitive.ItemIndicator>
           </SelectPrimitive.Item>)}</SelectPrimitive.Viewport>
-          <SelectPrimitive.ScrollDownButton className="select-scroll" aria-label="Scroll down">⌄</SelectPrimitive.ScrollDownButton>
         </SelectPrimitive.Content>
       </SelectPrimitive.Portal>
     </SelectPrimitive.Root>
