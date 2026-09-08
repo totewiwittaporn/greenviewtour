@@ -8,6 +8,7 @@ const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ['--h
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } }), errors = []
   page.on('pageerror', error => errors.push(error.message))
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://localhost:5174' })
   const user = { id: '00000000-0000-0000-0000-000000000001', displayName: 'Fixture Manager', email: 'manager@example.invalid', status: 'ACTIVE', department: 'MANAGEMENT', roles: [{ code: 'MANAGER', name: 'Manager', scope: 'COMPANY' }], updatedAt: new Date().toISOString(), management: { company: true } }
   const row = { ...user, id: '00000000-0000-0000-0000-000000000002', displayName: 'Fixture Guide', email: 'guide@example.invalid', department: 'GUIDE', roles: [{ roleCode: 'GUIDE', scope: 'SELF' }], canEdit: true, canResetPassword: true }
   let invites = [], created, ownPatch, reset = 0, link = 'a'.repeat(64), fail = true
@@ -92,6 +93,7 @@ try {
   assert.match(await page.getByLabel('Invitation link', { exact: true }).inputValue(), /accept-invitation#invitation=a{64}$/)
   await page.getByRole('button', { name: 'Copy invitation link' }).click()
   await page.getByText('Invitation link copied.', { exact: true }).waitFor()
+  assert.match(await page.evaluate(() => navigator.clipboard.readText()), /accept-invitation#invitation=a{64}$/)
   await page.screenshot({ path: fileURLToPath(new URL('invitation-ready-desktop.png', output)), fullPage: true })
   await page.getByRole('button', { name: 'Close dialog' }).click()
   await page.getByRole('button', { name: 'Invitation actions for new-staff@example.invalid' }).click()
