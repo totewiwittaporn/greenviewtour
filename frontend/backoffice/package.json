@@ -9,6 +9,7 @@
     "preview": "vite preview --port 4174 --strictPort"
   },
   "dependencies": {
+    "@radix-ui/react-select": "2.3.7",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"
   }

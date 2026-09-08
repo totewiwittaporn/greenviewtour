@@ -3,5 +3,5 @@
   "sourceRoots": ["frontend/backoffice/src"],
   "locale": "en-GB",
   "canonicalMap": "UX-CONTRACT.md",
-  "ownership": { "Select/Listbox": "native" }
+  "ownership": { "Select/Listbox": "authored" }
 }
