@@ -2,5 +2,12 @@
   "name": "@greenviewtour/api",
   "private": true,
   "version": "0.0.0",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "pg": "8.23.0"
+  },
+  "scripts": {
+    "db:check": "node scripts/check-db.js",
+    "test": "node --test test/*.test.js"
+  }
 }

@@ -48,3 +48,7 @@ The owner requested frontend/backend naming aligned with Chalin Clothes. Fronten
 ## Backoffice page adapters
 
 `backend/src/backoffice/<menu>/<page>` mirrors Backoffice features for discoverability and delegates business behavior to the existing domain modules. This layer owns request/response composition only. The exact 12-menu/34-page map is maintained in `docs/backoffice-menu-map.md` and its JSON inventory.
+
+## Preview PostgreSQL adapter
+
+`backend/src/platform/database` owns the connection pool and read-only connection probe. It uses pinned node-postgres, verified TLS and explicit Preview project checks. This is connectivity infrastructure; no ORM, business schema or authorization runtime is selected by this change. See `docs/database-connection.md`.
