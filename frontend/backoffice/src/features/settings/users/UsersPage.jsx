@@ -47,7 +47,7 @@ export default function UsersPage({ onProfileSaved }) {
   const summary = data?.summary
   const connected = Boolean(data && !error && !loading)
   return <>
-    {data?.canInvite && <div className="core-tabs" role="tablist" aria-label="User management" onKeyDown={event => {
+    {data?.canInvite && <div className="core-tabs" data-active={tab} role="tablist" aria-label="User management" onKeyDown={event => {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
       event.preventDefault()
       const next = event.key === 'Home' ? 'users' : event.key === 'End' ? 'invitations' : tab === 'users' ? 'invitations' : 'users'
@@ -55,7 +55,8 @@ export default function UsersPage({ onProfileSaved }) {
     }}>{[['users', 'Users'], ['invitations', 'Invitations']].map(([id, label]) => <button key={id} id={`tab-${id}`} type="button" role="tab" aria-selected={tab === id} aria-controls={`panel-${id}`} tabIndex={tab === id ? 0 : -1} onClick={() => setTab(id)}>{label}</button>)}</div>}
 
     <section className="page-heading"><div><p className="eyebrow">YOUR TEAM, IN ONE PLACE</p><h1>{tab === 'invitations' ? 'Invitations' : 'Users'}</h1><p className="muted">{tab === 'invitations' ? 'Invite employees and follow their account activation.' : 'A clear view of the people who access Greenview Tour.'}</p></div><div className="page-actions">{data?.canInvite && <Button className="button-primary" onClick={() => { setTab('invitations'); setInviteOpen(true) }}>+ Add employee</Button>}</div></section>
-    <div id="panel-users" role={data?.canInvite ? 'tabpanel' : undefined} aria-labelledby={data?.canInvite ? 'tab-users' : undefined} hidden={tab !== 'users'}>
+    <div className="directory-tab-stage">
+    <div className="directory-tab-panel" data-active={tab === 'users'} inert={tab !== 'users'} aria-hidden={tab !== 'users'} id="panel-users" role={data?.canInvite ? 'tabpanel' : undefined} aria-labelledby={data?.canInvite ? 'tab-users' : undefined}>
     <section className="metrics" aria-label="Account summary">{[
       ['Total users', summary?.total, 'Accounts in this workspace', 'users'],
       ['Verified emails', summary?.verified, 'Email confirmation complete', 'check'],
@@ -74,10 +75,11 @@ export default function UsersPage({ onProfileSaved }) {
       <div className="table-footer"><span>{data ? `${data.total} ${data.total === 1 ? 'user' : 'users'}${query ? ' matching your search' : ''}` : '—'}<span className="page-size"> · 25 per page</span></span><div className="pagination"><Button disabled={loading || !data || data.page <= 1} onClick={() => setPage((data?.page || 1) - 1)}>Previous</Button><span>Page {data?.page || 1} of {Math.max(1, Math.ceil((data?.total || 0) / 25))}</span><Button disabled={loading || !data || data.page * 25 >= data.total} onClick={() => setPage((data?.page || 1) + 1)}>Next</Button></div></div>
     </section>
     </div>
-    {data?.canInvite && <div id="panel-invitations" role="tabpanel" aria-labelledby="tab-invitations" hidden={tab !== 'invitations'}><StaffInvitations open={inviteOpen} onClose={() => setInviteOpen(false)} /></div>}
+    {data?.canInvite && <div className="directory-tab-panel" data-active={tab === 'invitations'} inert={tab !== 'invitations'} aria-hidden={tab !== 'invitations'} id="panel-invitations" role="tabpanel" aria-labelledby="tab-invitations"><StaffInvitations open={inviteOpen} onClose={() => setInviteOpen(false)} /></div>}
+    </div>
     {resetUser && <ResetPassword user={resetUser} onClose={() => setResetUser(null)} />}
     {notice && <p role="status">{notice}</p>}
     {selected && <UserActions user={selected.user} initialMode={selected.mode} canChangeDepartment={data?.canChangeDepartment} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); setNotice('User profile updated.'); setRefresh(n => n + 1); onProfileSaved?.() }} />}
-    {data && tab === 'users' && <p className="last-checked" role="status">Last updated {new Intl.DateTimeFormat('en-GB', { timeStyle: 'medium', timeZone: 'Asia/Bangkok' }).format(new Date(data.checkedAt))} · Bangkok time</p>}
+    {data && <p style={{ visibility: tab === 'users' ? 'visible' : 'hidden' }} className="last-checked" role="status">Last updated {new Intl.DateTimeFormat('en-GB', { timeStyle: 'medium', timeZone: 'Asia/Bangkok' }).format(new Date(data.checkedAt))} · Bangkok time</p>}
   </>
 }

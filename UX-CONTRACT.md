@@ -52,3 +52,5 @@ Owner refinement 2026-09-08: clear menu items on pointer opening; sea-tint hover
 - `/profile`: self-service full-page identity, optional employee contacts, separate current-password-confirmed password change. FormField and core-textarea are canonical controls. Version conflict requires explicit reload; failed requests retain values. Browser leave protection covers dirty fields and password entries.
 - User directory: core-tabs switch the whole dataset, keyboard Left/Right/Home/End supported, tabpanel labels connected. Search wrapper owns focus; inner input never adds an offset ring. Both phone numbers dial through sanitized `tel:` links.
 - Contact edits retain existing department permissions and optimistic version checks. Audit stores changed field names, never contact values or passwords.
+
+- Dataset tab transitions reserve both panels' geometry, with inactive panels inert and aria-hidden. Use aligned summary/toolbar/table/footer sizes, stable page scrollbar gutter, 180–200ms motion and reduced-motion opt-out. Both datasets have a bounded responsive table scroll region.

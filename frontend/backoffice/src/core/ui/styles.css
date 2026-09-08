@@ -41,3 +41,11 @@
 .profile-detail-pair{display:contents}
 
 .profile-form{font-size:13px}.profile-form .form-field label{font-size:12px;margin-bottom:6px}.profile-form .field-control input{min-height:44px;padding:10px 12px;font-size:14px}.profile-form .password-toggle{font-size:12px}.profile-form .field-help{font-size:10px}.profile-form-actions .button{text-decoration:none}@media(max-width:640px){.profile-form-actions>.muted{width:100%}.profile-form-actions>.button{flex:1}}
+
+/* Both datasets share one measured grid area; inactive content retains geometry only. */
+html{scrollbar-gutter:stable}
+.core-tabs{position:relative;gap:12px}.core-tabs [role=tab]{width:110px;flex:0 0 110px;transition:color 180ms ease}.core-tabs [role=tab][aria-selected=true]{border-bottom-color:transparent}.core-tabs::after{content:"";position:absolute;left:0;bottom:-1px;height:2px;width:110px;background:var(--brand);transform:translateX(0);transition:transform 200ms ease}.core-tabs[data-active=invitations]::after{transform:translateX(122px)}
+.directory-tab-stage{display:grid;isolation:isolate;min-width:0}.directory-tab-panel{grid-area:1/1;min-width:0;align-self:start;visibility:hidden;opacity:0;pointer-events:none;transform:translateY(5px);transition:opacity 180ms ease,transform 180ms ease}.directory-tab-panel[data-active=true]{visibility:visible;opacity:1;pointer-events:auto;transform:translateY(0)}
+.directory-tab-stage .metric{min-height:134px}.directory-tab-stage .invite-panel{margin-top:0}.directory-tab-stage .panel-heading{min-height:88px}.directory-tab-stage .filterbar{min-height:62px}.directory-tab-stage .table-scroll{height:clamp(272px,38svh,480px);min-height:272px}.directory-tab-stage .table-footer{min-height:60px}.directory-tab-stage .empty-state{min-height:200px}
+@media(max-width:640px){.directory-tab-stage .table-footer{min-height:100px}.directory-tab-stage .panel-heading{min-height:96px}.directory-tab-stage .filterbar{min-height:62px}}
+@media(prefers-reduced-motion:reduce){.directory-tab-panel,.core-tabs::after,.core-tabs [role=tab]{transition:none;transform:none}.core-tabs[data-active=invitations]::after{transform:translateX(122px)}}
