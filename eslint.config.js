@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['**/dist/**', '**/node_modules/**']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -23,6 +23,9 @@ export default defineConfig([
       },
     },
     rules: {
+      'no-restricted-imports': ['error', { patterns: [
+        { group: ['**/apps/**', '**/api/**', '**/database/**', '**/infrastructure/**', '**/public-web/**', '**/backoffice/**', '@greenviewtour/public-web', '@greenviewtour/backoffice', '@greenviewtour/api'], message: 'Keep applications isolated; share only browser-safe contracts.' },
+      ] }],
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
