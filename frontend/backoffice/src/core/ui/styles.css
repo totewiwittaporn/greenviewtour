@@ -93,3 +93,13 @@ input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 .address-summary .button { flex-shrink:0; }
 .address-loading { min-height:180px; display:grid; place-content:center; }
 @media (max-width:760px) { .address-summary { align-items:flex-start; flex-direction:column; } }
+
+/* Searchable selection extends Core dropdown tokens; the primitive owns a11y. */
+.field-label { display:block; font-size:12px; font-weight:600; margin-bottom:8px; }
+.core-combobox-positioner { z-index:100; width:var(--anchor-width); max-width:calc(100vw - 16px); }
+.core-combobox-popup { position:relative; width:100%; padding:6px; max-height:var(--available-height); }
+.core-combobox-search { display:flex; align-items:center; gap:4px; padding:4px; }
+.core-combobox-search input { min-width:0; width:100%; height:36px; border:1px solid var(--line); border-radius:8px; padding:8px; font:inherit; background:var(--surface); color:var(--text); }
+.core-combobox-list { max-height:min(260px, calc(var(--available-height) - 70px)); overflow-y:auto; }
+.core-combobox-popup .core-select-option[data-disabled] { opacity:.5; cursor:not-allowed; }
+.core-select-trigger > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

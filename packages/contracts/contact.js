@@ -1,16 +1,19 @@
-// Canonical storage is punctuation-free; formatting never changes a phone's country code.
+// Canonical storage is punctuation-free; local Thai numbers gain +66, existing country codes stay intact.
 export const contactValue = value => String(value ?? '').trim().replace(/[ ()-]/g, '')
 export function formatTaxId(value) {
  const digits=contactValue(value)
  return /^\d{13}$/.test(digits)?digits.replace(/(\d)(\d{4})(\d{5})(\d{2})(\d)/,'$1-$2-$3-$4-$5'):value||''
 }
-export function formatPhone(value) {
+export function normalizePhone(value){
  const digits=contactValue(value)
- if(/^0\d{9}$/.test(digits))return digits.replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3')
- if(/^02\d{7}$/.test(digits))return digits.replace(/(\d{2})(\d{3})(\d{4})/,'$1-$2-$3')
- if(/^0\d{8}$/.test(digits))return digits.replace(/(\d{3})(\d{3})(\d{3})/,'$1-$2-$3')
- if(/^\+66[1-9]\d{7,8}$/.test(digits))return '+66-'+formatPhone('0'+digits.slice(3)).slice(1)
- return value||''
+ return /^0[1-9]\d{7,8}$/.test(digits)?'+66'+digits.slice(1):digits
+}
+export function formatPhone(value) {
+ const digits=normalizePhone(value)
+ if(/^\+66[1-9]\d{8}$/.test(digits))return digits.replace(/(\+66)(\d{2})(\d{3})(\d{4})/,'$1-$2-$3-$4')
+ if(/^\+662\d{7}$/.test(digits))return digits.replace(/(\+66)(\d)(\d{3})(\d{4})/,'$1-$2-$3-$4')
+ if(/^\+66[1-9]\d{7}$/.test(digits))return digits.replace(/(\+66)(\d{2})(\d{3})(\d{3})/,'$1-$2-$3-$4')
+ return digits
 }
 export function validateCompanyContact(input) {
  const errors={}

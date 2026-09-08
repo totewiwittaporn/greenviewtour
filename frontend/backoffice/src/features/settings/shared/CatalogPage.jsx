@@ -45,7 +45,7 @@ function Editor({entity,row,onClose,onSaved,readOnly=false,inline=false}){
  {entity==='tours'&&<p>Prices are per passenger in THB. Empty means not set; zero is an explicit free price. Booking and Public publishing are configured separately.</p>}
  {definition.fields.filter(f=>!f.hidden&&visibleField(f,values)).map(field=>{
  if(addressKeys.includes(field.key))return field.key==='province'?<AddressFields quick={entity==='company'} key="address" values={values} onChange={update} errors={errors} disabled={busy} legacyAddress={row?.address}/>:null
- const props={label:field.label,placeholder:field.placeholder,value:values[field.key],onChange:e=>update(field.key,e.target.value),error:errors[field.key],disabled:busy}
+ const props={label:field.label,hint:entity==='company'&&['name','legalName'].includes(field.key)?'English preferred / ใช้ภาษาอังกฤษเป็นหลัก และใส่ภาษาไทยได้':undefined,placeholder:field.placeholder,value:values[field.key],onChange:e=>update(field.key,e.target.value),error:errors[field.key],disabled:busy}
  if(entity==='company'&&['taxId','phone'].includes(field.key))return <FormattedField key={field.key} {...props} format={field.key}/>
  if(field.type==='select')return <SelectField key={field.key} {...props}>{field.options.map(option=><option key={option} value={option}>{labelFor(option)}</option>)}</SelectField>
  if(field.type==='reference')return <Related key={field.key} field={field} value={values[field.key]} label={row?.[field.key==='agentId'?'agent':field.key==='tourId'?'tour':field.key==='operatorId'?'operator':'provider']?.name} onChange={props.onChange} error={props.error} disabled={busy}/>

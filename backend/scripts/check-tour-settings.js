@@ -34,11 +34,11 @@ try{
   await create('channels',{code:`${prefix}-W`,name:'Rollback walk-in'})
   if(before.companySettings===0)await create('company',{name:'Rollback company'})
   const company=(await tx.companySettings.findMany({take:1}))[0]
-  const companySaved=await saveSettings(db,actor.id,'company',{...initialValues('company',company),id:company.id,version:company.version,province:'ภูเก็ต',district:'เมืองภูเก็ต',subdistrict:'ราไวย์',postalCode:'99999'})
-  assert.equal(companySaved.row.postalCode,'83130')
+  const companySaved=await saveSettings(db,actor.id,'company',{...initialValues('company',company),id:company.id,version:company.version,province:'ภูเก็ต',district:'เมืองภูเก็ต',subdistrict:'ราไวย์',postalCode:'99999',phone:'0812345678'})
+  assert.equal(companySaved.row.postalCode,'83130');assert.equal(companySaved.row.phone,'+66812345678')
   const companyRead=await listSettings(db,actor.id,'company',new URLSearchParams());assert.equal(companyRead.rows[0].postalCode,'83130')
   stage='structured address persistence'
-  const storedPartner=await tx.businessPartner.findUnique({where:{id:partner.id}});assert.equal(storedPartner.province,'ภูเก็ต');assert.equal(storedPartner.houseNumber,'12/34');assert.equal(storedPartner.postalCode,'83130')
+  const storedPartner=await tx.businessPartner.findUnique({where:{id:partner.id}});assert.equal(storedPartner.province,'Phuket');assert.equal(storedPartner.houseNumber,'12/34');assert.equal(storedPartner.postalCode,'83130')
   await editOwnProfile(db,actor.id,{displayName:actor.displayName,updatedAt:actor.updatedAt.toISOString(),province:'กระบี่',district:'เมืองกระบี่',subdistrict:'อ่าวนาง',moo:'5',houseNumber:'99'})
   const updatedActor=await tx.userProfile.findUnique({where:{id:actor.id},include:profileInclude});assert.equal(updatedActor.postalCode,'81180');assert.equal(updatedActor.address,actor.address);assert.equal(publicProfile(updatedActor,'fixture@example.invalid').province,'กระบี่')
   stage='read prices and foreign keys'

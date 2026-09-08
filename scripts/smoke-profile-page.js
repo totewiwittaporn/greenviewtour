@@ -71,7 +71,7 @@ try {
   await page.getByRole('button', { name: 'Save changes', exact: true }).click()
   await page.getByText('Unable to finish saving.', { exact: false }).waitFor()
   fail = 0
-  await page.getByLabel('Province', { exact: true }).fill('กระบี่')
+  await page.getByRole('combobox',{name:'Province',exact:true}).click(); await page.getByRole('option',{name:'Krabi · กระบี่',exact:true}).click()
   await page.getByLabel('House number', { exact: true }).fill('12')
   await page.getByRole('button', { name: 'Save changes', exact: true }).click()
   await page.getByText('Profile updated.', { exact: true }).waitFor()

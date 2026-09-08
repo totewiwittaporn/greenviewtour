@@ -1,8 +1,8 @@
-import { postalCodeFor, validateThaiAddress } from '../../packages/contracts/thai-address.js'
+import { areaMatches, englishAddress, postalCodeFor, validateThaiAddress } from '../../packages/contracts/thai-address.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import areas from '../../packages/contracts/data/thai-areas.js'
-import { contactValue,formatPhone,formatTaxId } from '../../packages/contracts/contact.js'
+import { contactValue,normalizePhone,formatPhone,formatTaxId } from '../../packages/contracts/contact.js'
 import { initialValues,validateCatalog } from '../../packages/contracts/catalog.js'
 import { canManageCatalog,listSettings,saveSettings } from '../src/modules/service-catalog/settings.js'
 test('Thai lookup has unique administrative codes and valid parent relationships including Bangkok and Phuket',()=>{
@@ -16,7 +16,7 @@ test('Thai lookup has unique administrative codes and valid parent relationships
 })
 test('company contact accepts pasted separators and preserves all digits and country codes',()=>{
  assert.equal(formatTaxId('0123456789012'),'0-1234-56789-01-2')
- for(const [raw,display]of[['076123456','076-123-456'],['021234567','02-123-4567'],['0812345678','081-234-5678'],['+66812345678','+66-81-234-5678']]){assert.equal(formatPhone(raw),display);assert.equal(contactValue(display),raw)}
+ for(const [raw,display]of[['076123456','+66-76-123-456'],['021234567','+66-2-123-4567'],['0812345678','+66-81-234-5678'],['+66812345678','+66-81-234-5678']]){assert.equal(formatPhone(raw),display);assert.equal(contactValue(display),normalizePhone(raw))}
  const valid=validateCatalog('company',{...initialValues('company'),name:'Example',taxId:'0-1234-56789-01-2',phone:'+66-81-234-5678'})
  assert.deepEqual(valid.errors,{});assert.equal(valid.data.taxId,'0123456789012');assert.equal(valid.data.phone,'+66812345678')
  for(const value of ['123','12345678901234','123456789012x'])assert.ok(validateCatalog('company',{name:'Example',taxId:value}).errors.taxId)
@@ -58,4 +58,13 @@ test('known Krabi delivery areas resolve by Moo without guessing a district defa
  assert.equal(postalCodeFor({...value,moo:'8'},areas),'81210')
  assert.equal(postalCodeFor({...value,moo:'9'},areas),'')
  assert.equal(postalCodeFor({...value,subdistrict:'หนองทะเล'},areas),'81180')
+})
+
+test('area labels support English-first selections and legacy Thai names without translating free text',()=>{
+ const province=areas.provinces.find(row=>row.id===82)
+ for(const input of ['พังงา','Phang-Nga','Phang Nga','Phangnga'])assert.ok(areaMatches(province,input))
+ assert.deepEqual(englishAddress({province:'ภูเก็ต',district:'เมืองภูเก็ต',subdistrict:'ราไวย์',houseNumber:'บ้านฉัน'},areas),{province:'Phuket',district:'Mueang Phuket',subdistrict:'Rawai'})
+ assert.equal(normalizePhone('0812345678'),'+66812345678')
+ assert.equal(normalizePhone('+44 20 7946 0958'),'+442079460958')
+ assert.equal(formatPhone('0812345678'),'+66-81-234-5678')
 })

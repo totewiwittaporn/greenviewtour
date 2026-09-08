@@ -1,4 +1,4 @@
-import { contactValue, validateCompanyContact } from './contact.js'
+import { contactValue, normalizePhone, validateCompanyContact } from './contact.js'
 import { addressFields, validateAddress } from './address.js'
 const text = (key, label, required = false, max = 200) => ({ key, label, type: 'text', required, max })
 const select = (key, label, options) => ({ key, label, type: 'select', options, required: true })
@@ -42,7 +42,7 @@ export function validateCatalog(entity,input) {
   else if(f.type==='reference'){if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean))errors[key]='Select an available record.';else data[key]=clean}
   else {if((required&&!clean)||clean.length>f.max||[...clean].some(c=>(c.charCodeAt(0)<32&&!['\n','\r','\t'].includes(c))||c.charCodeAt(0)===127))errors[key]=`Enter ${required?'1–':'up to '}${f.max} characters.`;data[key]=clean||null}
  }
- if(entity==='company'){Object.assign(errors,validateCompanyContact(data));for(const key of ['taxId','phone'])if(data[key])data[key]=contactValue(data[key])}
+ if(entity==='company'){Object.assign(errors,validateCompanyContact(data));for(const key of ['taxId','phone'])if(data[key])data[key]=key==='phone'?normalizePhone(data[key]):contactValue(data[key])}
  if(data.code){data.code=data.code.toUpperCase();if(!/^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(data.code))errors.code='Use letters, numbers, hyphens or underscores.'}
  if(data.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))errors.email='Enter a valid email address.'
  if(entity==='rates'&&data.adultPrice===null&&data.childPrice===null)errors.adultPrice='Set an adult or child price.'
