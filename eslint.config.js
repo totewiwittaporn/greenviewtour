@@ -24,7 +24,7 @@ export default defineConfig([
     },
     rules: {
       'no-restricted-imports': ['error', { patterns: [
-        { group: ['**/apps/**', '**/api/**', '**/database/**', '**/infrastructure/**', '**/public-web/**', '**/backoffice/**', '@greenviewtour/public-web', '@greenviewtour/backoffice', '@greenviewtour/api'], message: 'Keep applications isolated; share only browser-safe contracts.' },
+        { group: ['**/frontend/**', '**/backend/**', '**/database/**', '**/infrastructure/**', '**/public-web/**', '**/backoffice/**', '@greenviewtour/public-web', '@greenviewtour/backoffice', '@greenviewtour/api'], message: 'Keep applications isolated; share only browser-safe contracts.' },
       ] }],
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },

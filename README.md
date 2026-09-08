@@ -30,13 +30,13 @@ Public web uses port 5173; backoffice uses 5174. Ports are strict to avoid silen
 | `npm run lint` | Repository ESLint checks |
 | `npm run check` | Lint and build both frontends |
 
-Outputs: `apps/public-web/dist` and `apps/backoffice/dist`. There is one root package-lock.json; do not generate application-local lockfiles.
+Outputs: `frontend/public-web/dist` and `frontend/backoffice/dist`. There is one root package-lock.json; do not generate application-local lockfiles.
 
 ## Project map
 
-- `apps/public-web`: customer website; independent `src/core/ui`.
-- `apps/backoffice`: company staff application; independent `src/core/ui`.
-- `apps/api`: backend module boundaries and composition locations.
+- `frontend/public-web`: customer website; independent `src/core/ui`.
+- `frontend/backoffice`: company staff application; independent `src/core/ui`.
+- `backend`: backend module boundaries and composition locations.
 - `packages/contracts`: browser-safe API contracts only.
 - `packages/config`: shared development tooling only.
 - `database`: future schema/migrations/seeds.

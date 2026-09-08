@@ -27,7 +27,8 @@
     "vite": "^7.1.7"
   },
   "workspaces": [
-    "apps/*",
+    "frontend/*",
+    "backend",
     "packages/*"
   ],
   "engines": {
