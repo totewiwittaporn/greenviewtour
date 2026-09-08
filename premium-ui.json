@@ -1,8 +1,8 @@
 {
   "profile": "product-admin",
   "sourceRoots": [
-    "apps/public-web/src",
-    "apps/backoffice/src"
+    "frontend/public-web/src",
+    "frontend/backoffice/src"
   ],
   "canonicalMap": "UX-CONTRACT.md",
   "requiredCapabilities": []

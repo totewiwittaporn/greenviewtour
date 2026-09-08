@@ -6,8 +6,8 @@ Two audiences: customers exploring/bookings services, and employees operating th
 
 ## Ownership
 
-Public-web presentation and behavior: `apps/public-web/src/core/ui`.
-Backoffice presentation and behavior: `apps/backoffice/src/core/ui`.
+Public-web presentation and behavior: `frontend/public-web/src/core/ui`.
+Backoffice presentation and behavior: `frontend/backoffice/src/core/ui`.
 Runtime baseline CSS: each core's `styles.css`. Public Vite template styling is retained as migration evidence, not an approved brand system. `legacy-template.css` is retained but not imported.
 
 ## Direction

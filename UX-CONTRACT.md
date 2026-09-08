@@ -6,8 +6,8 @@ Business sources: `docs/architecture.md` and `docs/identity-access.md`.
 
 | Capability | Canonical owner | Source of truth | Allowed variants | Verification |
 | --- | --- | --- | --- | --- |
-| Public application baseline | apps/public-web/src/core/ui/styles.css | DESIGN.md | Public web only | Public build and entry import |
-| Backoffice application baseline | apps/backoffice/src/core/ui/styles.css | DESIGN.md | Backoffice only | Backoffice build and entry import |
+| Public application baseline | frontend/public-web/src/core/ui/styles.css | DESIGN.md | Public web only | Public build and entry import |
+| Backoffice application baseline | frontend/backoffice/src/core/ui/styles.css | DESIGN.md | Backoffice only | Backoffice build and entry import |
 
 Tables, forms, selection, dates, dialogs, toast and CRUD are not applicable to the empty entry points. Resolve their canonical owners inside the relevant core before implementing those capabilities. Do not add feature-local substitutes for reusable primitives.
 

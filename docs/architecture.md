@@ -40,3 +40,7 @@ Employee and User are distinct; an employee may have no login. Position is separ
 Base main commit: 76633afed6ee8896d4593662e985e87dc9a45f32. Only a Vite/React starter existed; App.jsx was empty despite being imported as a default export. No AGENTS.md, API, database schema, hosting config or CI workflow existed. Main was the only branch and no open PR was found. This scaffold fixes the empty export with a null-rendering component, retains public template assets/styles, and adds no production integration.
 
 Chalin Clothes is a conceptual reference supplied by the owner; this change does not claim a code-level audit or reuse of its repository.
+
+## Folder naming
+
+The owner requested frontend/backend naming aligned with Chalin Clothes. Frontend applications live in `frontend/public-web` and `frontend/backoffice`; the shared API lives in `backend`. The workspace package name `@greenviewtour/api` remains stable because its responsibility is still the API. UI cores remain separate.
