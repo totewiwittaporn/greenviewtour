@@ -4,7 +4,7 @@ Company-management monorepo with independent public-web and backoffice UI cores.
 
 ## Current status
 
-Repository foundation only. Both React entry points render an intentionally empty shell. The API and business modules are documented ownership boundaries, not working services. Login, user management, bookings, accounting and deployment are not implemented.
+Repository foundation only. Both React entry points render an intentionally empty shell. The Backend includes a Preview PostgreSQL connection adapter and diagnostic command; business modules remain ownership scaffolds, not working services. Login, user management, bookings, accounting and deployment are not implemented.
 
 ## Development
 
@@ -28,7 +28,9 @@ Public web uses port 5173; backoffice uses 5174. Ports are strict to avoid silen
 | `npm run preview` | Serve built public web on 4173 |
 | `npm run preview:backoffice` | Serve built backoffice on 4174 |
 | `npm run lint` | Repository ESLint checks |
-| `npm run check` | Lint and build both frontends |
+| `npm run db:check` | Verify Preview DB using private Backend environment |
+| `npm run test:backend` | Backend configuration and DB probe unit tests |
+| `npm run check` | Lint, Backend unit tests and both frontend builds |
 
 Outputs: `frontend/public-web/dist` and `frontend/backoffice/dist`. There is one root package-lock.json; do not generate application-local lockfiles.
 
@@ -49,3 +51,5 @@ Read [architecture](docs/architecture.md), [identity and access](docs/identity-a
 ## Backoffice page structure
 
 The [menu/page map](docs/backoffice-menu-map.md) reserves 12 menus and 34 pages under both `frontend/backoffice/src/features` and `backend/src/backoffice`. These are folder scaffolds, not working screens or API endpoints. Backend domain modules remain the owners of business rules.
+
+See [Preview DB connection](docs/database-connection.md) for server environment setup and current verification limits.

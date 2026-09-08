@@ -29,4 +29,13 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    files: ['backend/**/*.js'],
+    languageOptions: { globals: globals.node },
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [
+        { group: ['**/frontend/**', '@greenviewtour/public-web', '@greenviewtour/backoffice'], message: 'Backend must not import frontend code.' },
+      ] }],
+    },
+  },
 ])
