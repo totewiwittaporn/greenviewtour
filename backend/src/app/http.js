@@ -94,6 +94,29 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
         }
         return send(404, { code: 'NOT_FOUND' })
       }
+      if (req.method === 'POST' && path === '/api/me/password') {
+        const { user, entry } = await sessions.authenticated(req, provider, pool)
+        if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
+        const input = await body(req)
+        if (Object.keys(input).some(key => !['currentPassword', 'password'].includes(key))) throw new AccessError('INVALID_REQUEST', 400)
+        const currentPassword = password(input.currentPassword), nextPassword = password(input.password, true)
+        if (currentPassword === nextPassword) throw new AccessError('PASSWORD_UNCHANGED', 400)
+        const profile = await prisma.userProfile.findUnique({ where: { id: user.id } })
+        if (profile?.status !== 'ACTIVE') throw new AccessError('ACCOUNT_UNAVAILABLE')
+        const verified = await provider.login(user.email, currentPassword)
+        try {
+          if (verified.user.id !== user.id) throw new AccessError('INVALID_CREDENTIALS', 400)
+          const active = await prisma.userProfile.findUnique({ where: { id: user.id } })
+          if (active?.status !== 'ACTIVE') throw new AccessError('ACCOUNT_UNAVAILABLE')
+          const audit = await prisma.auditEvent.create({ data: { actorId: user.id, targetId: user.id, action: 'password.change.requested', details: { source: 'profile' } } })
+          const outcome = await provider.password(verified.session, nextPassword)
+          sessions.deleteUser(user.id)
+          let finalized = true
+          try { await prisma.auditEvent.update({ where: { id: audit.id }, data: { action: 'password.changed', details: { source: 'profile', providerRevoked: outcome.providerRevoked } } }) }
+          catch { finalized = false; console.error('PASSWORD_CHANGE_AUDIT_FINALIZATION_PENDING') }
+          return send(200, { ok: true, warning: !outcome.providerRevoked || !finalized ? 'PASSWORD_CHANGED_FOLLOW_UP_REQUIRED' : null }, '')
+        } finally { await provider.logout(verified.session).catch(() => {}) }
+      }
       const invitationMatch = path.match(/^\/api\/invitations\/([0-9a-f-]{36})\/(renew|revoke)$/)
       const resetMatch = path.match(/^\/api\/users\/([0-9a-f-]{36})\/reset-password$/)
       if (path === '/api/invitations' || invitationMatch || resetMatch || (path === '/api/me/profile' && req.method === 'POST')) {

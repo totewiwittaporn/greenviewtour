@@ -1,0 +1,88 @@
+import assert from 'node:assert/strict'
+import { mkdir } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
+import { chromium } from 'playwright'
+const output = new URL('../screenshots.local/', import.meta.url)
+await mkdir(output, { recursive: true })
+const browser = await chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } }), errors = []
+  page.on('pageerror', error => errors.push(error.message))
+  const user = { id: 'fixture', displayName: 'Fixture Manager', email: 'fixture@example.invalid', status: 'ACTIVE', department: 'MANAGEMENT', roles: [{ code: 'MANAGER', name: 'Manager', scope: 'COMPANY' }], management: { company: true }, updatedAt: new Date().toISOString(), createdAt: '2026-09-01T00:00:00Z', primaryPhone: '+66 81 234 5678', emergencyPhone: '089 876 5432', lineId: 'fixture.line', address: '1 Beach Road\nKrabi' }
+  let patch, passwordPatch, fail = 409, wrongPassword = true
+  await page.route('**/api/me', r => r.fulfill({ json: { user } }))
+  await page.route('**/api/me/profile', r => {
+    patch = r.request().postDataJSON()
+    if (fail) return r.fulfill({ status: fail, json: { code: fail === 409 ? 'PROFILE_CONFLICT' : 'SERVICE_UNAVAILABLE' } })
+    Object.assign(user, patch, { updatedAt: new Date().toISOString() }); return r.fulfill({ json: { ok: true } })
+  })
+  await page.route('**/api/me/password', r => {
+    passwordPatch = r.request().postDataJSON()
+    if (wrongPassword) return r.fulfill({ status: 400, json: { code: 'INVALID_CREDENTIALS' } })
+    return r.fulfill({ json: { ok: true } })
+  })
+  await page.route('**/api/users?*', r => r.fulfill({ json: { users: [{ ...user, roles: [{ roleCode: 'MANAGER' }] }], total: 1, page: 1, summary: { total: 1, verified: 1, signed_in: 1 }, canInvite: true, checkedAt: new Date().toISOString() } }))
+  await page.route('**/api/invitations', r => r.fulfill({ json: { invitations: [], roles: [], departments: [] } }))
+  await page.goto('http://localhost:5174/settings/users')
+  const search = page.getByRole('searchbox')
+  await search.fill('fixture')
+  assert.equal(await search.evaluate(el => getComputedStyle(el).outlineStyle), 'none')
+  assert.equal(await page.locator('.search-field').evaluate(el => getComputedStyle(el).borderColor), 'rgb(8, 127, 140)')
+  await page.getByRole('tab', { name: 'Invitations', exact: true }).click()
+  assert.equal(await page.getByRole('searchbox').count(), 0)
+  assert.equal(await page.getByRole('table').count(), 1)
+  await page.keyboard.press('ArrowLeft')
+  assert.equal(await search.inputValue(), 'fixture')
+  assert.equal(await page.getByRole('table').count(), 1)
+  assert.equal(await page.getByRole('link', { name: 'Call Fixture Manager: +66 81 234 5678', exact: true }).getAttribute('href'), 'tel:+66812345678')
+  assert.equal(await page.getByRole('link', { name: 'Call emergency number for Fixture Manager: 089 876 5432', exact: true }).getAttribute('href'), 'tel:0898765432')
+  await search.click()
+  await page.screenshot({ path: fileURLToPath(new URL('users-tabs-search.png', output)), fullPage: true })
+  await page.getByRole('button', { name: 'User menu' }).click()
+  await page.getByRole('menuitem', { name: 'Edit profile', exact: true }).click()
+  await page.waitForURL('**/profile')
+  await page.getByLabel('Primary phone', { exact: true }).fill('123')
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  assert.equal(await page.getByLabel('Primary phone', { exact: true }).getAttribute('aria-invalid'), 'true')
+  assert.equal(patch, undefined)
+  await page.getByLabel('Primary phone', { exact: true }).fill('+66 82 345 6789')
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await page.getByText('Your profile has changed elsewhere.', { exact: false }).waitFor()
+  assert.equal(await page.getByLabel('Primary phone', { exact: true }).inputValue(), '+66 82 345 6789')
+  fail = 503
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await page.getByText('Unable to finish saving.', { exact: false }).waitFor()
+  fail = 0
+  await page.getByLabel('Address', { exact: true }).fill('บ้านเลขที่ 12\nKrabi, Thailand')
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click()
+  await page.getByText('Profile updated.', { exact: true }).waitFor()
+  assert.equal(patch.primaryPhone, '+66 82 345 6789'); assert.equal(patch.emergencyPhone, '089 876 5432'); assert.equal(patch.lineId, 'fixture.line'); assert.equal('department' in patch, false)
+  await page.screenshot({ path: fileURLToPath(new URL('profile-desktop.png', output)), fullPage: true })
+  await page.setViewportSize({ width: 390, height: 844 })
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
+  await page.screenshot({ path: fileURLToPath(new URL('profile-mobile.png', output)), fullPage: true })
+  await page.getByLabel('Current password', { exact: true }).fill('wrong-fixture-password')
+  await page.getByLabel('New password', { exact: true }).fill('new-fixture-password')
+  await page.getByLabel('Confirm new password', { exact: true }).fill('different-password')
+  await page.getByRole('button', { name: 'Change password', exact: true }).click()
+  await page.getByText('Passwords do not match.', { exact: true }).waitFor()
+  assert.equal(passwordPatch, undefined)
+  await page.getByLabel('Confirm new password', { exact: true }).fill('new-fixture-password')
+  await page.getByRole('button', { name: 'Change password', exact: true }).click()
+  await page.getByText('The current password is incorrect.', { exact: true }).waitFor()
+  assert.equal(await page.getByLabel('Current password', { exact: true }).evaluate(el => el === document.activeElement), true)
+  wrongPassword = false
+  await page.getByLabel('Current password', { exact: true }).fill('old-fixture-password')
+  await page.getByRole('button', { name: 'Change password', exact: true }).click()
+  await page.getByRole('heading', { name: 'Password changed', exact: true }).waitFor()
+  assert.equal(await page.locator('input[type=password]').count(), 0)
+  await page.getByRole('link', { name: 'Return to sign in', exact: true }).click()
+  await page.waitForURL('**/login')
+  // Ordinary staff retain self-service access without a directory or invitation tab.
+  user.management = null; user.roles = [{ code: 'GUIDE', name: 'Guide', scope: 'SELF' }]
+  await page.goto('http://localhost:5174/profile')
+  await page.getByRole('heading', { name: 'Edit profile', exact: true }).waitFor()
+  assert.equal(await page.getByRole('link', { name: 'Users', exact: true }).count(), 0)
+  assert.deepEqual(errors, [])
+  console.log(JSON.stringify({ result: 'PASS', providerWrites: 0, checks: ['search focus', 'whole dataset tabs and keyboard', 'filter preserved', 'primary/emergency tel links', 'full profile route', 'contact validation', '409/503 retain edits', 'profile save', 'desktop/mobile layout', 'password mismatch/current password/success', 'ordinary staff access'] }))
+} finally { await browser.close() }

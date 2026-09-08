@@ -19,10 +19,18 @@ export function canEditProfile(actor, target) {
   return target.department === scope.department && !target.roles.some(role => ['ADMIN_MANAGER','MANAGER'].includes(role.roleCode))
 }
 export function validateProfilePatch(input, scope) {
-  if (!input || Object.keys(input).some(key => !['displayName','department','updatedAt'].includes(key))) throw new AccessError('INVALID_PROFILE_FIELDS', 400)
+  if (!input || Object.keys(input).some(key => !['displayName','department','updatedAt','address','primaryPhone','emergencyPhone','lineId'].includes(key))) throw new AccessError('INVALID_PROFILE_FIELDS', 400)
   if (typeof input.displayName !== 'string' || !input.displayName.trim() || input.displayName.trim().length > 100) throw new AccessError('INVALID_DISPLAY_NAME',400)
   if (typeof input.updatedAt !== 'string' || !Number.isFinite(Date.parse(input.updatedAt))) throw new AccessError('PROFILE_VERSION_REQUIRED',400)
   const data = { displayName: input.displayName.trim() }
+  for (const [key, limit] of Object.entries({ address: 1000, primaryPhone: 32, emergencyPhone: 32, lineId: 100 })) {
+    if (!(key in input)) continue
+    if (input[key] !== null && typeof input[key] !== 'string') throw new AccessError('INVALID_CONTACT_DETAILS', 400)
+    const value = input[key]?.trim() || null
+    if (value && (value.length > limit || [...value].some(char => char.charCodeAt(0) < 32 && !['\n', '\r', '\t'].includes(char) || char.charCodeAt(0) === 127))) throw new AccessError('INVALID_CONTACT_DETAILS', 400)
+    if (value && key.endsWith('Phone') && (!/^\+?[0-9 ()-]+$/.test(value) || value.replace(/\D/g, '').length < 7 || value.replace(/\D/g, '').length > 15)) throw new AccessError('INVALID_PHONE', 400)
+    data[key] = value
+  }
   if ('department' in input) {
     if (!scope.company) throw new AccessError('DEPARTMENT_CHANGE_DENIED')
     if (input.department !== null && !departments.includes(input.department)) throw new AccessError('INVALID_DEPARTMENT',400)
@@ -39,7 +47,7 @@ export async function editProfile(prisma, actorId, targetId, input) {
     const data = validateProfilePatch(input,managementScope(actor))
     const result = await tx.userProfile.updateMany({ where: { id: targetId, updatedAt: new Date(input.updatedAt) }, data })
     if (result.count !== 1) throw new AccessError('PROFILE_CONFLICT',409)
-    await tx.auditEvent.create({ data: { actorId, targetId, action: 'profile.updated', details: { before: { displayName: target.displayName, department: target.department }, after: { displayName: data.displayName, department: data.department === undefined ? target.department : data.department } } } })
+    await tx.auditEvent.create({ data: { actorId, targetId, action: 'profile.updated', details: { fields: Object.keys(data) } } })
     return { ok: true }
   })
 }
@@ -52,7 +60,7 @@ export async function editOwnProfile(prisma, actorId, input) {
     const data = validateProfilePatch(input, { company: false })
     const updated = await tx.userProfile.updateMany({ where: { id: actorId, updatedAt: new Date(input.updatedAt) }, data })
     if (updated.count !== 1) throw new AccessError('PROFILE_CONFLICT', 409)
-    await tx.auditEvent.create({ data: { actorId, targetId: actorId, action: 'profile.updated', details: { before: { displayName: actor.displayName }, after: data, source: 'self' } } })
+    await tx.auditEvent.create({ data: { actorId, targetId: actorId, action: 'profile.updated', details: { fields: Object.keys(data), source: 'self' } } })
     return { ok: true }
   })
 }

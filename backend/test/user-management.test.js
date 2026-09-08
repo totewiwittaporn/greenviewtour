@@ -58,3 +58,33 @@ test('unrelated role scopes cannot combine into company editing permission',()=>
  actor.roles.push(...profile('HEAD_DRIVER','DRIVER').roles)
  assert.equal(canEditProfile(actor,profile('GUIDE','GUIDE')),false)
 })
+
+test('contact details are bounded, nullable and reject dial-link injection', () => {
+  const base = { displayName: 'Guide', updatedAt: new Date().toISOString() }
+  const data = validateProfilePatch({ ...base, primaryPhone: ' +66 (81) 234-5678 ', emergencyPhone: '', lineId: 'guide.line', address: 'บ้านเลขที่ 1\nKrabi' }, { company: false })
+  assert.equal(data.primaryPhone, '+66 (81) 234-5678'); assert.equal(data.emergencyPhone, null)
+  for (const primaryPhone of ['tel:12345678', '1234567;ext=1', '+123', '1'.repeat(16), '<script>']) assert.throws(() => validateProfilePatch({ ...base, primaryPhone }, { company: false }), { code: 'INVALID_PHONE' })
+  assert.throws(() => validateProfilePatch({ ...base, address: 'x'.repeat(1001) }, { company: true }))
+  assert.throws(() => validateProfilePatch({ ...base, lineId: {} }, { company: true }))
+})
+test('profile password change verifies current credentials and identity before writing, and clears sessions only after success', async () => {
+  const { createHandler } = await import('../src/app/http.js')
+  const { AccessError } = await import('../src/modules/identity-access/membership.js')
+  const { Readable } = await import('node:stream')
+  for (const scenario of ['success', 'wrong-password', 'wrong-user', 'provider-error', 'inactive', 'recovery', 'audit-error']) {
+    let writes = 0, cleared = false, cleanup = 0, status, result
+    const request = Readable.from([JSON.stringify({ currentPassword: 'old-fixture-password', password: 'new-fixture-password' })])
+    Object.assign(request, { method: 'POST', url: '/api/me/password', headers: { host: '127.0.0.1:5000', origin: 'http://localhost:5174', 'x-greenview-local-token': 'a'.repeat(64), 'content-type': 'application/json' } })
+    const sessions = { authenticated: async () => ({ user: { id: 'fixture', email: 'fixture@example.invalid' }, entry: { purpose: scenario === 'recovery' ? 'recovery' : 'workspace' } }), deleteUser: () => { cleared = true }, cookie: () => 'cleared' }
+    const provider = { login: async (email, password) => { assert.equal(email, 'fixture@example.invalid'); assert.equal(password, 'old-fixture-password'); if (scenario === 'wrong-password') throw new AccessError('INVALID_CREDENTIALS', 400); return { user: { id: scenario === 'wrong-user' ? 'other' : 'fixture' }, session: {} } }, password: async () => { if (scenario === 'provider-error') throw new AccessError('AUTH_UNAVAILABLE', 503); writes++; return { providerRevoked: true } }, logout: async () => { cleanup++ } }
+    const audits = []
+    const prisma = { userProfile: { findUnique: async () => ({ status: scenario === 'inactive' ? 'SUSPENDED' : 'ACTIVE' }) }, auditEvent: { create: async input => { audits.push(input); return { id: 'audit' } }, update: async input => { if (scenario === 'audit-error') throw new Error('offline'); audits.push(input) } } }
+    await createHandler({ token: 'a'.repeat(64), sessions, provider, prisma })(request, { writeHead: value => { status = value }, end: value => { result = JSON.parse(value) } })
+    const success = ['success', 'audit-error'].includes(scenario)
+    assert.equal(status, success ? 200 : ['wrong-password', 'wrong-user'].includes(scenario) ? 400 : scenario === 'provider-error' ? 503 : scenario === 'recovery' ? 401 : 403)
+    assert.equal(writes, success ? 1 : 0); assert.equal(cleared, success)
+    assert.equal(cleanup, ['wrong-password', 'inactive', 'recovery'].includes(scenario) ? 0 : 1)
+    assert.equal(JSON.stringify(audits).includes('fixture-password'), false)
+    if (scenario === 'audit-error') assert.equal(result.warning, 'PASSWORD_CHANGED_FOLLOW_UP_REQUIRED')
+  }
+})
