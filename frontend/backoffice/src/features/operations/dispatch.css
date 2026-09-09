@@ -30,3 +30,52 @@
  .job-sheet { color: #000; font-size: 10pt; }
  .job-group dl { grid-template-columns: 135px minmax(0, 1fr); }
 }
+
+/* Shared document masthead: the boat / vehicle identity stays separate from crew. */
+.job-document-header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); border: 1px solid var(--line); margin-bottom: 20px; }
+.job-brand, .job-document-title, .job-document-context { padding: 12px; overflow-wrap: anywhere; }
+.job-brand { display: flex; flex-direction: column; gap: 8px; border-right: 1px solid var(--line); }
+.job-brand > strong { font-size: 20px; color: var(--ink); }
+.job-document-title h2 { margin: 0 0 8px; }
+.job-document-title p { margin: 4px 0; }
+.job-document-context { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+.job-document-context p { margin: 4px 0; }
+.job-cell-line { display: block; }
+.booking-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); margin-bottom: 20px; }
+.booking-facts > div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 10px; border-bottom: 1px solid var(--line); padding: 8px; overflow-wrap: anywhere; }
+.booking-facts strong { font-weight: 600; }
+.booking-services p { margin: 4px 0; overflow-wrap: anywhere; }
+.job-pending { border-left: 3px solid var(--primary); padding-left: 10px; overflow-wrap: anywhere; }
+.job-signoff { margin-top: 24px; line-height: 2; }
+.job-footnote { font-size: 11px; color: var(--muted); }
+@media (max-width: 560px) {
+ .job-document-header, .booking-facts { grid-template-columns: 1fr; }
+ .job-brand { border-right: 0; border-bottom: 1px solid var(--line); }
+ .booking-facts > div { grid-template-columns: 1fr; gap: 4px; }
+}
+@media print {
+ .job-sheet { font-family: Arial, 'Noto Sans Thai', sans-serif; }
+ .job-document-header { grid-template-columns: 1fr 1.5fr; border-color: #444; margin-bottom: 5mm; break-inside: avoid; }
+ .job-brand { border-right: 1px solid #444; border-bottom: 0; }
+ .job-document-context { border-color: #444; }
+ .job-brand > strong { color: #000; }
+ .job-document-title h2 { font-size: 15pt; }
+ .job-print-table { font-size: 8.5pt; line-height: 1.4; }
+ .job-print-table th, .job-print-table td { padding: 1.5mm; }
+ .job-print-table th:nth-child(2), .job-print-table td:nth-child(2) { width: auto; }
+ .job-section-row, .job-total-row { background: #e8efdf; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+ .job-total-row { font-weight: bold; border-top: 2px solid #444; }
+ .booking-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ .booking-facts > div { grid-template-columns: 32mm minmax(0, 1fr); break-inside: avoid; }
+ .booking-sheet h3 { break-after: avoid; margin: 5mm 0 2mm; }
+ .booking-services p, .job-pending, .job-signoff { break-inside: avoid; }
+ .job-footnote { color: #444; }
+}
+@media print {
+ body:has(.job-sheet) dialog.core-dialog:has(.job-sheet) { box-shadow: none !important; border-radius: 0 !important; }
+}
+@media print {
+ body:has(.job-sheet) * { animation: none !important; transition: none !important; }
+ .job-print-table th { color: #000; }
+ .job-document-title { min-width: 0; overflow: visible; }
+}

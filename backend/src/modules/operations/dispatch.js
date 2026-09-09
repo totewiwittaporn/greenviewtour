@@ -37,6 +37,7 @@ export function jobBooking(booking, runKind) {
     agentReference: booking.agentReference, contactPhone: booking.contactPhone,
     hotel: booking.hotel, room: booking.room, pickupPoint: booking.pickupPoint,
     dropoffPoint: booking.dropoffPoint, allergies: booking.allergies, assistance: booking.assistance,
+    arrivalAt: booking.trip?.startsAt, departureAt: booking.trip?.endsAt,
     requestNotes: booking.requestNotes, programName: booking.programSnapshot?.name || booking.trip?.name,
   }
   if(runKind==='BOAT'){delete row.hotel;delete row.room;delete row.agentPhone;delete row.contactPhone;delete row.pickupPoint;delete row.dropoffPoint}

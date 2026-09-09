@@ -127,3 +127,7 @@ Core Dialog's table variant uses a 960px maximum width for multi-column preparat
 Navigation refinement 2026-09-09: shared Core workspace route metadata separates reusable Settings from daily work and covers every implemented workspace route in the same-document navigation provider. Booking, Guide operations, Driver operations and Stock operations precede Settings. Existing sea-green Shell, shared tab motion, table geometry and form controls remain canonical; no screen-local navigation handler is introduced.
 
 Core Dropdown uses its owning Dialog as its portal host when opened from modal content, matching SelectField. It retains viewport anchoring, shared surface tokens and menu geometry; modal top-layer ownership is behavioral and does not introduce a new visual variant.
+
+## Operational documents
+
+JobSheets.jsx owns the shared Greenview document masthead and print tables for boat, transfer and Booking copies. The supplied May 2026 Job Order is the reference for ruled A4 landscape tables, a distinct direction band and passenger totals. Screen cards retain existing sea-green tokens; printed sheets use black borders and a pale green total band for economical printing. The date/run and revision repeat on continuation pages. Existing field permissions take precedence over the sample's payment/hotel columns. Each dispatch run has its own independent direction and actual counts; do not derive return passengers from the outbound list. Booking handoff exposes incomplete allocations per direction. No new Core control variant is introduced.

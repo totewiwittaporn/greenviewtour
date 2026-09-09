@@ -11,6 +11,7 @@ export async function listOperations(prisma,actorId,entity,params){
  if(q.length>100||!Number.isSafeInteger(requested)||requested<1||requested>100000)fail('INVALID_FILTER',400)
  if(status&&!['ACTIVE','INACTIVE','OPEN','DRAFT','CONFIRMED','COMPLETED','CANCELLED','READY','CLEANING','DAMAGED'].includes(status))fail('INVALID_FILTER',400)
  const base=definition?.kind?{kind:definition.kind}:{},where={...base}
+ if(params.get('bookingId')){if(entity!=='bookings')fail('INVALID_FILTER',400);where.id=uuid(params.get('bookingId'))}
  if(entity==='resources'&&params.get('kind')){const kind=params.get('kind');if(!['SERVICE','EQUIPMENT','CONSUMABLE','MATERIAL'].includes(kind))fail('INVALID_FILTER',400);where.kind=kind==='MATERIAL'?{in:['EQUIPMENT','CONSUMABLE']}:kind}
  if(status&&!['stock','issues','movements'].includes(entity))where.status=status
  if(entity==='stock'){where.quantity={gt:0};if(status)where.condition=status}
