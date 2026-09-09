@@ -28,7 +28,7 @@ try{
  const drink=await save('consumables',{code:prefix+'-WATER',name:prefix+' Water',category:'WATER',baseUnit:'BOTTLE',packSize:'12',caseSize:'24',salePrice:'10.00'})
  const fins=await save('equipment',{code:prefix+'-FINS',name:prefix+' Fins',category:'FINS',baseUnit:'PAIR',salePrice:'20.00'})
  const fruit=await save('consumables',{code:prefix+'-FRUIT',name:prefix+' Watermelon',category:'WATERMELON',baseUnit:'FRUIT',salePrice:'0'})
- const service=await save('services',{code:prefix+'-VAN',name:prefix+' Transfer',category:'TRANSFER',baseUnit:'PERSON',salePrice:'100.00'})
+ const service=await save('services',{code:prefix+'-VAN',name:prefix+' Transfer',category:'OTHER',baseUnit:'PERSON',salePrice:'100.00'})
  await expectCode(()=>save('consumables',{code:prefix+'-INVALID',name:'invalid',category:'WATER',baseUnit:'FRUIT'}),'INVALID_UNIT')
  const receive=await command({action:'RECEIVE',resourceId:drink.id,locationId:store.id,quantity:10,unit:'PACK',lotLabel:prefix,receivedOn:date,expiresOn:'2027-01-01',unitCost:'120'})
  assert.equal((await balance(drink.id)).quantity,120);assert.equal(receive.factor,12)
@@ -42,7 +42,7 @@ try{
  const trip=await save('trips',{code:prefix+'-TRIP',name:prefix+' Trip',startsAt:start,endsAt:end,capacity:'10'})
  const later=await save('trips',{code:prefix+'-LATER',name:prefix+' Later',startsAt:'2026-10-11 08:00',endsAt:'2026-10-11 18:00',capacity:'10'})
  const slot=await save('slots',{code:prefix+'-SLOT',name:prefix+' Slot',resourceId:service.id,startsAt:start,endsAt:end,capacity:'2'})
- const book=async(tripId,lines,name='booking')=>(await saveBooking(prisma,actor,{id:newId(),version:0,code:prefix+'-'+created.size,name:prefix+' '+name,tripId,adults:1,children:0,adultPrice:'0',childPrice:'0',lines})).row
+ const book=async(tripId,lines,name='booking')=>(await saveBooking(prisma,actor,{id:newId(),version:0,code:prefix+'-'+created.size,name:prefix+' '+name,tripId,adults:1,children:0,adultPrice:'0',childPrice:'0',paymentTerms:'COUNTER',lines})).row
  const status=async(row,action)=>{const input={id:newId(),bookingId:row.id,version:row.version,action};await bookingStatus(prisma,actor,input);return prisma.tourBooking.findUnique({where:{id:row.id},include:{lines:true}})}
  let booking=await book(trip.id,[{resourceId:fins.id,selected:true,quantity:10,sourceId:store.id,usagePoint:'BOAT'}])
  booking=await status(booking,'CONFIRM')

@@ -1,3 +1,4 @@
+import { dispatchCategories } from './dispatch.js'
 import { peakUsage, localStamp } from '../../../../packages/contracts/operations.js'
 import { fail } from './common.js'
 export async function ensureStockReservations(tx,resourceId,sourceId){
@@ -36,6 +37,7 @@ export async function ensureBookingAvailability(tx,booking){
   const resource=await tx.operationResource.findUnique({where:{id:line.resourceId}})
   if(resource.status!=='ACTIVE')fail('RELATED_RECORD_UNAVAILABLE')
   if(resource.kind==='SERVICE'){
+   if(!line.slotId&&dispatchCategories.includes(resource.category))continue
    if(!line.slotId)fail('SERVICE_SLOT_REQUIRED')
    const slot=await tx.serviceSlot.findUnique({where:{id:line.slotId}})
    if(!slot||slot.status!=='ACTIVE'||slot.resourceId!==line.resourceId||slot.startsAt<trip.startsAt||slot.endsAt>trip.endsAt)fail('SERVICE_SLOT_UNAVAILABLE')

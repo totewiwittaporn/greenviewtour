@@ -1,6 +1,7 @@
 // Shared form metadata and deterministic units/time rules. No database dependencies.
 const text=(key,label,required=false,max=200)=>({key,label,type:'text',required,max})
 const select=(key,label,options)=>({key,label,type:'select',options,required:true})
+const optionalSelect=(key,label,options)=>({...select(key,label,['',...options]),required:false})
 const integer=(key,label,required=true)=>({key,label,type:'integer',required})
 const ref=(key,label,entity,required=true)=>({key,label,type:'reference',entity,required})
 const money=(key,label)=>({key,label,type:'money'})
@@ -8,8 +9,8 @@ const common=[text('code','Code',true,40),text('name','Name',true),select('statu
 const stamp=(key,label)=>({...text(key,label,true,16),type:'timestamp',placeholder:'YYYY-MM-DD HH:mm · Thailand time'})
 const resourceFields=(categories,units)=>[...common,select('category','Category',categories),select('baseUnit','Base / pricing unit',units)]
 export const operationCatalog={
- services:{title:'Services',singular:'service',model:'operationResource',kind:'SERVICE',fields:[...resourceFields(['TRANSFER','TOUR_BOAT','LONGTAIL_BOAT','MEAL','ACCOMMODATION','OTHER'],['PERSON','VEHICLE','BOAT','TRIP','PERSON_MEAL','ROOM_NIGHT','PERSON_NIGHT']),ref('providerId','Service provider','partners',false),text('origin','Origin'),text('destination','Destination'),money('salePrice','Selling price per unit (THB)'),money('costPrice','Cost per unit (THB)'),text('notes','Notes',false,2000)]},
- equipment:{title:'Equipment',singular:'equipment item',model:'operationResource',kind:'EQUIPMENT',fields:[...resourceFields(['SNORKEL_MASK','FINS','TOWEL','OTHER'],['PIECE','PAIR']),text('size','Size / variant'),money('salePrice','Optional rental price per unit (THB)'),money('costPrice','Purchase cost per unit (THB)'),text('notes','Notes',false,2000)]},
+ services:{title:'Services',singular:'service',model:'operationResource',kind:'SERVICE',fields:[...resourceFields(['TRANSFER','TOUR_BOAT','LONGTAIL_BOAT','MEAL','ACCOMMODATION','OTHER'],['PERSON','VEHICLE','BOAT','TRIP','PERSON_MEAL','ROOM_NIGHT','PERSON_NIGHT']),optionalSelect('ownership','Provided by',['GREENVIEW','PARK','PARTNER']),ref('providerId','Service provider','partners',false),optionalSelect('mealPeriod','Meal',['BREAKFAST','LUNCH','DINNER']),optionalSelect('accommodationType','Accommodation type',['STANDARD_TENT','AC_TENT','BUNGALOW']),integer('occupancy','Guests per accommodation unit',false),optionalSelect('serviceMode','Boat sales mode',['JOIN','CHARTER']),select('verificationStatus','Details verification',['UNVERIFIED','VERIFIED']),text('origin','Origin'),text('destination','Destination'),money('salePrice','Selling price per unit (THB)'),money('costPrice','Cost per unit (THB)'),text('notes','Notes',false,2000)]},
+ equipment:{title:'Equipment',singular:'equipment item',model:'operationResource',kind:'EQUIPMENT',fields:[...resourceFields(['SNORKEL_MASK','FINS','TOWEL','LIFEJACKET','OTHER'],['PIECE','PAIR']),text('size','Size / variant'),money('salePrice','Optional rental price per unit (THB)'),money('costPrice','Purchase cost per unit (THB)'),text('notes','Notes',false,2000)]},
  consumables:{title:'Consumables',singular:'consumable',model:'operationResource',kind:'CONSUMABLE',fields:[...resourceFields(['WATER','SOFT_DRINK','JUICE','WATERMELON','PINEAPPLE','OTHER'],['BOTTLE','FRUIT','PIECE']),text('size','Bottle size / variant'),integer('packSize','Bottles per pack',false),integer('caseSize','Bottles per case',false),money('salePrice','Optional selling price per unit (THB)'),money('costPrice','Purchase cost per base unit (THB)'),text('notes','Notes',false,2000)]},
  stores:{title:'Stock locations',singular:'stock location',model:'stockLocation',fields:[...common,select('kind','Location type',['WAREHOUSE','BOAT','ISLAND','OTHER']),text('notes','Notes',false,2000)]},
  components:{title:'Program components',singular:'program component',model:'programComponent',fields:[ref('tourId','Tour program','tours'),ref('resourceId','Service / item','resources'),select('selection','Package selection',['INCLUDED','REQUIRED','OPTIONAL','EXCLUDED']),select('basis','Quantity basis',['PER_PERSON','PER_BOOKING','PER_PERSON_NIGHT']),integer('quantity','Units per basis'),select('usagePoint','Used at',['BOAT','ISLAND','TRANSFER','OTHER']),integer('day','Itinerary day'),text('notes','Activity / timing notes',false,1000),select('status','Status',['ACTIVE','INACTIVE'])]},
@@ -36,3 +37,13 @@ export function convertQuantity(resource,quantity,unit){
 export function componentQuantity(component,adults,children,nights){return whole(component.quantity)*(component.basis==='PER_PERSON'?adults+children:component.basis==='PER_PERSON_NIGHT'?(adults+children)*nights:1)}
 export function tripNights(trip){const start=localStamp(trip.startsAt).slice(0,10),end=localStamp(trip.endsAt).slice(0,10);return Math.round((Date.parse(end)-Date.parse(start))/86400000)}
 export function peakUsage(intervals){const events=intervals.flatMap(i=>[[+new Date(i.start),i.quantity],[+new Date(i.end),-i.quantity]]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);let n=0,peak=0;for(const[,delta]of events){n+=delta;peak=Math.max(peak,n)}return peak}
+
+export function resourceMetadataErrors(data){
+ const errors={}
+ if(data.mealPeriod&&data.category!=='MEAL')errors.mealPeriod='Meal period is only available for meals.'
+ if((data.accommodationType||data.occupancy)&&data.category!=='ACCOMMODATION')errors.accommodationType='Accommodation details require the accommodation category.'
+ if(data.serviceMode&&!['TOUR_BOAT','LONGTAIL_BOAT'].includes(data.category))errors.serviceMode='Boat sales mode requires a boat service.'
+ if(data.status==='ACTIVE'&&data.category==='MEAL'&&!data.mealPeriod)errors.mealPeriod='Select breakfast, lunch or dinner.'
+ if(data.status==='ACTIVE'&&data.category==='ACCOMMODATION'&&(!data.accommodationType||!data.occupancy||data.verificationStatus!=='VERIFIED'))errors.accommodationType='Verify accommodation type and occupancy before activation.'
+ return errors
+}

@@ -127,7 +127,7 @@ html[data-core-modal-open], html[data-core-modal-open] body { overflow:hidden; o
 .table-panel .table-footer { min-height:60px; }
 .table-panel .filterbar { flex-wrap:wrap; align-items:flex-end; }
 .table-panel .filterbar .form-field { margin:0; min-width:160px; }
-.table-panel .filterbar .field-help { display:none; }
+.table-panel .filterbar .field-help:not(.field-error) { display:none; }
 .table-panel .filterbar .core-select-trigger { min-height:38px; height:38px; padding-block:7px; }
 .table-panel .filterbar .search-field { min-height:38px; }
 .table-footer > span { overflow-wrap:anywhere; }

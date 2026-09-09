@@ -1,7 +1,9 @@
+import { workspaceRoute } from './workspaceRoutes.js'
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Dialog } from '../ui/Dialog.jsx'
 import { Button } from '../ui/Button.jsx'
 const Context=createContext(null)
+const canonicalHref=url=>`${workspaceRoute(url.pathname)?.path||url.pathname}${url.search}${url.hash}`
 const current=()=>({pathname:window.location.pathname,search:window.location.search})
 export function NavigationProvider({children}){
  const [location,setLocation]=useState(current),[pending,setPending]=useState(null)
@@ -10,7 +12,8 @@ export function NavigationProvider({children}){
  const guards=useRef(new Map()),index=useRef(0),restore=useRef(null),approved=useRef(false)
  useEffect(()=>{
   index.current=window.history.state?.gvIndex??0
-  window.history.replaceState({...window.history.state,gvIndex:index.current},'')
+  window.history.replaceState({...window.history.state,gvIndex:index.current},'',canonicalHref(new URL(window.location.href)))
+  setLocation(current())
  },[])
  const commit=useCallback(target=>{
   if(target.action){target.action();return}
@@ -24,14 +27,14 @@ export function NavigationProvider({children}){
   if([...guards.current.values()].some(Boolean)){setPending(target);return}
   commit(target)
  },[commit])
- const navigate=useCallback(href=>{const url=new URL(href,window.location.href);if(url.href===window.location.href)return;request({href:url.pathname+url.search+url.hash})},[request])
+ const navigate=useCallback(href=>{const url=new URL(href,window.location.href);if(url.href===window.location.href)return;if(url.origin!==window.location.origin||url.hash||!workspaceRoute(url.pathname)){request({action:()=>window.location.assign(url.href)});return}request({href:canonicalHref(url)})},[request])
  const runAction=useCallback(action=>request({action}),[request])
  useEffect(()=>{
   const clicked=event=>{
    if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return
    const anchor=event.target.closest?.('a[href]');if(!anchor||anchor.target||anchor.hasAttribute('download'))return
    const url=new URL(anchor.href,window.location.href)
-   if(url.origin!==window.location.origin||url.hash||!(/^\/settings\//.test(url.pathname)||['/','/profile'].includes(url.pathname)))return
+   if(url.origin!==window.location.origin||url.hash||!workspaceRoute(url.pathname))return
    event.preventDefault();navigate(url.href)
   }
   const popped=event=>{

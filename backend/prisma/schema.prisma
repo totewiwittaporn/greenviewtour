@@ -28,6 +28,7 @@ model UserProfile {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
   roles UserRole[]
+  dispatchStaff DispatchStaff[]
   @@schema("app_private")
  province String? @db.VarChar(100)
  district String? @db.VarChar(100)
@@ -165,6 +166,7 @@ model BusinessPartner {
  services OperationResource[]
  tours TourProgram[]
  agentPrices AgentTourPrice[]
+ bookings TourBooking[]
  vehicles FleetVehicle[]
  @@index([status])
  @@schema("app_private")
@@ -266,6 +268,13 @@ model FleetVehicle {
  status String @db.VarChar(50)
  kind String @db.VarChar(50)
  capacity Int
+ engineCount Int?
+ totalCapacity Int?
+ expectedCrew Int?
+ purposes String[] @default([])
+ hireCost Decimal? @db.Decimal(10,2)
+ commissionType String? @db.VarChar(30)
+ commissionValue Decimal? @db.Decimal(10,2)
  ownership String @db.VarChar(50)
  providerId String? @db.Uuid
  registration String? @db.VarChar(100)
@@ -287,6 +296,12 @@ model OperationResource {
  kind String @db.VarChar(30)
  category String @db.VarChar(50)
  baseUnit String @db.VarChar(30)
+ ownership String? @db.VarChar(30)
+ mealPeriod String? @db.VarChar(30)
+ accommodationType String? @db.VarChar(30)
+ occupancy Int?
+ serviceMode String? @db.VarChar(30)
+ verificationStatus String @default("UNVERIFIED") @db.VarChar(30)
  packSize Int?
  caseSize Int?
  size String? @db.VarChar(100)
@@ -342,6 +357,7 @@ model ProgramComponent {
  @@schema("app_private")
 }
 model ServiceSlot {
+ run DispatchRun?
  id String @id @db.Uuid
  version Int @default(1)
  code String @unique @db.VarChar(40)
@@ -380,6 +396,22 @@ model OperationTrip {
  @@schema("app_private")
 }
 model TourBooking {
+ agentId String? @db.Uuid
+ agentName String? @db.VarChar(200)
+ agentPhone String? @db.VarChar(32)
+ agentReference String? @db.VarChar(100)
+ contactPhone String? @db.VarChar(32)
+ hotel String? @db.VarChar(200)
+ room String? @db.VarChar(100)
+ pickupPoint String? @db.VarChar(200)
+ dropoffPoint String? @db.VarChar(200)
+ allergies String? @db.VarChar(2000)
+ assistance String? @db.VarChar(2000)
+ requestNotes String? @db.VarChar(2000)
+ paymentTerms String @default("UNSET") @db.VarChar(30)
+ afterServiceReason String? @db.VarChar(1000)
+ agent BusinessPartner? @relation(fields:[agentId],references:[id],onDelete:Restrict)
+ @@index([agentId])
  id String @id @db.Uuid
  version Int @default(1)
  code String @unique @db.VarChar(40)
@@ -400,6 +432,8 @@ model TourBooking {
  @@schema("app_private")
 }
 model BookingComponent {
+ dispatchDirection String @default("BOTH") @db.VarChar(20)
+ dispatchAssignments DispatchAssignment[]
  id String @id @db.Uuid
  bookingId String @db.Uuid
  resourceId String @db.Uuid
@@ -484,5 +518,87 @@ model OperationCommand {
  requestHash String @db.Char(64)
  result Json
  createdAt DateTime @default(now()) @db.Timestamptz(6)
+ @@schema("app_private")
+}
+
+
+model DispatchRun {
+ id String @id @db.Uuid
+ version Int @default(1)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ kind String @db.VarChar(20)
+ direction String @db.VarChar(20)
+ period String @db.VarChar(20)
+ capacity Int
+ status String @default("OPEN") @db.VarChar(20)
+ slotId String @unique @db.Uuid
+ requestHash String @db.Char(64)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ slot ServiceSlot @relation(fields:[slotId],references:[id],onDelete:Restrict)
+ staff DispatchStaff[]
+ assignments DispatchAssignment[]
+ @@index([kind,status])
+ @@schema("app_private")
+}
+model DispatchStaff {
+ id String @id @db.Uuid
+ runId String @db.Uuid
+ userId String @db.Uuid
+ role String @db.VarChar(50)
+ run DispatchRun @relation(fields:[runId],references:[id],onDelete:Restrict)
+ user UserProfile @relation(fields:[userId],references:[id],onDelete:Restrict)
+ @@unique([runId,userId])
+ @@index([userId])
+ @@schema("app_private")
+}
+model DispatchAssignment {
+ id String @id @db.Uuid
+ runId String @db.Uuid
+ bookingLineId String @db.Uuid
+ adults Int
+ children Int
+ pickupAt DateTime? @db.Timestamptz(6)
+ dropoffPoint String? @db.VarChar(200)
+ notes String? @db.VarChar(1000)
+ actualAdults Int?
+ actualChildren Int?
+ changeReason String? @db.VarChar(1000)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ run DispatchRun @relation(fields:[runId],references:[id],onDelete:Restrict)
+ bookingLine BookingComponent @relation(fields:[bookingLineId],references:[id],onDelete:Restrict)
+ @@unique([runId,bookingLineId])
+ @@index([bookingLineId])
+ @@schema("app_private")
+}
+
+model OperationDailySnapshot {
+ id String @id @db.Uuid
+ serviceDate DateTime @db.Date
+ kind String @db.VarChar(20)
+ revision Int
+ contentHash String @db.Char(64)
+ runs Json
+ actorId String @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ outbox OperationNotificationOutbox?
+ @@unique([serviceDate,kind,revision])
+ @@schema("app_private")
+}
+model OperationNotificationOutbox {
+ id String @id @db.Uuid
+ snapshotId String @unique @db.Uuid
+ serviceDate DateTime @db.Date
+ revision Int
+ status String @default("PREPARED") @db.VarChar(20)
+ retryKey String @unique @db.Uuid
+ payload Json
+ attempts Int @default(0)
+ firstAttemptAt DateTime? @db.Timestamptz(6)
+ lastAttemptAt DateTime? @db.Timestamptz(6)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ snapshot OperationDailySnapshot @relation(fields:[snapshotId],references:[id],onDelete:Restrict)
  @@schema("app_private")
 }

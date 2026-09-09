@@ -60,7 +60,7 @@ export async function saveSettings(prisma,actorId,entity,input){
   if(entity==='partners'&&existing)for(const[role,table,key]of[['TOUR_OPERATOR','tourProgram','operatorId'],['SALES_AGENT','agentTourPrice','agentId'],['TRANSPORT_PROVIDER','fleetVehicle','providerId']]){
    if((data.status==='INACTIVE'||!data.roles.includes(role))&&await tx[table].count({where:{[key]:existing.id,status:'ACTIVE'}}))throw new AccessError('PARTNER_IN_USE',409)
   }
-  if(entity==='vehicles'&&existing&&(data.status==='INACTIVE'||data.capacity!==existing.capacity)&&await tx.serviceSlot.count({where:{vehicleId:existing.id,status:'ACTIVE'}}))throw new AccessError('SCHEDULE_IN_USE',409)
+  if(entity==='vehicles'&&existing&&(data.status==='INACTIVE'||['capacity','kind','totalCapacity','expectedCrew','engineCount','ownership','providerId'].some(key=>String(data[key]??'')!==String(existing[key]??'')))&&await tx.serviceSlot.count({where:{vehicleId:existing.id,status:'ACTIVE'}}))throw new AccessError('SCHEDULE_IN_USE',409)
   if(entity==='partners'&&existing&&data.status==='INACTIVE'&&await tx.operationResource.count({where:{providerId:existing.id,status:'ACTIVE'}}))throw new AccessError('PARTNER_IN_USE',409)
   if(entity==='tours'&&existing&&data.status==='INACTIVE'&&await tx.agentTourPrice.count({where:{tourId:existing.id,status:'ACTIVE'}}))throw new AccessError('TOUR_IN_USE',409)
   const row=existing?await tx[definition.model].update({where:{id:input.id},data:{...data,version:{increment:1}}}):await tx[definition.model].create({data:{...data,id:input.id}})

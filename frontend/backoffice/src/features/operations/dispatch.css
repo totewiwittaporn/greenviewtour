@@ -1,0 +1,32 @@
+.job-print-table { display: none; }
+.job-sheet h2 { font-size: 20px; }
+.job-sheet h3 { margin: 0 0 12px; }
+.job-sheet small { color: var(--muted); font-weight: normal; }
+.job-lines { display: grid; gap: 16px; }
+.job-group { border-top: 1px solid var(--line); padding-top: 16px; break-inside: avoid; }
+.job-group dl { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px; }
+.job-group dd { margin: 0; overflow-wrap: anywhere; }
+.job-group dt { color: var(--muted); }
+.job-actions { display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 560px) { .job-group dl { grid-template-columns: 1fr; gap: 4px; } .job-group dd { margin-bottom: 8px; } }
+@media print {
+ @page { size: A4 landscape; margin: 12mm; }
+ body:has(.job-sheet) > :not(dialog) { display: none !important; }
+ html:has(.job-sheet), html:has(.job-sheet) body { overflow: visible !important; height: auto !important; }
+ body:has(.job-sheet) dialog:not(:has(.job-sheet)) { display: none !important; }
+ body:has(.job-sheet) dialog.core-dialog:has(.job-sheet) { position: static !important; display: block !important; width: auto !important; max-width: none !important; height: auto !important; max-height: none !important; margin: 0 !important; padding: 0 !important; border: 0 !important; overflow: visible !important; }
+ body:has(.job-sheet) dialog.core-dialog::backdrop { display: none; }
+ body:has(.job-sheet) .core-dialog .dialog-header, body:has(.job-sheet) .job-actions { display: none !important; }
+ body:has(.job-sheet) .core-dialog .dialog-content { overflow: visible !important; max-height: none !important; height: auto !important; padding: 0 !important; }
+ .job-lines { display: none !important; }
+ .job-print-table { display: table; width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 9pt; line-height: 1.3; }
+ .job-print-table thead { display: table-header-group; }
+ .job-print-table tr { break-inside: avoid; }
+ .job-print-table th, .job-print-table td { border: 1px solid #888; padding: 5px 6px; text-align: left; vertical-align: top; overflow-wrap: anywhere; white-space: normal; }
+ .job-print-table th:nth-child(2), .job-print-table td:nth-child(2) { width: 9%; }
+ .job-sheet > header p { margin: 3px 0; }
+ .job-sheet > header { margin-bottom: 10px; }
+ .job-group { margin-bottom: 16px; }
+ .job-sheet { color: #000; font-size: 10pt; }
+ .job-group dl { grid-template-columns: 135px minmax(0, 1fr); }
+}

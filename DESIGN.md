@@ -123,3 +123,7 @@ Owner approval 2026-09-09: Services, Assets & Equipment, and Bookings & Trips ex
 Services are separately sellable resources; programs compose services, reusable equipment and consumables. Equipment and consumables use distinct workflows: reusable returns record condition, while consumable use records consumption/waste. Units are explicit and conversions use each resource's configured bottle pack/case count. Dated services and trips use typed Thailand-time fields. Booking line editing is a domain-specific form using shared fields and preserves package selection rules and snapshot prices.
 
 Core Dialog's table variant uses a 960px maximum width for multi-column preparation reports, with the existing mobile margins, focus/scroll ownership and responsive table overflow. Form dialogs retain their established width.
+
+Navigation refinement 2026-09-09: shared Core workspace route metadata separates reusable Settings from daily work and covers every implemented workspace route in the same-document navigation provider. Booking, Guide operations, Driver operations and Stock operations precede Settings. Existing sea-green Shell, shared tab motion, table geometry and form controls remain canonical; no screen-local navigation handler is introduced.
+
+Core Dropdown uses its owning Dialog as its portal host when opened from modal content, matching SelectField. It retains viewport anchoring, shared surface tokens and menu geometry; modal top-layer ownership is behavioral and does not introduce a new visual variant.

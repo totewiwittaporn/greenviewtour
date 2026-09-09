@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto'
 import { catalog, validateCatalog } from '../../../../packages/contracts/catalog.js'
 import { operationCatalog } from '../../../../packages/contracts/operations.js'
 import { active,audit,authorize,fail,hash,int,keys,uuid,write } from './common.js'
-const include={services:{provider:true},components:{tour:true,resource:true},slots:{resource:true,vehicle:true},trips:{tour:true},bookings:{trip:{include:{tour:true}},lines:{include:{resource:true,source:true,slot:true}}},stock:{lot:{include:{resource:true}},location:true},issues:{lot:{include:{resource:true}},bookingLine:{include:{booking:{include:{trip:true}}}}}}
+const include={services:{provider:true},components:{tour:true,resource:true},slots:{resource:true,vehicle:true},trips:{tour:true},bookings:{trip:{include:{tour:true}},lines:{include:{resource:true,source:true,slot:true,dispatchAssignments:{include:{run:{include:{slot:{include:{vehicle:true}}}}}}}}},stock:{lot:{include:{resource:true}},location:true},issues:{lot:{include:{resource:true}},bookingLine:{include:{booking:{include:{trip:true}}}}}}
 const extra={resources:'operationResource',bookings:'tourBooking',stock:'stockBalance',issues:'stockIssue',movements:'stockMovement'}
 export async function listOperations(prisma,actorId,entity,params){
- await authorize(prisma,actorId)
+ await authorize(prisma,actorId,['bookings','services','resources','stores','trips','slots'].includes(entity)?'booking':'manager')
  const definition=operationCatalog[entity],model=definition?.model||extra[entity];if(!model)fail('NOT_FOUND',404)
  const q=(params.get('q')||'').trim(),requested=Number(params.get('page')||1),status=params.get('status')
  if(q.length>100||!Number.isSafeInteger(requested)||requested<1||requested>100000)fail('INVALID_FILTER',400)
@@ -63,11 +63,11 @@ export async function saveOperationCatalog(prisma,actorId,entity,input){
    if(['WATER','SOFT_DRINK','JUICE'].includes(data.category)&&data.baseUnit!=='BOTTLE')fail('INVALID_UNIT',400)
    if(['WATERMELON','PINEAPPLE'].includes(data.category)&&data.baseUnit!=='FRUIT')fail('INVALID_UNIT',400)
    if(data.category==='FINS'&&data.baseUnit!=='PAIR')fail('INVALID_UNIT',400)
-   if(['SNORKEL_MASK','TOWEL'].includes(data.category)&&data.baseUnit!=='PIECE')fail('INVALID_UNIT',400)
+   if(['SNORKEL_MASK','TOWEL','LIFEJACKET'].includes(data.category)&&data.baseUnit!=='PIECE')fail('INVALID_UNIT',400)
    if(data.baseUnit!=='BOTTLE'&&(data.packSize||data.caseSize))fail('INVALID_UNIT',400)
    if(existing){
     const used=await tx.stockLot.count({where:{resourceId:existing.id}})||await tx.bookingComponent.count({where:{resourceId:existing.id}})||await tx.programComponent.count({where:{resourceId:existing.id}})||await tx.serviceSlot.count({where:{resourceId:existing.id}})
-    if(used&&(data.baseUnit!==existing.baseUnit||data.category!==existing.category||data.size!==undefined&&data.size!==existing.size))fail('RESOURCE_IDENTITY_IN_USE')
+    if(used&&(data.baseUnit!==existing.baseUnit||data.category!==existing.category||['size','ownership','mealPeriod','accommodationType','occupancy','serviceMode'].some(key=>data[key]!==undefined&&data[key]!==existing[key])))fail('RESOURCE_IDENTITY_IN_USE')
     if(data.status==='INACTIVE'&&(await tx.programComponent.count({where:{resourceId:existing.id,status:'ACTIVE'}})||await tx.serviceSlot.count({where:{resourceId:existing.id,status:'ACTIVE'}})||await tx.bookingComponent.count({where:{resourceId:existing.id,selected:true,booking:{status:'CONFIRMED'}}})))fail('RESOURCE_IN_USE')
    }
   }
@@ -75,6 +75,7 @@ export async function saveOperationCatalog(prisma,actorId,entity,input){
   if(['slots','trips'].includes(entity)){
    if(data.endsAt<=data.startsAt)fail('INVALID_TIME_RANGE',400)
    if(+data.endsAt-+data.startsAt>366*86400000)fail('INVALID_TIME_RANGE',400)
+   if(entity==='slots'&&existing&&await tx.dispatchRun.count({where:{slotId:existing.id}}))fail('RUN_IN_USE')
    if(existing&&(entity==='trips'?await tx.tourBooking.count({where:{tripId:existing.id}}):await tx.bookingComponent.count({where:{slotId:existing.id}})))fail('SCHEDULE_IN_USE')
    if(entity==='slots'&&data.vehicleId&&data.status==='ACTIVE'){
     const v=await active(tx,'fleetVehicle',data.vehicleId),resource=await active(tx,'operationResource',data.resourceId)
@@ -87,7 +88,7 @@ export async function saveOperationCatalog(prisma,actorId,entity,input){
   if(entity==='stores'&&existing&&data.status==='INACTIVE'&&(await tx.stockBalance.count({where:{locationId:existing.id,quantity:{gt:0}}})||await tx.bookingComponent.count({where:{sourceId:existing.id,booking:{status:'CONFIRMED'}}})||(await tx.stockIssue.findMany({where:{OR:[{sourceId:existing.id},{destinationId:existing.id}]}})).some(i=>i.quantity>i.settledQty)))fail('LOCATION_IN_USE')
   const row=existing?await tx[definition.model].update({where:{id:input.id},data:{...data,version:{increment:1}}}):await tx[definition.model].create({data:{...data,id:input.id}})
   await audit(tx,actorId,row.id,`${entity}.saved`,{fields:Object.keys(data),version:row.version});return {row}
- })
+ },entity==='trips'?'booking':'manager')
 }
 export const operationHash=hash
 export const operationId=randomUUID
