@@ -20,4 +20,4 @@ Based on `mint/booking-guide-driver` at `bd6a006`. Shared boat, vehicle and Book
 
 ## New-machine setup
 
-Dependencies are installed. Local backend/.env is ignored and contains the owner's locally entered values; it is not part of this change. The Preview connection currently fails certificate verification until the downloaded Supabase root CA is configured through PGSSLROOTCERT. `check-db.js` now reports safe failure categories without printing credentials. Live authenticated document verification remains pending that setup.
+Dependencies are installed. Local backend/.env is ignored and contains the owner's locally entered values; it is not part of this change. The official Supabase root CA is now configured locally through PGSSLROOTCERT; a read-only SELECT 1 check passes with certificate verification enabled. `check-db.js` now reports safe failure categories without printing credentials. The Mac launcher now uses API port 5001 to avoid AirPlay on 5000. Startup reaches READY and the real login form loads through the Backoffice proxy. Authenticated document verification still requires the owner to sign in.

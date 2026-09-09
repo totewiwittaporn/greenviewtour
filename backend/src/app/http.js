@@ -26,7 +26,8 @@ function password(value, strong = false) {
   if (typeof value !== 'string' || value.length < (strong ? 12 : 1) || value.length > 128) throw new AccessError('INVALID_PASSWORD', 400)
   return value
 }
-export function createHandler({ pool, prisma, provider, token, users = listUsers, sessions = new SessionStore() }) {
+export function createHandler({ pool, prisma, provider, token, port = 5000, users = listUsers, sessions = new SessionStore() }) {
+  if (![5000, 5001].includes(port)) throw new Error('INVALID_LOCAL_API_PORT')
   if (!token || token.length < 32) throw new Error('LOCAL_API_TOKEN_REQUIRED')
   let attempts = 0, windowEnd = 0
   return async (req, res) => {
@@ -35,8 +36,8 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
       res.end(JSON.stringify(data))
     }
     try {
-      if (!['127.0.0.1:5000', 'localhost:5000'].includes(req.headers.host)) return send(403, { code: 'LOCAL_HOST_REQUIRED' })
-      const url = new URL(req.url, 'http://127.0.0.1:5000')
+      if (![`127.0.0.1:${port}`, `localhost:${port}`].includes(req.headers.host)) return send(403, { code: 'LOCAL_HOST_REQUIRED' })
+      const url = new URL(req.url, `http://127.0.0.1:${port}`)
       if (url.pathname === '/health/live' && req.method === 'GET') return send(200, { status: 'UP', service: 'greenviewtour-local-api' })
       if (req.headers.origin && !origins.includes(req.headers.origin)) return send(403, { code: 'ORIGIN_DENIED' })
       const supplied = req.headers['x-greenview-local-token']
