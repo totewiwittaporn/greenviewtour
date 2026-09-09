@@ -119,3 +119,33 @@
  .boat-daily-table th, .boat-daily-table td { border: 1px solid var(--line); padding: 4px; vertical-align: top; overflow-wrap: anywhere; white-space: normal; }
  .boat-daily-table .job-section-row, .boat-daily-table .job-total-row { background: var(--canvas); }
 }
+.boat-program-summaries { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.boat-program-summary { min-width: 0; }
+.boat-program-summary h3 { font-size: 12px; margin: 0 0 4px; }
+.boat-program-summary table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.boat-program-summary th, .boat-program-summary td { padding: 3px 5px; border: 1px solid var(--line); overflow-wrap: anywhere; }
+.boat-program-summary th:not(:first-child), .boat-program-summary td:not(:first-child) { text-align: center; width: 12%; }
+.boat-program-summary p { margin: 4px 0 0; font-size: 10px; }
+@media screen and (max-width: 759px) { .boat-program-summaries { grid-template-columns: 1fr; } }
+@media print {
+ .boat-program-summaries { gap: 3mm; margin-top: 2mm; break-inside: avoid; }
+ .boat-program-summary h3 { font-size: 8.5pt; margin: 0 0 .6mm; }
+ .boat-program-summary table { font-size: 8pt; line-height: 1.15; }
+ .boat-program-summary th, .boat-program-summary td { padding: .5mm 1mm; border-color: #777; }
+ .boat-program-summary p { font-size: 7pt; margin-top: .7mm; }
+ .boat-daily-header .boat-crew { font-size: 8pt; }
+}
+@media print {
+ @page boat-manifest { size: A4 landscape; margin: 8mm; }
+ .boat-daily-sheet { page: boat-manifest; }
+}
+@media print {
+ body:has(.boat-daily-sheet) dialog.core-dialog:has(.boat-daily-sheet) { page: boat-manifest; }
+ .boat-daily-table td { padding-top: .35mm; padding-bottom: .35mm; }
+ .boat-daily-header .boat-crew { grid-template-columns: 1fr 1.7fr; }
+ .boat-daily-header .boat-daily-reference p { margin: .4mm 0; }
+}
+@media print {
+ .boat-daily-table td { padding-top: .2mm; padding-bottom: .2mm; }
+ .boat-program-summary th { color: #000; }
+}

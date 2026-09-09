@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { programSummary } from '../../../../../packages/contracts/job-summary.js'
 import { Dropdown } from '../../core/ui/Dropdown.jsx'
 import './dispatch.css'
 const stamp=value=>value?new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(new Date(value)):''
@@ -27,14 +28,14 @@ export function JobSheet({run,canManage,onCommand}){
 }
 
 const shortDay=value=>value?new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit'}).format(new Date(value)):'—'
-const crewRoles=[['Captain · กัปตัน',['CAPTAIN','HEAD_CAPTAIN']],['Assistant captain · ผู้ช่วยกัปตัน',['ASSISTANT_CAPTAIN']],['Guide · ไกด์',['GUIDE','HEAD_GUIDE']],['Assistant guide · ผู้ช่วยไกด์',['ASSISTANT_TOUR_GUIDE']]]
+const crewRoles=[['Captain · กัปตัน',['CAPTAIN','HEAD_CAPTAIN']],['ผู้ช่วยกัปตัน',['ASSISTANT_CAPTAIN']],['Guide · ไกด์',['GUIDE','HEAD_GUIDE']],['ผู้ช่วยไกด์',['ASSISTANT_TOUR_GUIDE']]]
 export function BoatDailySheet({runs}){
  const first=runs[0]
  if(!first)return null
  const date=day(first.slot?.startsAt),vehicle=first.slot?.vehicle
  const documentCode=`BOAT-${vehicle?.id?.slice(0,8)||first.code}-${stamp(first.slot?.startsAt).slice(0,10).replaceAll('-','')}`
  const crew=roles=>{
-  const values=runs.map(run=>[...new Set(run.staff.filter(p=>roles.includes(p.role)).map(p=>p.name))].join(', ')||'________________')
+  const values=runs.map(run=>[...new Set(run.staff.filter(p=>roles.includes(p.role)).map(p=>p.name))].map((name,i)=>`${i+1}. ${name}`).join(' / ')||'________________')
   return new Set(values).size===1?values[0]:runs.map((run,i)=>`${run.direction==='RETURN'?'กลับ':'ไป'} ${stamp(run.slot?.startsAt).slice(11)}: ${values[i]}`).join(' / ')
  }
  return <section className="job-sheet boat-daily-sheet">
@@ -46,7 +47,7 @@ export function BoatDailySheet({runs}){
   <table className="job-print-table boat-daily-table"><colgroup>{[3,10,18,13,11,4,4,6,6,19,6].map((width,i)=><col key={i} style={{width:`${width}%`}}/>)}</colgroup>
    <thead><tr className="boat-repeat-title"><th colSpan="11">{vehicle?.name} · {documentCode} · {date}</th></tr><tr><th>No.</th><th>Agent · เอเจนต์</th><th>Guest group · กลุ่มลูกค้า</th><th>Booking / Reference</th><th>Program · โปรแกรม</th><th>Adult<br/>ผู้ใหญ่</th><th>Child<br/>เด็ก</th><th>Arrival<br/>วันมา</th><th>Departure<br/>วันกลับ</th><th>Requests / remarks · หมายเหตุ</th><th>Actual<br/>จริง A/C</th></tr></thead>
    <tbody>{['OUTBOUND','RETURN'].map(direction=>{
-    const selected=runs.filter(r=>r.direction===direction),rows=selected.flatMap(run=>run.assignments.map(a=>({...a,run})))
+    const selected=runs.filter(r=>r.direction===direction),rows=selected.flatMap(run=>run.assignments.map(a=>({...a,run}))).sort((a,b)=>a.booking.code.localeCompare(b.booking.code))
     const adults=rows.reduce((n,a)=>n+a.adults,0),children=rows.reduce((n,a)=>n+a.children,0),recorded=rows.filter(a=>a.actualAdults!=null&&a.actualChildren!=null)
     return <Fragment key={direction}><tr className="job-section-row"><th colSpan="11">{direction==='OUTBOUND'?'Outbound · ขาไป':'Return · ขากลับ'} · {rows.length} groups / กลุ่ม {selected.map(r=>` · ${stamp(r.slot?.startsAt).slice(11)} (${r.code}, rev. ${r.version})`).join('')}</th></tr>
      {rows.map((a,i)=><tr key={a.id}><td>{i+1}</td><td>{a.booking.agentName||'Direct booking'}</td><td><strong>{a.booking.name}</strong></td><td className="boat-booking-ref">{a.booking.code}{a.booking.agentReference?<div>{a.booking.agentReference}</div>:null}</td><td>{a.booking.programName||'Standalone service'}</td><td>{a.adults}</td><td>{a.children}</td><td>{shortDay(a.booking.arrivalAt)}</td><td>{shortDay(a.booking.departureAt)}</td><td>{[a.booking.allergies,a.booking.assistance,a.booking.requestNotes,a.notes,a.changeReason].filter(Boolean).join(' · ')||'—'}</td><td>{a.actualAdults==null||a.actualChildren==null?'—':`${a.actualAdults}/${a.actualChildren}`}</td></tr>)}
@@ -54,7 +55,12 @@ export function BoatDailySheet({runs}){
      <tr className="job-total-row"><th colSpan="5">{direction==='OUTBOUND'?'Outbound total · รวมขาไป':'Return total · รวมขากลับ'}</th><td>{adults}</td><td>{children}</td><td colSpan="4">{adults+children} passengers / คน · Actual: {recorded.length?`${recorded.reduce((n,a)=>n+a.actualAdults+a.actualChildren,0)} (${recorded.length}/${rows.length} groups)`:'Not recorded'}</td></tr>
     </Fragment>
    })}</tbody>
-  </table><p className="boat-daily-legend">A/C = Adult/Child · ผู้ใหญ่/เด็ก &nbsp; — = Actual not recorded / ยังไม่บันทึกยอดจริง · Thailand time · เวลาประเทศไทย</p>
+  </table><div className="boat-program-summaries">{['OUTBOUND','RETURN'].map(direction=>{
+   const programs=programSummary(runs,direction),total=programs.reduce((n,p)=>n+p.passengers,0)
+   const directionRuns=runs.filter(r=>r.direction===direction),crewCounts=directionRuns.map(r=>r.staff.length)
+   const crewCount=crewCounts.length?new Set(crewCounts).size===1?String(crewCounts[0]):crewCounts.join(' / '):'0'
+   return <section className="boat-program-summary" key={direction}><h3>{direction==='OUTBOUND'?'Outbound packages · สรุปโปรแกรมขาไป':'Return packages · สรุปโปรแกรมขากลับ'}</h3><table><thead><tr><th>Program · โปรแกรม</th><th>Adult</th><th>Child</th><th>Total · คน</th></tr></thead><tbody>{programs.map(p=><tr key={p.key}><td>{p.name}</td><td>{p.adults}</td><td>{p.children}</td><td><strong>{p.passengers}</strong></td></tr>)}<tr className="job-total-row"><th>All programs · รวมลูกค้าทุกโปรแกรม</th><td>{programs.reduce((n,p)=>n+p.adults,0)}</td><td>{programs.reduce((n,p)=>n+p.children,0)}</td><td><strong>{total}</strong></td></tr></tbody></table><p>Crew · ทีมเรือ {crewCount} คน/เที่ยว · รวมบนเรือตามแผน {directionRuns.map(r=>r.assignments.reduce((n,a)=>n+a.adults+a.children,0)+r.staff.length).join(' / ')||0} คน/เที่ยว</p></section>
+  })}</div><p className="boat-daily-legend">A/C = Adult/Child · ผู้ใหญ่/เด็ก &nbsp; — = Actual not recorded / ยังไม่บันทึกยอดจริง · Thailand time · เวลาประเทศไทย</p>
  </section>
 }
 

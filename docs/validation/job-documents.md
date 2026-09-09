@@ -27,3 +27,9 @@ Dependencies are installed. Local backend/.env is ignored and contains the owner
 Owner requested a two-cell masthead and a combined 15 outbound / 5 return group copy. The live Preview DEMO fixture persists 20 bookings, with 35 outbound and 12 return passengers on a dedicated sample vessel. Crew remains unassigned. No auth users were fabricated. The rendered PDF is exactly one A4 landscape page at 8.5pt body text; all 20 booking references and both direction totals are present. The final page was visually inspected. Long notes are allowed to wrap/continue rather than being clipped.
 
 The jobs endpoint collects the document within the same repeatable-read transaction and retains staff authorization on every included run. Unit coverage checks Thailand date boundaries, same-vessel selection and staff scope. The browser smoke now includes a 15+5 combined document, in addition to all prior sheet and failure cases.
+
+## Package and crew summary refinement
+
+Vessel-day sheets now group allocated adult/child/passenger counts by snapshotted program ID separately for each direction. The new Preview sample has 15 outbound groups (Day trip 30, 2D1N 10, boat ticket 4 = 44) and 5 return groups (the same Day trip bookings 30 plus previous-day 2D1N 10 = 40). Six explicitly authorized DEMO roster identities are assigned to each run: captain 1, assistant captains 2, guide 1, assistant guides 2. Their login is disabled, with no password or confirmed email; no invitations were sent. Customer totals exclude crew; aboard totals are 50 and 46. Existing crew forms allow a second assistant guide as a separate member, and validate total capacity.
+
+The complete PDF with summaries and all six names was visually inspected and is one A4 landscape page. Table body remains 8.5pt; rows wrap for longer input. Summary calculation tests cover independent return counts and split allocations. Local seed scripts, exported data and generated PDFs are not committed.

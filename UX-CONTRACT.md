@@ -135,3 +135,6 @@ Filterbar field errors remain visible through Core FormField; ordinary empty hel
 
 
 Owner refinement 2026-09-09: Boat print copies collect all authorized runs for the same vessel and Thailand service day, with independent outbound and return sections in one continuous table. The masthead has exactly two cells: vessel and four crew roles on the left, document reference and date on the right. Crew differences identify direction/time. The date/vessel document reference is derived, while source run codes and revisions remain visible. JobSheets.jsx/dispatch.css own the compact print variant; target 15 outbound + 5 return groups on one A4 landscape page at 8.5pt with normal-length notes. Long content wraps and continues to additional pages, never clips or silently drops groups. Management actions remain scoped to individual runs.
+
+
+Owner refinement: vessel-day documents include per-program adult/child/passenger summaries for each direction, followed by a total of all programs. Group by snapshotted program ID, never infer the return list or count the same customer's two journeys as unique customers. Crew counts are separate from customer totals; four roster roles support multiple assistant captains/guides (typical 1 captain, 2 assistant captains, 1 guide, 1–2 assistant guides). Existing per-person crew selection remains canonical.
