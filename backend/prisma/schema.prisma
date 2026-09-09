@@ -29,6 +29,16 @@ model UserProfile {
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
   roles UserRole[]
   @@schema("app_private")
+ province String? @db.VarChar(100)
+ district String? @db.VarChar(100)
+ subdistrict String? @db.VarChar(100)
+ postalCode String? @db.VarChar(5)
+ houseNumber String? @db.VarChar(50)
+ moo String? @db.VarChar(20)
+ villageName String? @db.VarChar(150)
+ mapUrl String? @db.VarChar(2048)
+ latitude String? @db.VarChar(30)
+ longitude String? @db.VarChar(30)
 }
 model Role {
   code String @id @db.VarChar(50)
@@ -125,6 +135,16 @@ model CompanySettings {
  phone String? @db.VarChar(32)
  email String? @db.VarChar(254)
  @@schema("app_private")
+ province String? @db.VarChar(100)
+ district String? @db.VarChar(100)
+ subdistrict String? @db.VarChar(100)
+ postalCode String? @db.VarChar(5)
+ houseNumber String? @db.VarChar(50)
+ moo String? @db.VarChar(20)
+ villageName String? @db.VarChar(150)
+ mapUrl String? @db.VarChar(2048)
+ latitude String? @db.VarChar(30)
+ longitude String? @db.VarChar(30)
 }
 
 model BusinessPartner {
@@ -147,6 +167,16 @@ model BusinessPartner {
  vehicles FleetVehicle[]
  @@index([status])
  @@schema("app_private")
+ province String? @db.VarChar(100)
+ district String? @db.VarChar(100)
+ subdistrict String? @db.VarChar(100)
+ postalCode String? @db.VarChar(5)
+ houseNumber String? @db.VarChar(50)
+ moo String? @db.VarChar(20)
+ villageName String? @db.VarChar(150)
+ mapUrl String? @db.VarChar(2048)
+ latitude String? @db.VarChar(30)
+ longitude String? @db.VarChar(30)
 }
 
 model TourProgram {
@@ -213,6 +243,14 @@ model PickupLocation {
  pickupNotes String? @db.VarChar(1000)
  @@index([status])
  @@schema("app_private")
+ province String? @db.VarChar(100)
+ district String? @db.VarChar(100)
+ subdistrict String? @db.VarChar(100)
+ postalCode String? @db.VarChar(5)
+ houseNumber String? @db.VarChar(50)
+ moo String? @db.VarChar(20)
+ villageName String? @db.VarChar(150)
+ mapUrl String? @db.VarChar(2048)
 }
 
 model FleetVehicle {

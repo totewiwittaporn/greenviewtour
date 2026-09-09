@@ -29,8 +29,8 @@ try{
  })
  const save=()=>page.getByRole('button',{name:'Save changes',exact:true}).click()
  const open=async(entity,label)=>{await page.goto(`http://localhost:5274/settings/${entity}`);await page.getByRole('button',{name:`+ Add ${label}`,exact:true}).click()}
- await open('company','company');await save();assert.equal(await page.getByLabel('Company name').getAttribute('aria-invalid'),'true')
- await page.getByLabel('Company name').fill('Greenview Fixture');await save();await page.getByText('Changes saved.',{exact:true}).waitFor()
+ await page.goto('http://localhost:5274/settings/company');await page.getByRole('button',{name:'Save company details'}).click();assert.equal(await page.getByLabel('Company name').getAttribute('aria-invalid'),'true')
+ await page.getByLabel('Company name').fill('Greenview Fixture');await page.getByRole('button',{name:'Save company details'}).click();await page.getByText('Company details saved.',{exact:true}).waitFor()
  await open('partners','partner');await page.getByLabel('Code',{exact:true}).fill('AGENT-A');await page.getByLabel('Name',{exact:true}).fill('Agent A')
  await page.getByLabel('Sales agent',{exact:true}).check();await page.getByLabel('Tour operator',{exact:true}).check();await page.getByLabel('Transport provider',{exact:true}).check()
  failSave=true;await save();await page.getByRole('alert').waitFor();assert.equal(await page.getByLabel('Name',{exact:true}).inputValue(),'Agent A');await save();await page.getByText('Changes saved.',{exact:true}).waitFor()

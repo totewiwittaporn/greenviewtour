@@ -71,3 +71,35 @@ html{scrollbar-gutter:stable}
 .reference-field .catalog-paging { padding: 0; }
 .cell-sub { display: block; margin-top: 4px; }
 @media (max-width: 760px) { .catalog-toolbar { padding: 16px; } .catalog-toolbar .search-field { flex-basis: 100%; } }
+
+.address-section { border: 0; padding: 0; margin: 24px 0; min-width: 0; }
+.address-section legend { font-weight: 600; margin-bottom: 8px; }
+.address-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 16px; }
+.address-wide { grid-column: 1 / -1; }
+.map-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.legacy-address { white-space: pre-wrap; overflow-wrap: anywhere; }
+.company-form { max-width: 840px; }
+.company-form .address-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+.address-section summary { cursor: pointer; }
+@media(max-width:600px) { .address-grid, .company-form .address-grid { grid-template-columns: minmax(0,1fr); } }
+.company-form { max-width: none; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 24px; padding: 24px; }
+.company-form > .address-section, .company-form > .dialog-actions, .company-form > [role="alert"], .company-form > .sr-only { grid-column: 1 / -1; }
+@media(max-width:600px) { .company-form { grid-template-columns: minmax(0,1fr); padding: 20px 16px; } }
+
+/* Shared quick-address summary; Dialog and SelectField own popup geometry. */
+.address-summary { display:flex; gap:16px; align-items:center; justify-content:space-between; padding-block:12px; }
+.address-summary p { margin:0; }
+.address-summary .button { flex-shrink:0; }
+.address-loading { min-height:180px; display:grid; place-content:center; }
+@media (max-width:760px) { .address-summary { align-items:flex-start; flex-direction:column; } }
+
+/* Searchable selection extends Core dropdown tokens; the primitive owns a11y. */
+.field-label { display:block; font-size:12px; font-weight:600; margin-bottom:8px; }
+.core-combobox-positioner { z-index:100; width:var(--anchor-width); max-width:calc(100vw - 16px); }
+.core-combobox-popup { position:relative; width:100%; padding:6px; max-height:var(--available-height); }
+.core-combobox-search { display:flex; align-items:center; gap:4px; padding:4px; }
+.core-combobox-search input { min-width:0; width:100%; height:36px; border:1px solid var(--line); border-radius:8px; padding:8px; font:inherit; background:var(--surface); color:var(--text); }
+.core-combobox-list { max-height:min(260px, calc(var(--available-height) - 70px)); overflow-y:auto; }
+.core-combobox-popup .core-select-option[data-disabled] { opacity:.5; cursor:not-allowed; }
+.core-select-trigger > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
