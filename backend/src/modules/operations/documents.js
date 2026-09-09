@@ -1,5 +1,4 @@
 import { authorize, dateOnly } from './common.js'
-import { parseStamp } from '../../../../packages/contracts/operations.js'
 import { bookingAmount, dailyBookingSummary } from '../../../../packages/contracts/booking-document.js'
 
 export async function documentBrand(prisma) {
@@ -10,12 +9,12 @@ export async function documentBrand(prisma) {
 export async function dailyBookingDocument(prisma, actorId, date) {
  await authorize(prisma, actorId, 'booking')
  dateOnly(date)
- const start = parseStamp(`${date} 00:00`), end = new Date(+start + 86400000)
+ const day = dateOnly(date)
  return prisma.$transaction(async tx => {
-  // Service day includes overnight guests still on their trip, once per booking.
+  // Reception owns arrival-day intake; return-only customers use their return service day.
   const bookings = await tx.tourBooking.findMany({
-   where: { status: { in: ['CONFIRMED', 'COMPLETED'] }, trip: { startsAt: { lt: end }, endsAt: { gte: start } } },
-   include: { trip: true, lines: { where: { selected: true }, include: { resource: true } } },
+   where: { status: { in: ['CONFIRMED', 'COMPLETED'] }, OR: [{outboundDate:day},{outboundDate:null,returnDate:day,returnStatus:'OUR'}] },
+   include: { trip: true, lines: { include: { resource: true } } },
    orderBy: [{ code: 'asc' }, { id: 'asc' }],
   })
   const rows = bookings.map(b => ({
@@ -23,7 +22,7 @@ export async function dailyBookingDocument(prisma, actorId, date) {
    programId:b.programSnapshot?.tourId || b.trip.tourId || 'standalone', programName:b.programSnapshot?.name || b.trip.name,
    adults:b.adults, children:b.children, paymentTerms:b.paymentTerms,
    collectAmount:b.paymentTerms==='COUNTER'?bookingAmount(b):null,
-   hotel:b.hotel, room:b.room, notes:[b.allergies,b.assistance,b.requestNotes].filter(Boolean).join(' · '),
+   hotel:b.hotel, room:b.room, notes:[b.allergies,...(b.specialRequirements||[]),b.assistance,b.requestNotes].filter(Boolean).join(' · '),
    transfers:[...new Set(b.lines.filter(l=>(l.snapshot?.category||l.resource.category)==='TRANSFER').flatMap(l=>l.dispatchDirection==='BOTH'?['OUTBOUND','RETURN']:[l.dispatchDirection]))],
   }))
   return { date, generatedAt:new Date().toISOString(), rows, summary:dailyBookingSummary(rows) }

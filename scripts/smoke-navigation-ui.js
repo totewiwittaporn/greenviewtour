@@ -23,7 +23,7 @@ try {
  const meBaseline=me,documentBaseline=documents
  const intact=async()=>{assert.equal(documents,documentBaseline);assert.equal(me,meBaseline);assert.equal(await page.evaluate(()=>window.__navigationSentinel.shell===document.querySelector('.workspace')&&window.__navigationSentinel.sidebar===document.querySelector('.sidebar')&&window.__navigationSentinel.account===document.querySelector('.account-menu')),true)}
  const nav=page.getByRole('navigation',{name:'Main navigation'})
- await nav.getByRole('link',{name:'Stock operations',exact:true}).click()
+ await nav.getByRole('link',{name:'Inventory',exact:true}).click()
  await page.getByRole('button',{name:'Receive stock',exact:true}).waitFor();await intact()
  await nav.getByRole('link',{name:'Booking',exact:true}).click()
  await page.getByRole('button',{name:'New booking',exact:true}).waitFor();await intact()

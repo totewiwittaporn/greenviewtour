@@ -6,20 +6,23 @@ const select = (key, label, options) => ({ key, label, type: 'select', options, 
 const ref = (key, label, entity, role, required = true) => ({ key, label, type: 'reference', entity, role, required })
 const optionalSelect=(key,label,options)=>({...select(key,label,['',...options]),required:false})
 const integer=(key,label,min=1)=>({key,label,type:'integer',min})
+const date=(key,label,required=false)=>({key,label,type:'date',required})
 const money = (key, label) => ({ key, label, type: 'money' })
 const common = [text('code', 'Code', true, 40), text('name', 'Name', true), select('status', 'Status', ['ACTIVE', 'INACTIVE'])]
 export const catalog = {
  ...operationCatalog,
  channels: {title:'Sales channels',singular:'sales channel',model:'salesChannel',fields:[...common,select('kind','Source type',['DIRECT','AGENT'])]},
  company: { title: 'Company', singular: 'company', model: 'companySettings', fields: [text('name','Company name',true),text('legalName','Legal name'),text('taxId','Tax ID',false,30),{...text('address','Previous address',false,1000),hidden:true},...addressFields,text('phone','Phone',false,32),text('email','Email',false,254)] },
- partners: { title: 'Business partners', singular: 'partner', model: 'businessPartner', fields: [...common,{key:'roles',label:'Partner roles',type:'roles',options:['TOUR_OPERATOR','SALES_AGENT','TRANSPORT_PROVIDER','SERVICE_PROVIDER'],required:true},text('contactName','Contact name'),text('phone','Phone',false,32),text('email','Email',false,254),{...text('address','Previous address',false,1000),hidden:true},...addressFields,text('association','Association'),text('paymentTerms','Payment terms',false,1000)] },
- tours: { title:'Tour programs',singular:'tour program',model:'tourProgram',fields:[...common,select('ownership','Organized by',['GREENVIEW','PARTNER']),ref('operatorId','Tour operator','partners','TOUR_OPERATOR',false),text('route','Route / itinerary',false,2000),text('departureTimes','Departure times',false,300),text('childPolicy','Child age / height policy',false,1000),select('confirmationMode','Booking confirmation',['REQUEST','INSTANT']),text('cancellationTerms','Cancellation terms',false,2000),text('bookingCutoff','Booking cutoff',false,300),money('adultPrice','Direct adult price (THB)'),money('childPrice','Direct child price (THB)'),select('supplierPricing','Supplier pricing basis',['NOT_SET','NET','COMMISSION']),money('supplierAdultNet','Supplier adult net (THB)'),money('supplierChildNet','Supplier child net (THB)'),money('supplierAdultCommission','Adult commission received (THB)'),money('supplierChildCommission','Child commission received (THB)')] },
- rates: {title:'Agent prices',singular:'agent price',model:'agentTourPrice',fields:[ref('agentId','Sales agent','partners','SALES_AGENT'),ref('tourId','Tour program','tours'),money('adultPrice','Agent adult price (THB)'),money('childPrice','Agent child price (THB)'),select('status','Status',['ACTIVE','INACTIVE'])]},
+ partners: { title: 'Business partners', singular: 'partner', model: 'businessPartner', fields: [...common,{key:'roles',label:'Partner roles',type:'roles',options:['TOUR_OPERATOR','SALES_AGENT','TRANSPORT_PROVIDER','SERVICE_PROVIDER'],required:true},text('contactName','Contact name'),text('phone','Phone',false,32),text('email','Email',false,254),{...text('address','Previous address',false,1000),hidden:true},...addressFields,text('association','Association'),text('paymentTerms','Payment notes',false,1000),{key:'allowedPaymentTerms',label:'Available payment terms',type:'roles',options:['PREPAID','PAID','COUNTER','AGENT_CREDIT'],required:true,default:['PREPAID','COUNTER','AGENT_CREDIT']},{...select('defaultPaymentTerms','Default payment terms',['PREPAID','PAID','COUNTER','AGENT_CREDIT']),default:'COUNTER'}] },
+ tours: { title:'Tour programs',singular:'tour program',model:'tourProgram',fields:[...common,{...select('journeyMode','Journey type',['FIXED','OPEN_RETURN','OUTBOUND_ONLY','RETURN_ONLY']),default:'FIXED'},{...integer('durationDays','Duration in days'),max:366,required:true,default:1},select('ownership','Organized by',['GREENVIEW','PARTNER']),ref('operatorId','Tour operator','partners','TOUR_OPERATOR',false),text('route','Route / itinerary',false,2000),text('departureTimes','Departure times',false,300),text('childPolicy','Child age / height policy',false,1000),select('confirmationMode','Booking confirmation',['REQUEST','INSTANT']),text('cancellationTerms','Cancellation terms',false,2000),text('bookingCutoff','Booking cutoff',false,300),money('adultPrice','Direct adult price (THB)'),money('childPrice','Direct child price (THB)'),select('supplierPricing','Supplier pricing basis',['NOT_SET','NET','COMMISSION']),money('supplierAdultNet','Supplier adult net (THB)'),money('supplierChildNet','Supplier child net (THB)'),money('supplierAdultCommission','Adult commission received (THB)'),money('supplierChildCommission','Child commission received (THB)')] },
+ agreements:{title:'Agent agreements',singular:'agent agreement',model:'agentAgreement',fields:[...common,ref('agentId','Sales agent','partners','SALES_AGENT'),date('startsOn','Effective from',true),date('endsOn','Effective through',true),date('signedOn','Signed on'),text('evidenceUrl','Signed evidence URL',false,2048)]},
+ rates: {title:'Agent prices',singular:'agent price',model:'agentTourPrice',fields:[ref('agentId','Sales agent','partners','SALES_AGENT'),ref('tourId','Tour program','tours'),ref('agreementId','Annual agreement','agreements',undefined,false),money('adultPrice','Agent adult price (THB)'),money('childPrice','Agent child price (THB)'),select('status','Status',['ACTIVE','INACTIVE'])]},
  locations: {title:'Hotels & pickup points',singular:'pickup point',model:'pickupLocation',fields:[...common,select('kind','Location type',['HOTEL','PICKUP_POINT','PIER','AIRPORT']),text('zone','Zone'),{...text('address','Previous address',false,1000),hidden:true},...addressFields,text('pickupNotes','Pickup notes',false,1000)]},
  vehicles: {title:'Vehicles & boats',singular:'vehicle',model:'fleetVehicle',fields:[...common,select('kind','Vehicle type',['VAN','PICKUP_TRUCK','SPEEDBOAT','LONGTAIL_BOAT','CAR','BUS','OTHER']),{key:'capacity',label:'Passenger capacity',type:'integer',required:true},integer('engineCount','Speedboat engine count'),integer('totalCapacity','Total people capacity (including crew)'),integer('expectedCrew','Expected crew count',0),{key:'purposes',label:'Vehicle uses',type:'roles',options:['PASSENGER_TRANSFER','PURCHASING','CARGO'],required:false},select('ownership','Provided by',['GREENVIEW','PARTNER']),money('hireCost','Default hire cost per trip (THB)'),optionalSelect('commissionType','Commission basis',['FIXED','PERCENT']),money('commissionValue','Commission amount (THB) or percentage'),ref('providerId','Transport provider','partners','TRANSPORT_PROVIDER',false),text('registration','Registration / boat number',false,100),text('notes','Notes',false,1000)]},
 }
-export const labelFor = value => ({'':'Not set',PARK:'National park',GREENVIEW:'Greenview Tour',PARTNER:'Business partner',NOT_SET:'Not set',NET:'Net cost',COMMISSION:'Commission per passenger',REQUEST:'Request confirmation',INSTANT:'Instant confirmation'}[value] || value?.toLowerCase().replaceAll('_',' ').replace(/^./, c => c.toUpperCase()) || '')
+export const labelFor = value => ({'':'Not set',PREPAID:'Pay before service',PAID:'Already paid',COUNTER:'Pay on service day',AGENT_CREDIT:'Agent billing cycle',FIXED:'Fixed duration',OPEN_RETURN:'Open return',OUTBOUND_ONLY:'Outbound only',RETURN_ONLY:'Return only',PARK:'National park',GREENVIEW:'Greenview Tour',PARTNER:'Business partner',NOT_SET:'Not set',NET:'Net cost',COMMISSION:'Commission per passenger',REQUEST:'Request confirmation',INSTANT:'Instant confirmation'}[value] || value?.toLowerCase().replaceAll('_',' ').replace(/^./, c => c.toUpperCase()) || '')
 export function visibleField(field, values) {
+ if (field.key==='durationDays') return (values.journeyMode||'FIXED')==='FIXED'
  if (field.key==='mealPeriod') return values.category==='MEAL'
  if (['accommodationType','occupancy'].includes(field.key)) return values.category==='ACCOMMODATION'
  if (field.key==='serviceMode') return ['TOUR_BOAT','LONGTAIL_BOAT'].includes(values.category)
@@ -34,26 +37,28 @@ export function visibleField(field, values) {
  }
  return true
 }
-export function initialValues(entity,row={}) { return Object.fromEntries(catalog[entity].fields.map(f=>[f.key,row[f.key] === null || row[f.key] === undefined ? (f.type==='roles'?[]:f.type==='select'?f.options[0]:'') : f.type==='timestamp'?localStamp(row[f.key]):f.type==='roles'?row[f.key]:String(row[f.key])])) }
+export function initialValues(entity,row={}) { return Object.fromEntries(catalog[entity].fields.map(f=>[f.key,row[f.key] === null || row[f.key] === undefined ? (f.default!==undefined?(Array.isArray(f.default)?[...f.default]:String(f.default)):(f.type==='roles'?[]:f.type==='select'?f.options[0]:'')) : f.type==='date'?new Date(row[f.key]).toISOString().slice(0,10):f.type==='timestamp'?localStamp(row[f.key]):f.type==='roles'?row[f.key]:String(row[f.key])])) }
 export function validateCatalog(entity,input) {
  const definition=catalog[entity],data={},errors={}
  if(!definition || !input || typeof input !== 'object' || Array.isArray(input)) return {data,errors:{name:'Invalid record.'}}
  for(const f of definition.fields) {
-  const key=f.key,value=input[key]
+  const key=f.key,raw=input[key]===undefined?f.default:input[key],value=typeof raw==='number'&&f.default!==undefined?String(raw):raw
   if(!visibleField(f,input)){data[key]=key==='supplierPricing'?'NOT_SET':null;continue}
   if(f.type==='roles'){if(!Array.isArray(value)||(f.required&&!value.length)||value.some(v=>!f.options.includes(v)))errors[key]='Select valid options.';else data[key]=[...new Set(value)].sort();continue}
   const required=f.required || (['operatorId','providerId'].includes(key)&&input.ownership==='PARTNER')
   if(value===null||value===undefined||value===''){data[key]=null;if(required)errors[key]=`Enter ${f.label.toLowerCase()}.`;continue}
   if(typeof value!=='string'){errors[key]='Enter a valid value.';continue}
   const clean=value.trim()
-  if(f.type==='timestamp'){try{data[key]=parseStamp(clean)}catch{errors[key]='Enter a valid date and time: YYYY-MM-DD HH:mm (Thailand).'}}
+  if(f.type==='date'){const d=new Date(clean+'T00:00:00.000Z');if(!/^\d{4}-\d{2}-\d{2}$/.test(clean)||!Number.isFinite(+d)||d.toISOString().slice(0,10)!==clean)errors[key]='Enter a valid calendar date.';else data[key]=d}
+  else if(f.type==='timestamp'){try{data[key]=parseStamp(clean)}catch{errors[key]='Enter a valid date and time: YYYY-MM-DD HH:mm (Thailand).'}}
   else if(f.type==='money'){if(!/^(0|[1-9]\d{0,7})(\.\d{1,2})?$/.test(clean))errors[key]='Enter 0–99,999,999.99, with at most two decimal places.';else data[key]=clean}
-  else if(f.type==='integer'){if(!/^(0|[1-9]\d{0,3})$/.test(clean)||Number(clean)<(f.min??1))errors[key]=`Enter a whole number from ${f.min??1} to 9999.`;else data[key]=Number(clean)}
+  else if(f.type==='integer'){if(!/^(0|[1-9]\d{0,3})$/.test(clean)||Number(clean)<(f.min??1)||Number(clean)>(f.max??9999))errors[key]=`Enter a whole number from ${f.min??1} to ${f.max??9999}.`;else data[key]=Number(clean)}
   else if(f.type==='select'){if(!f.options.includes(clean))errors[key]='Select an available option.';else data[key]=clean}
   else if(f.type==='reference'){if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean))errors[key]='Select an available record.';else data[key]=clean}
   else {if((required&&!clean)||clean.length>f.max||[...clean].some(c=>(c.charCodeAt(0)<32&&!['\n','\r','\t'].includes(c))||c.charCodeAt(0)===127))errors[key]=`Enter ${required?'1–':'up to '}${f.max} characters.`;data[key]=clean||null}
  }
  if(definition.kind==='SERVICE')Object.assign(errors,resourceMetadataErrors(data))
+ if(entity==='partners'&&data.allowedPaymentTerms&&!data.allowedPaymentTerms.includes(data.defaultPaymentTerms))errors.defaultPaymentTerms='Choose a default from the available payment terms.'
  if(entity==='vehicles'){
   if(data.engineCount&&!([2,3,4].includes(data.engineCount)))errors.engineCount='Select 2, 3 or 4 engines.'
   if(data.totalCapacity!==null&&data.totalCapacity<data.capacity+(data.expectedCrew??0))errors.totalCapacity='Total capacity must include passengers and expected crew.'
@@ -63,6 +68,10 @@ export function validateCatalog(entity,input) {
  if(entity==='company'){Object.assign(errors,validateCompanyContact(data));for(const key of ['taxId','phone'])if(data[key])data[key]=key==='phone'?normalizePhone(data[key]):contactValue(data[key])}
  if(data.code){data.code=data.code.toUpperCase();if(!/^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(data.code))errors.code='Use letters, numbers, hyphens or underscores.'}
  if(data.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))errors.email='Enter a valid email address.'
+ if(entity==='agreements'){
+  if(data.startsOn&&data.endsOn&&data.endsOn<data.startsOn)errors.endsOn='End date must be on or after the start date.'
+  if(data.evidenceUrl){try{const url=new URL(data.evidenceUrl);if(url.protocol!=='https:'||url.username||url.password)throw Error()}catch{errors.evidenceUrl='Enter an HTTPS link to the signed agreement evidence.'}}
+ }
  if(entity==='rates'&&data.adultPrice===null&&data.childPrice===null)errors.adultPrice='Set an adult or child price.'
  for(const [key,limit]of[['latitude',90],['longitude',180]])if(data[key]&&(!/^-?\d+(\.\d+)?$/.test(data[key])||Math.abs(Number(data[key]))>limit))errors[key]=`Enter a coordinate from -${limit} to ${limit}.`
  if(entity==='locations'&&Boolean(data.latitude)!==Boolean(data.longitude))errors.latitude='Enter both coordinates, or leave both empty.'

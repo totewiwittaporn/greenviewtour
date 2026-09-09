@@ -1,3 +1,4 @@
+import { DateField } from '../../core/ui/DateField.jsx'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../core/auth/api.js'
 import { useUnsavedChanges } from '../../core/navigation/Navigation.jsx'
@@ -63,7 +64,7 @@ function StockCommand({ action, row, onClose, onSaved }) {
   catch (err) { setError(errorMessage(err)) }
   finally { locked.current = false; setBusy(false) }
  }
- const field = (key, label, props = {}) => <FormField label={label} name={key} error={fieldErrors[key]} value={values[key]} onChange={event => change(key, event.target.value)} disabled={busy} {...props}/>
+ const field = (key, label, props = {}) => { const Field = ['receivedOn','expiresOn'].includes(key)?DateField:FormField; return <Field label={label} name={key} error={fieldErrors[key]} value={values[key]} onChange={event => change(key, event.target.value)} disabled={busy} {...props}/> }
  return <><Dialog title={`${readable(action)} stock`} busy={busy} onClose={close}><form noValidate onSubmit={submit}>
  {row && <p>{resource?.name || row.lot?.label} · {action === 'SETTLE' ? `${quantity(Number(row.quantity) - Number(row.settledQty))} outstanding` : `${quantity(row.quantity)} ${resource?.baseUnit || 'base units'} at ${row.location?.name || row.location?.label || 'selected location'}`}</p>}
  {action === 'RECEIVE' && <><Reference entity="resources" label="Resource" value={values.resourceId} onChange={value => change('resourceId', value)} onRows={collect} disabled={busy}/><Reference entity="stores" label="Receiving location" value={values.locationId} onChange={value => change('locationId', value)} disabled={busy}/>{field('lotLabel', 'Lot / delivery reference', { required: true })}{field('receivedOn', 'Received on', { placeholder: 'YYYY-MM-DD', required: true, hint: 'Bangkok date · YYYY-MM-DD' })}{field('expiresOn', 'Expires on', { placeholder: 'YYYY-MM-DD', hint: 'Optional · YYYY-MM-DD' })}{field('unitCost', 'Unit cost (THB)', { inputMode: 'decimal', hint: 'Optional · cost per selected purchase unit' })}</>}

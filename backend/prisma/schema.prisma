@@ -149,6 +149,9 @@ model CompanySettings {
 }
 
 model BusinessPartner {
+ allowedPaymentTerms String[] @default(["PREPAID", "PAID", "COUNTER", "AGENT_CREDIT"])
+ defaultPaymentTerms String @default("COUNTER") @db.VarChar(30)
+ agreements AgentAgreement[]
  id String @id @db.Uuid
  version Int @default(1)
  createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -183,6 +186,8 @@ model BusinessPartner {
 }
 
 model TourProgram {
+ journeyMode String @default("FIXED") @db.VarChar(30)
+ durationDays Int? @default(1)
  id String @id @db.Uuid
  version Int @default(1)
  createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -215,6 +220,8 @@ model TourProgram {
 }
 
 model AgentTourPrice {
+ agreementId String? @db.Uuid
+ agreement AgentAgreement? @relation(fields:[agreementId],references:[id],onDelete:Restrict)
  id String @id @db.Uuid
  version Int @default(1)
  createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -226,7 +233,7 @@ model AgentTourPrice {
  status String @db.VarChar(50)
  agent BusinessPartner @relation(fields: [agentId], references: [id], onDelete: Restrict)
  tour TourProgram @relation(fields: [tourId], references: [id], onDelete: Restrict)
- @@unique([agentId, tourId])
+ @@unique([agentId, tourId, agreementId])
  @@index([tourId])
  @@index([status])
  @@schema("app_private")
@@ -338,6 +345,7 @@ model StockLocation {
  @@schema("app_private")
 }
 model ProgramComponent {
+ removalCredit Decimal? @db.Decimal(10,2)
  id String @id @db.Uuid
  version Int @default(1)
  tourId String @db.Uuid
@@ -396,6 +404,16 @@ model OperationTrip {
  @@schema("app_private")
 }
 model TourBooking {
+ outboundDate DateTime? @db.Date
+ returnDate DateTime? @db.Date
+ returnStatus String @default("OUR") @db.VarChar(20)
+ createdById String? @db.Uuid
+ hotelId String? @db.Uuid
+ channelId String? @db.Uuid
+ allergyStatus String @default("UNKNOWN") @db.VarChar(20)
+ specialRequirements String[] @default([])
+ @@index([outboundDate,status])
+ @@index([returnDate,status])
  agentId String? @db.Uuid
  agentName String? @db.VarChar(200)
  agentPhone String? @db.VarChar(32)
@@ -483,6 +501,8 @@ model StockBalance {
  @@schema("app_private")
 }
 model StockIssue {
+ runId String? @db.Uuid
+ @@index([runId])
  id String @id @db.Uuid
  lotId String @db.Uuid
  bookingLineId String? @db.Uuid
@@ -610,5 +630,29 @@ model DocumentAsset {
  sha256 String @db.Char(64)
  sourceUrl String @db.VarChar(2048)
  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ @@schema("app_private")
+}
+
+model AgentAgreement {
+ id String @id @db.Uuid
+ version Int @default(1)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ agentId String @db.Uuid
+ startsOn DateTime @db.Date
+ endsOn DateTime @db.Date
+ signedOn DateTime? @db.Date
+ evidenceUrl String? @db.VarChar(2048)
+ status String @default("ACTIVE") @db.VarChar(50)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ agent BusinessPartner @relation(fields:[agentId],references:[id],onDelete:Restrict)
+ rates AgentTourPrice[]
+ @@index([agentId,startsOn,endsOn])
+ @@schema("app_private")
+}
+model BookingSequence {
+ year Int @id
+ value Int @default(0)
  @@schema("app_private")
 }

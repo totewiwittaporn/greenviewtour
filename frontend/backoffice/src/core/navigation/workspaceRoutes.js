@@ -15,4 +15,4 @@ export function workspaceRoute(pathname) {
  const group = scope === 'operations' && operationGroups.find(item => item.entities.includes(entity))
  return group ? {kind:'operations',entity,group,title:operationTitles[entity],path} : null
 }
-export const canUseOperation = (user, group) => Boolean(user?.management?.company || user?.operations?.[group.capability])
+export const canUseOperation = (user, group) => Boolean(user?.management?.company || (!group.managerOnly && (user?.operations?.[group.capability] || (group.id==='booking' && user?.operations?.islandBooking))))

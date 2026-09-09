@@ -91,3 +91,26 @@ test('catalog summary data remains behind company-management authorization',asyn
  await assert.rejects(listSettings(tx,'actor','tours',new URLSearchParams()),{code:'PERMISSION_DENIED'})
  assert.equal(read,false)
 })
+
+test('journey duration and agent payment defaults validate without inventing dates or prices',()=>{
+ const tour=input('tours',{code:'D',name:'Daytrip'})
+ assert.equal(validateCatalog('tours',tour).data.durationDays,1)
+ assert.ok(validateCatalog('tours',{...tour,durationDays:'367'}).errors.durationDays)
+ assert.equal(validateCatalog('tours',{...tour,journeyMode:'OPEN_RETURN'}).data.durationDays,null)
+ const partner=input('partners',{code:'A',name:'Agent',roles:['SALES_AGENT'],allowedPaymentTerms:['PREPAID'],defaultPaymentTerms:'COUNTER'})
+ assert.ok(validateCatalog('partners',partner).errors.defaultPaymentTerms)
+ assert.deepEqual(validateCatalog('partners',{...partner,defaultPaymentTerms:'PREPAID'}).errors,{})
+})
+test('annual agreement validates calendar bounds and safe evidence references',async()=>{
+ const{tx}=fixture(),agent=(await saveSettings(tx,'actor','partners',input('partners',{code:'AG',name:'Agent',roles:['SALES_AGENT']}))).row
+ const base=input('agreements',{code:'2026',name:'Annual 2026',agentId:agent.id,startsOn:'2026-01-01',endsOn:'2026-12-31'})
+ assert.ok(validateCatalog('agreements',{...base,startsOn:'2026-02-30'}).errors.startsOn)
+ assert.ok(validateCatalog('agreements',{...base,endsOn:'2025-12-31'}).errors.endsOn)
+ assert.ok(validateCatalog('agreements',{...base,evidenceUrl:'javascript:alert(1)'}).errors.evidenceUrl)
+ const agreement=(await saveSettings(tx,'actor','agreements',base)).row
+ const tour=(await saveSettings(tx,'actor','tours',input('tours',{code:'T',name:'Tour'}))).row
+ const rate=input('rates',{agentId:agent.id,tourId:tour.id,agreementId:agreement.id,adultPrice:'100'})
+ await saveSettings(tx,'actor','rates',rate)
+ await assert.rejects(saveSettings(tx,'actor','rates',{...rate,id:randomUUID(),agreementId:''}),{code:'AGENT_RATE_PERIOD_OVERLAP'})
+ await assert.rejects(saveSettings(tx,'actor','agreements',{...initialValues('agreements',agreement),id:agreement.id,version:1,endsOn:'2027-12-31'}),{code:'AGREEMENT_IN_USE'})
+})

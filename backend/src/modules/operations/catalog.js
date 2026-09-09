@@ -5,12 +5,12 @@ import { active,audit,authorize,fail,hash,int,keys,uuid,write } from './common.j
 const include={services:{provider:true},components:{tour:true,resource:true},slots:{resource:true,vehicle:true},trips:{tour:true},bookings:{trip:{include:{tour:true}},lines:{include:{resource:true,source:true,slot:true,dispatchAssignments:{include:{run:{include:{slot:{include:{vehicle:true}}}}}}}}},stock:{lot:{include:{resource:true}},location:true},issues:{lot:{include:{resource:true}},bookingLine:{include:{booking:{include:{trip:true}}}}}}
 const extra={resources:'operationResource',bookings:'tourBooking',stock:'stockBalance',issues:'stockIssue',movements:'stockMovement'}
 export async function listOperations(prisma,actorId,entity,params){
- await authorize(prisma,actorId,['bookings','services','resources','stores','trips','slots'].includes(entity)?'booking':'manager')
+ const {access}=await authorize(prisma,actorId,entity==='bookings'?'islandBooking':['bookings','services','resources','stores','trips','slots'].includes(entity)?'booking':'manager')
  const definition=operationCatalog[entity],model=definition?.model||extra[entity];if(!model)fail('NOT_FOUND',404)
  const q=(params.get('q')||'').trim(),requested=Number(params.get('page')||1),status=params.get('status')
  if(q.length>100||!Number.isSafeInteger(requested)||requested<1||requested>100000)fail('INVALID_FILTER',400)
  if(status&&!['ACTIVE','INACTIVE','OPEN','DRAFT','CONFIRMED','COMPLETED','CANCELLED','READY','CLEANING','DAMAGED'].includes(status))fail('INVALID_FILTER',400)
- const base=definition?.kind?{kind:definition.kind}:{},where={...base}
+ const base=definition?.kind?{kind:definition.kind}:entity==='bookings'&&!access.booking?{createdById:actorId}:{},where={...base}
  if(params.get('bookingId')){if(entity!=='bookings')fail('INVALID_FILTER',400);where.id=uuid(params.get('bookingId'))}
  if(entity==='resources'&&params.get('kind')){const kind=params.get('kind');if(!['SERVICE','EQUIPMENT','CONSUMABLE','MATERIAL'].includes(kind))fail('INVALID_FILTER',400);where.kind=kind==='MATERIAL'?{in:['EQUIPMENT','CONSUMABLE']}:kind}
  if(status&&!['stock','issues','movements'].includes(entity))where.status=status
@@ -40,7 +40,7 @@ export async function listOperations(prisma,actorId,entity,params){
   else activeCount=await tx[model].count({where:{...base,status:entity==='trips'?'OPEN':entity==='bookings'?'CONFIRMED':'ACTIVE'}})
   const featuredWhere={services:{salePrice:{not:null}},equipment:{size:{not:null}},consumables:{OR:[{packSize:{not:null}},{caseSize:{not:null}}]},stores:{kind:'BOAT'},components:{selection:'REQUIRED'},slots:{vehicleId:{not:null}},trips:{tourId:{not:null}}}
   if(featuredWhere[entity])featured=await tx[model].count({where:{...base,...featuredWhere[entity]}})
-  if(entity==='bookings')for(const status of ['DRAFT','CONFIRMED','COMPLETED','CANCELLED'])extraSummary[status.toLowerCase()]=await tx.tourBooking.count({where:{status}})
+  if(entity==='bookings')for(const status of ['DRAFT','CONFIRMED','COMPLETED','CANCELLED'])extraSummary[status.toLowerCase()]=await tx.tourBooking.count({where:{...base,status}})
   return {rows,total,page,pages,pageSize:25,summary:{total:all,active:activeCount,inactive:all-activeCount,featured,...extraSummary}}
 
  },{isolationLevel:'RepeatableRead',timeout:15000})
@@ -72,7 +72,12 @@ export async function saveOperationCatalog(prisma,actorId,entity,input){
     if(data.status==='INACTIVE'&&(await tx.programComponent.count({where:{resourceId:existing.id,status:'ACTIVE'}})||await tx.serviceSlot.count({where:{resourceId:existing.id,status:'ACTIVE'}})||await tx.bookingComponent.count({where:{resourceId:existing.id,selected:true,booking:{status:'CONFIRMED'}}})))fail('RESOURCE_IN_USE')
    }
   }
-  if(entity==='components'&&data.basis==='PER_PERSON_NIGHT'&&data.quantity<1)fail('INVALID_QUANTITY',400)
+  if(entity==='components'){
+   const resource=await active(tx,'operationResource',data.resourceId),tour=await active(tx,'tourProgram',data.tourId)
+   if(data.basis==='PER_ROOM_NIGHT'&&(resource.category!=='ACCOMMODATION'||!resource.occupancy))fail('INVALID_ACCOMMODATION_BASIS',400)
+   if(tour.journeyMode==='FIXED'&&tour.durationDays&&data.day>tour.durationDays)fail('COMPONENT_DAY_OUTSIDE_PROGRAM',400)
+   if(data.removalCredit!==null&&data.selection!=='INCLUDED')fail('INVALID_REMOVAL_CREDIT',400)
+  }
   if(['slots','trips'].includes(entity)){
    if(data.endsAt<=data.startsAt)fail('INVALID_TIME_RANGE',400)
    if(+data.endsAt-+data.startsAt>366*86400000)fail('INVALID_TIME_RANGE',400)

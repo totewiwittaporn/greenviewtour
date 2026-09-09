@@ -147,3 +147,20 @@ html[data-core-modal-open], html[data-core-modal-open] body { overflow:hidden; o
 
 /* Wide data dialogs reuse the same focus, layer and scroll owner. */
 .core-dialog[data-variant=table]{width:min(960px,calc(100vw - 32px))}
+
+/* Shared compact filter controls, including native accessible calendar inputs. */
+.table-panel .filterbar .field-control input { min-height:38px; height:38px; padding-block:7px; font-size:12px; }
+.field-control input[type=date] { min-width:0; color-scheme:light; }
+.field-control input[type=date]::-webkit-calendar-picker-indicator { cursor:pointer; padding:5px; }
+.nav-submenu { padding-left:12px; }
+.nav-section-label { margin:14px 12px 4px; color:var(--muted); font-size:11px; font-weight:600; }
+.checkbox-field { display:flex; align-items:center; gap:9px; min-height:36px; padding:5px 0; cursor:pointer; font-size:12px; }
+.checkbox-field input[type=checkbox] { width:18px; height:18px; min-height:18px; flex:0 0 18px; margin:0; accent-color:var(--brand); cursor:pointer; }
+.checkbox-field:has(input:disabled) { cursor:default; opacity:.65; }
+
+/* Allocation composes several small datasets; cap each scroller without reserving a full-page grid. */
+.table-panel .table-scroll:is([data-layout="allocation"],[data-layout="allocation-selector"]) { height:auto; min-height:112px; max-height:360px; }
+.table-panel .table-scroll:is([data-layout="allocation"],[data-layout="allocation-selector"]) .empty-state { min-height:112px; padding:16px; }
+.table-panel .table-scroll[data-layout="allocation"] table { min-width:460px; }
+.table-panel .table-scroll[data-layout="allocation-selector"] table { min-width:0; table-layout:fixed; }
+.table-scroll[data-layout="allocation-selector"] :is(th,td) { white-space:normal; overflow-wrap:anywhere; }

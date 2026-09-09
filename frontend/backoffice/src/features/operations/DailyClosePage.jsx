@@ -1,3 +1,4 @@
+import { DateField } from '../../core/ui/DateField.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../core/auth/api.js'
 import { useUnsavedChanges } from '../../core/navigation/Navigation.jsx'
@@ -5,7 +6,6 @@ import { Button } from '../../core/ui/Button.jsx'
 import { DataTable } from '../../core/ui/DataTable.jsx'
 import { Dialog } from '../../core/ui/Dialog.jsx'
 import { Dropdown } from '../../core/ui/Dropdown.jsx'
-import { FormField } from '../../core/ui/FormField.jsx'
 import { Pagination } from '../../core/ui/Pagination.jsx'
 import { SummaryCards } from '../../core/ui/SummaryCards.jsx'
 
@@ -56,7 +56,7 @@ export default function DailyClosePage() {
   <div className="page-heading"><div><h1 tabIndex="-1">Daily summaries</h1><p>Capture the closing totals and review the next day's boat and transfer summaries.</p></div></div>
   <SummaryCards items={[{ label: 'Service date', value: serviceDate }, { label: 'Closing reference', value: '22:00' }, { label: 'Summary time', value: '22:30' }, { label: 'LINE delivery', value: readiness?.deliveryEnabled ? 'Enabled' : 'Not enabled' }]} />
   <section className="panel table-panel">
-   <form noValidate className="filterbar" onSubmit={loadDate}><FormField label="Service date (Thailand)" value={date} placeholder="YYYY-MM-DD" error={dateError} onChange={e => setDate(e.target.value)} disabled={busy} /><Button type="submit" disabled={busy}>Load date</Button></form>
+   <form noValidate className="filterbar" onSubmit={loadDate}><DateField label="Service date (Thailand)" value={date} placeholder="YYYY-MM-DD" error={dateError} onChange={e => setDate(e.target.value)} disabled={busy} /><Button type="submit" disabled={busy}>Load date</Button></form>
    <div className="address-section"><p>Times use Thailand time on the evening before the service date. Capturing a snapshot preserves a reference; it does not stop Booking from recording later changes.</p><p>Allocated runs only. Check unassigned bookings before using or sending the summary.</p>
     <p role="status">{readiness?.schedulerEnabled ? 'Automatic preparation enabled.' : 'Automatic preparation is not enabled.'} {readiness?.missing?.length ? 'LINE connection details and a reachable job-order address must be configured before delivery.' : readiness?.note}</p>
     <div className="dialog-actions"><Button disabled={busy || loading || !data || Boolean(error)} busy={busy} onClick={() => prepare('CLOSE')}>Capture closing snapshot</Button><Button disabled={busy || loading || !data || Boolean(error)} onClick={() => prepare('SUMMARY')}>Prepare LINE summary</Button><Button disabled={busy} onClick={() => setRefresh(n => n + 1)}>Refresh</Button></div>

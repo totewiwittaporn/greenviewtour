@@ -21,3 +21,11 @@ test('equipment peak counts overlapping holds but reuses sequential slots',()=>{
  assert.equal(peakUsage([{start:d(1),end:d(3),quantity:5},{start:d(3),end:d(5),quantity:7}]),7)
  assert.equal(peakUsage([{start:d(1),end:d(4),quantity:5},{start:d(3),end:d(5),quantity:7}]),12)
 })
+
+test('separate passenger categories and room occupancy produce exact component quantities',()=>{
+ assert.equal(componentQuantity({basis:'PER_ADULT',quantity:1},3,2,2),3)
+ assert.equal(componentQuantity({basis:'PER_CHILD',quantity:1},3,2,2),2)
+ assert.equal(componentQuantity({basis:'PER_ROOM_NIGHT',quantity:1,resource:{occupancy:4}},3,2,2),4)
+ assert.throws(()=>componentQuantity({basis:'PER_ROOM_NIGHT',quantity:1},3,2,2),/INVALID_QUANTITY/)
+ assert.throws(()=>componentQuantity({basis:'UNSUPPORTED',quantity:1},3,2,2),/INVALID_QUANTITY_BASIS/)
+})

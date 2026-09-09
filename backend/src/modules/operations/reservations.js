@@ -22,7 +22,9 @@ export async function ensureStockReservations(tx,resourceId,sourceId){
    const trip=line.booking.trip,overlap=holds.filter(l=>l.booking.trip.startsAt<trip.endsAt&&l.booking.trip.endsAt>trip.startsAt)
    const end=new Date(Math.max(...overlap.map(l=>+l.booking.trip.endsAt)))
    const start=new Date(Math.min(...overlap.map(l=>+l.booking.trip.startsAt)))
-   const projected=outstanding.filter(i=>i.bookingLine.booking.trip.endsAt<=start&&valid(i,end)).reduce((n,i)=>n+i.quantity-i.settledQty,0)
+   // An open return is not a promise of reusable stock. Date-only returns
+   // become eligible on the following day; actual issue still needs READY stock.
+   const projected=outstanding.filter(i=>i.bookingLine.booking.returnDate&&+new Date(i.bookingLine.booking.returnDate)+86400000<=+start&&valid(i,end)).reduce((n,i)=>n+i.quantity-i.settledQty,0)
    const ready=balances.filter(b=>valid(b,end)).reduce((n,b)=>n+b.quantity,0)+projected
    if(peakUsage(overlap.map(l=>({start:l.booking.trip.startsAt,end:l.booking.trip.endsAt,quantity:l.quantity-l.issuedQty})))>ready)fail('INSUFFICIENT_STOCK')
   }
@@ -38,6 +40,7 @@ export async function ensureBookingAvailability(tx,booking){
   if(resource.status!=='ACTIVE')fail('RELATED_RECORD_UNAVAILABLE')
   if(resource.kind==='SERVICE'){
    if(!line.slotId&&dispatchCategories.includes(resource.category))continue
+   if(!line.slotId&&booking.programSnapshot?.bookingOwnedTrip)continue
    if(!line.slotId)fail('SERVICE_SLOT_REQUIRED')
    const slot=await tx.serviceSlot.findUnique({where:{id:line.slotId}})
    if(!slot||slot.status!=='ACTIVE'||slot.resourceId!==line.resourceId||slot.startsAt<trip.startsAt||slot.endsAt>trip.endsAt)fail('SERVICE_SLOT_UNAVAILABLE')
@@ -45,6 +48,7 @@ export async function ensureBookingAvailability(tx,booking){
    const totals=await tx.bookingComponent.aggregate({where:{slotId:slot.id,selected:true,booking:{status:'CONFIRMED'}},_sum:{quantity:true}})
    if((totals._sum.quantity||0)>slot.capacity)fail('SERVICE_CAPACITY_EXCEEDED')
   }else{
+   if(!line.sourceId&&booking.programSnapshot?.bookingOwnedTrip)continue
    if(!line.sourceId)fail('STOCK_LOCATION_REQUIRED')
    const location=await tx.stockLocation.findUnique({where:{id:line.sourceId}});if(location?.status!=='ACTIVE')fail('RELATED_RECORD_UNAVAILABLE')
    touched.add(`${line.resourceId}:${line.sourceId}`)

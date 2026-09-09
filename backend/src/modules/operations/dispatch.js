@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { operationAccess } from '../../../../packages/contracts/operation-access.js'
 import { parseStamp, localStamp } from '../../../../packages/contracts/operations.js'
 import { active, audit, authorize, dateOnly, fail, hash, int, keys, string, uuid, write } from './common.js'
 import { profileInclude } from '../identity-access/policy.js'
@@ -13,6 +14,19 @@ const fullRun = {
 }
 const categoryKind = category => category === 'TRANSFER' ? 'VEHICLE' : ['TOUR_BOAT', 'LONGTAIL_BOAT'].includes(category) ? 'BOAT' : null
 const liveAssignment = item => ['CONFIRMED', 'COMPLETED'].includes(item.bookingLine.booking.status)
+// Missing properties support legacy projections; explicit null means this leg is not booked.
+function journeyDate(booking, direction) {
+  const field = direction === 'OUTBOUND' ? 'outboundDate' : 'returnDate'
+  if (direction === 'RETURN' && booking.returnStatus !== undefined && booking.returnStatus !== 'OUR') return null
+  if (Object.hasOwn(booking, field)) return booking[field]
+  return direction === 'OUTBOUND' ? booking.trip?.startsAt : booking.trip?.endsAt
+}
+function journeyDay(booking, direction) {
+  const value = journeyDate(booking, direction)
+  if (!value) return null
+  return Object.hasOwn(booking, direction === 'OUTBOUND' ? 'outboundDate' : 'returnDate')
+    ? new Date(value).toISOString().slice(0, 10) : localStamp(value).slice(0, 10)
+}
 function kind(value) { if (!['BOAT', 'VEHICLE'].includes(value)) fail('INVALID_DISPATCH_KIND', 400); return value }
 function stamp(value) { try { return parseStamp(value) } catch { fail('INVALID_TIME', 400) } }
 function optional(value, max = 200) { return value == null || value === '' ? null : string(value, max, false) }
@@ -37,10 +51,10 @@ export function jobBooking(booking, runKind) {
     agentReference: booking.agentReference, contactPhone: booking.contactPhone,
     hotel: booking.hotel, room: booking.room, pickupPoint: booking.pickupPoint,
     dropoffPoint: booking.dropoffPoint, allergies: booking.allergies, assistance: booking.assistance,
-    arrivalAt: booking.trip?.startsAt, departureAt: booking.trip?.endsAt,
+    arrivalAt: journeyDate(booking, 'OUTBOUND'), departureAt: journeyDate(booking, 'RETURN'), returnStatus: booking.returnStatus,
     requestNotes: booking.requestNotes, programId: booking.programSnapshot?.tourId || booking.trip?.tourId, programName: booking.programSnapshot?.name || booking.trip?.name,
   }
-  if(runKind==='BOAT'){delete row.hotel;delete row.room;delete row.agentPhone;delete row.contactPhone;delete row.pickupPoint;delete row.dropoffPoint}
+  if(runKind==='BOAT'){row.allergyStatus=booking.allergyStatus;row.specialRequirements=booking.specialRequirements||[];delete row.hotel;delete row.room;delete row.agentPhone;delete row.contactPhone;delete row.pickupPoint;delete row.dropoffPoint}
   if(runKind==='VEHICLE'){delete row.allergies;delete row.requestNotes}
   return row
 }
@@ -99,6 +113,8 @@ export async function dispatchOptions(prisma, actorId, params) {
   const runKind = kind(params.get('kind') || 'BOAT')
   await authorize(prisma, actorId, duty(runKind, true))
   const entity = params.get('entity'), { page: requested, q } = paging(params)
+  const direction = params.get('direction') || 'OUTBOUND'
+  if (!['OUTBOUND', 'RETURN'].includes(direction)) fail('INVALID_FILTER', 400)
   if (!['services', 'vehicles', 'staff', 'pending'].includes(entity)) fail('INVALID_FILTER', 400)
   const categories = runKind === 'BOAT' ? ['TOUR_BOAT', 'LONGTAIL_BOAT'] : ['TRANSFER']
   const allowedRoles = runKind === 'BOAT' ? boatRoles : driverRoles
@@ -114,12 +130,11 @@ export async function dispatchOptions(prisma, actorId, params) {
     select = { id: true, displayName: true, roles: { select: { roleCode: true, scope: true } } }
   } else {
     model = 'bookingComponent'
-    where = { dispatchDirection:{in:[params.get('direction')||'OUTBOUND','BOTH']}, selected: true, resource: { category: { in: categories } }, booking: { status: 'CONFIRMED' } }
+    where = { dispatchDirection:{in:[direction,'BOTH']}, selected: true, resource: { category: { in: categories } }, booking: { status: 'CONFIRMED' } }
     if(params.get('resourceId'))where.resourceId=uuid(params.get('resourceId'))
-    if (params.get('date')) {
-      const range = serviceDay(params.get('date'))
-      where.booking.trip = { startsAt: { lt: range.lt }, endsAt: { gte: range.gte } }
-    }
+    const dateField = direction === 'OUTBOUND' ? 'outboundDate' : 'returnDate'
+    where.booking[dateField] = params.get('date') ? dateOnly(params.get('date')) : { not: null }
+    if (direction === 'RETURN') where.booking.returnStatus = 'OUR'
     include = { resource: true, booking: { include: { trip: true } }, dispatchAssignments: { include: { run: true } } }
   }
   if (q) {
@@ -132,8 +147,11 @@ export async function dispatchOptions(prisma, actorId, params) {
     let rows = await tx[model].findMany({ where, select, include, skip: (page - 1) * 25, take: 25, orderBy: { id: 'asc' } })
     if (entity === 'staff') rows = rows.map(row => ({ id: row.id, name: row.displayName, roles: row.roles.filter(g => ['SELF', 'COMPANY'].includes(g.scope) && allowedRoles.includes(g.roleCode)).map(g => g.roleCode) }))
     if (entity === 'pending') rows = rows.map(row => {
-      const assignments = row.dispatchAssignments.filter(a => a.run.direction === (params.get('direction') || 'OUTBOUND'))
-      return { id: row.id, name: row.booking.name+' · '+row.resource.name, code: row.booking.code, quantity: row.quantity, resource: { id: row.resource.id, name: row.resource.name }, booking: jobBooking(row.booking,runKind), assignedAdults: assignments.reduce((n, a) => n + a.adults, 0), assignedChildren: assignments.reduce((n, a) => n + a.children, 0) }
+      const assignments = row.dispatchAssignments.filter(a => a.run.direction === direction)
+      const assignedAdults = assignments.reduce((n, a) => n + a.adults, 0), assignedChildren = assignments.reduce((n, a) => n + a.children, 0)
+      const remainingAdults = Math.max(0, row.booking.adults - assignedAdults), remainingChildren = Math.max(0, row.booking.children - assignedChildren)
+      const remainingPassengers = Math.min(remainingAdults + remainingChildren, row.resource.baseUnit === 'PERSON' ? Math.max(0, row.quantity - assignedAdults - assignedChildren) : Infinity)
+      return { id: row.id, name: row.booking.name+' · '+row.resource.name, code: row.booking.code, quantity: row.quantity, resource: { id: row.resource.id, name: row.resource.name }, booking: jobBooking(row.booking,runKind), assignedAdults, assignedChildren, remainingAdults, remainingChildren, remainingPassengers }
     })
     return pageResult(rows, total, page)
   }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
@@ -190,6 +208,12 @@ export async function saveRun(prisma, actorId, input) {
   }, duty(input.kind, true))
 }
 
+async function protectPreparedGroup(tx, run, assignment) {
+  if (run.kind !== 'BOAT') return
+  const issues = await tx.stockIssue.findMany({ where: { runId: run.id, bookingLine: { bookingId: assignment.bookingLine.booking.id } }, select: { quantity: true, settledQty: true } })
+  if (issues.some(issue => issue.quantity > issue.settledQty)) fail('OUTSTANDING_ISSUES')
+}
+
 export async function dispatchCommand(prisma, actorId, input) {
   keys(input, ['id', 'runId', 'version', 'action', 'bookingLineId', 'assignmentId', 'adults', 'children', 'pickupAt', 'dropoffPoint', 'notes', 'actualAdults', 'actualChildren', 'changeReason'])
   uuid(input.id); uuid(input.runId); int(input.version)
@@ -213,11 +237,12 @@ export async function dispatchCommand(prisma, actorId, input) {
     if (input.action === 'ASSIGN') {
       const line = await tx.bookingComponent.findUnique({ where: { id: uuid(input.bookingLineId) }, include: { resource: true, booking: { include: { trip: true } }, dispatchAssignments: { include: { run: true } } } })
       if (!line?.selected || !['BOTH',run.direction].includes(line.dispatchDirection) || line.booking.status !== 'CONFIRMED' || line.resourceId !== run.slot.resourceId || categoryKind(line.resource.category) !== run.kind) fail('INVALID_DISPATCH_BOOKING')
-      if (run.slot.startsAt < line.booking.trip.startsAt || run.slot.endsAt > line.booking.trip.endsAt) fail('SERVICE_SLOT_UNAVAILABLE')
+      if (journeyDay(line.booking, run.direction) !== localStamp(run.slot.startsAt).slice(0, 10)) fail('SERVICE_SLOT_UNAVAILABLE')
       const adults = int(input.adults, 0, 9999), children = int(input.children, 0, 9999)
       if (!adults && !children) fail('INVALID_QUANTITY', 400)
       const existing = run.assignments.find(a => a.bookingLineId === line.id)
       if (existing?.actualAdults != null) fail('ACTUAL_ALREADY_RECORDED')
+      if (existing && (adults < existing.adults || children < existing.children)) await protectPreparedGroup(tx, run, existing)
       const other = line.dispatchAssignments.filter(a => a.run.direction === run.direction && a.runId !== run.id)
       if (other.reduce((n, a) => n + a.adults, adults) > line.booking.adults || other.reduce((n, a) => n + a.children, children) > line.booking.children) fail('BOOKING_PASSENGERS_EXCEEDED')
       if (line.resource.baseUnit === 'PERSON' && other.reduce((n, a) => n + a.adults + a.children, adults + children) > line.quantity) fail('BOOKING_PASSENGERS_EXCEEDED')
@@ -225,7 +250,7 @@ export async function dispatchCommand(prisma, actorId, input) {
       if (others.reduce((n, a) => n + a.adults + a.children, adults + children) > run.capacity) fail('VEHICLE_CAPACITY_EXCEEDED')
       if (line.resource.serviceMode === 'CHARTER' && others.some(a => a.bookingLine.bookingId !== line.bookingId)) fail('CHARTER_ALREADY_ASSIGNED')
       const pickupAt = input.pickupAt ? stamp(input.pickupAt) : null
-      if (run.kind === 'VEHICLE' && !pickupAt) fail('PICKUP_TIME_REQUIRED', 400)
+      if (run.kind === 'VEHICLE' && run.direction === 'OUTBOUND' && !pickupAt) fail('PICKUP_TIME_REQUIRED', 400)
       if (pickupAt && (pickupAt < run.slot.startsAt || pickupAt > run.slot.endsAt)) fail('INVALID_PICKUP_TIME', 400)
       const data = { adults, children, pickupAt, dropoffPoint: optional(input.dropoffPoint), notes: optional(input.notes, 1000) }
       if (existing) await tx.dispatchAssignment.update({ where: { id: existing.id }, data })
@@ -235,6 +260,7 @@ export async function dispatchCommand(prisma, actorId, input) {
       if (!assignment || !liveAssignment(assignment)) fail('NOT_FOUND', 404)
       if (input.action === 'REMOVE') {
         if (assignment.actualAdults != null) fail('ACTUAL_ALREADY_RECORDED')
+        await protectPreparedGroup(tx, run, assignment)
         await tx.dispatchAssignment.delete({ where: { id: assignment.id } })
       } else {
         const actualAdults = int(input.actualAdults, 0, assignment.adults), actualChildren = int(input.actualChildren, 0, assignment.children)
@@ -252,12 +278,31 @@ export async function dispatchCommand(prisma, actorId, input) {
 }
 
 export async function bookingOptions(prisma, actorId, params) {
-  await authorize(prisma, actorId, 'booking')
-  if (params.get('entity') !== 'agents') fail('INVALID_FILTER', 400)
+  const actor = await prisma.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
+  const access = operationAccess(actor)
+  if (!access.booking && !access.islandBooking) fail('PERMISSION_DENIED', 403)
+  const entity = params.get('entity')
+  if (!['agents', 'tours', 'hotels', 'channels'].includes(entity)) fail('INVALID_FILTER', 400)
   const { page: requested, q } = paging(params)
-  const where = { status: 'ACTIVE', roles: { has: 'SALES_AGENT' } }
+  const where = { status: 'ACTIVE' }
+  let model, select = { id: true, code: true, name: true }
+  if (entity === 'agents') {
+    model = 'businessPartner'; where.roles = { has: 'SALES_AGENT' }
+    select = { ...select, phone: true, allowedPaymentTerms: true, defaultPaymentTerms: true }
+  } else if (entity === 'tours') {
+    model = 'tourProgram'
+    if (!access.booking) where.journeyMode = 'RETURN_ONLY'
+    select = { ...select, journeyMode: true, durationDays: true }
+  } else if (entity === 'hotels') {
+    model = 'pickupLocation'; where.kind = 'HOTEL'
+    select = { ...select, zone: true, pickupNotes: true }
+  } else {
+    model = 'salesChannel'; select = { ...select, kind: true }
+  }
   if (q) where.OR = [{ code: { contains: q, mode: 'insensitive' } }, { name: { contains: q, mode: 'insensitive' } }]
-  const total = await prisma.businessPartner.count({ where }), page = Math.min(requested, Math.max(1, Math.ceil(total / 25)))
-  const rows = await prisma.businessPartner.findMany({ where, select: { id: true, code: true, name: true, phone: true }, skip: (page - 1) * 25, take: 25, orderBy: { name: 'asc' } })
-  return pageResult(rows, total, page)
+  return prisma.$transaction(async tx => {
+    const total = await tx[model].count({ where }), page = Math.min(requested, Math.max(1, Math.ceil(total / 25)))
+    const rows = await tx[model].findMany({ where, select, skip: (page - 1) * 25, take: 25, orderBy: [{ name: 'asc' }, { id: 'asc' }] })
+    return pageResult(rows, total, page)
+  }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
 }

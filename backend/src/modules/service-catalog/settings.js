@@ -11,8 +11,8 @@ async function authorize(tx, actorId) {
 }
 const referenceSelect={id:true,name:true,code:true}
 // Summary cards describe the full company-authorized dataset, independently of list filters.
-const summaryWhere={partners:{roles:{has:'SALES_AGENT'}},tours:{ownership:'GREENVIEW'},rates:{childPrice:{not:null}},locations:{kind:'HOTEL'},vehicles:{ownership:'GREENVIEW'},channels:{kind:'DIRECT'}}
-const includes={tours:{operator:{select:referenceSelect}},rates:{agent:{select:referenceSelect},tour:{select:referenceSelect}},vehicles:{provider:{select:referenceSelect}}}
+const summaryWhere={agreements:{signedOn:{not:null}},partners:{roles:{has:'SALES_AGENT'}},tours:{ownership:'GREENVIEW'},rates:{childPrice:{not:null}},locations:{kind:'HOTEL'},vehicles:{ownership:'GREENVIEW'},channels:{kind:'DIRECT'}}
+const includes={agreements:{agent:{select:referenceSelect}},tours:{operator:{select:referenceSelect}},rates:{agent:{select:referenceSelect},tour:{select:referenceSelect},agreement:{select:{...referenceSelect,startsOn:true,endsOn:true}}},vehicles:{provider:{select:referenceSelect}}}
 export async function listSettings(prisma,actorId,entity,params){
  if(!Object.hasOwn(catalog,entity))throw new AccessError('NOT_FOUND',404)
  await authorize(prisma,actorId)
@@ -56,8 +56,21 @@ export async function saveSettings(prisma,actorId,entity,input){
    const related=await tx[catalog[f.entity].model].findUnique({where:{id:data[f.key]}})
    if(!related||related.status!=='ACTIVE'||(f.role&&!related.roles.includes(f.role)))throw new AccessError('RELATED_RECORD_UNAVAILABLE',409)
   }
+  if(entity==='rates'){
+   const agreement=data.agreementId?await tx.agentAgreement.findUnique({where:{id:data.agreementId}}):null
+   if(agreement&&agreement.agentId!==data.agentId)throw new AccessError('AGREEMENT_AGENT_MISMATCH',400)
+   if(data.status==='ACTIVE'){
+    const peers=await tx.agentTourPrice.findMany({where:{agentId:data.agentId,tourId:data.tourId,status:'ACTIVE',id:{not:input.id}},include:{agreement:true}})
+    if(peers.some(p=>!agreement||!p.agreement||(p.agreement.status==='ACTIVE'&&agreement.startsOn<=p.agreement.endsOn&&agreement.endsOn>=p.agreement.startsOn)))throw new AccessError('AGENT_RATE_PERIOD_OVERLAP',409)
+   }
+  }
+  if(entity==='agreements'&&existing){
+   const used=await tx.agentTourPrice.count({where:{agreementId:existing.id}})
+   if(used&&['agentId','startsOn','endsOn'].some(key=>String(data[key])!==String(existing[key])))throw new AccessError('AGREEMENT_IN_USE',409)
+   if(data.status!==existing.status&&await tx.agentTourPrice.count({where:{agreementId:existing.id,status:'ACTIVE'}}))throw new AccessError('AGREEMENT_IN_USE',409)
+  }
   if(entity==='company'&&!existing&&await tx.companySettings.count())throw new AccessError('SETTINGS_CONFLICT',409)
-  if(entity==='partners'&&existing)for(const[role,table,key]of[['TOUR_OPERATOR','tourProgram','operatorId'],['SALES_AGENT','agentTourPrice','agentId'],['TRANSPORT_PROVIDER','fleetVehicle','providerId']]){
+  if(entity==='partners'&&existing)for(const[role,table,key]of[['SALES_AGENT','agentAgreement','agentId'],['TOUR_OPERATOR','tourProgram','operatorId'],['SALES_AGENT','agentTourPrice','agentId'],['TRANSPORT_PROVIDER','fleetVehicle','providerId'],['SERVICE_PROVIDER','operationResource','providerId']]){
    if((data.status==='INACTIVE'||!data.roles.includes(role))&&await tx[table].count({where:{[key]:existing.id,status:'ACTIVE'}}))throw new AccessError('PARTNER_IN_USE',409)
   }
   if(entity==='vehicles'&&existing&&(data.status==='INACTIVE'||['capacity','kind','totalCapacity','expectedCrew','engineCount','ownership','providerId'].some(key=>String(data[key]??'')!==String(existing[key]??'')))&&await tx.serviceSlot.count({where:{vehicleId:existing.id,status:'ACTIVE'}}))throw new AccessError('SCHEDULE_IN_USE',409)

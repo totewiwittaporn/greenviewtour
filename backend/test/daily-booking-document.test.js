@@ -14,8 +14,11 @@ test('daily document is unpaginated, Bangkok scoped and denies driver access',as
  const prisma={userProfile:{findUnique:async()=>({status:'ACTIVE',roles:[{roleCode:'BOOKING',scope:'SELF'}]})},$transaction:fn=>fn(tx)}
  const d=await dailyBookingDocument(prisma,'actor','2026-09-11')
  assert.equal(d.rows.length,31);assert.equal(d.summary.collectAmount,'7750.00');assert.equal(query.take,undefined);assert.equal(query.skip,undefined)
- assert.equal(query.where.trip.startsAt.lt.toISOString(),'2026-09-11T17:00:00.000Z')
- assert.equal(query.where.trip.endsAt.gte.toISOString(),'2026-09-10T17:00:00.000Z')
+ assert.equal(query.where.OR[0].outboundDate.toISOString(),'2026-09-11T00:00:00.000Z')
+ assert.equal(query.where.OR[1].outboundDate,null)
+ assert.equal(query.where.OR[1].returnDate.toISOString(),'2026-09-11T00:00:00.000Z')
+ assert.equal(query.where.OR[1].returnStatus,'OUR')
+ assert.equal(query.include.lines.where,undefined)
  assert.deepEqual(query.where.status.in,['CONFIRMED','COMPLETED'])
  prisma.userProfile.findUnique=async()=>({status:'ACTIVE',roles:[{roleCode:'DRIVER',scope:'SELF'}]})
  await assert.rejects(()=>dailyBookingDocument(prisma,'actor','2026-09-11'),{code:'PERMISSION_DENIED'})

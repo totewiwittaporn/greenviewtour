@@ -11,6 +11,8 @@ export function operationAccess(profile) {
     manageGuide: has(['GUIDE', 'HEAD_GUIDE']),
     driver: has(['DRIVER', 'HEAD_DRIVER']),
     manageDriver: has(['HEAD_DRIVER']),
+    prepareStock: has(['GUIDE', 'HEAD_GUIDE', 'ASSISTANT_TOUR_GUIDE']),
+    islandBooking: has(['BOOKING', 'HEAD_BOOKING', 'GUIDE', 'HEAD_GUIDE', 'ASSISTANT_TOUR_GUIDE']),
     stock: Boolean(manager),
   }
 }
