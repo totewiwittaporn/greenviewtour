@@ -37,7 +37,8 @@ export function jobBooking(booking, runKind) {
     agentReference: booking.agentReference, contactPhone: booking.contactPhone,
     hotel: booking.hotel, room: booking.room, pickupPoint: booking.pickupPoint,
     dropoffPoint: booking.dropoffPoint, allergies: booking.allergies, assistance: booking.assistance,
-    requestNotes: booking.requestNotes, programName: booking.programSnapshot?.name || booking.trip?.name,
+    arrivalAt: booking.trip?.startsAt, departureAt: booking.trip?.endsAt,
+    requestNotes: booking.requestNotes, programId: booking.programSnapshot?.tourId || booking.trip?.tourId, programName: booking.programSnapshot?.name || booking.trip?.name,
   }
   if(runKind==='BOAT'){delete row.hotel;delete row.room;delete row.agentPhone;delete row.contactPhone;delete row.pickupPoint;delete row.dropoffPoint}
   if(runKind==='VEHICLE'){delete row.allergies;delete row.requestNotes}
@@ -81,7 +82,16 @@ export async function listJobs(prisma, actorId, params) {
     const summaryWhere={...where};delete summaryWhere.direction
     const summaryRows=await tx.dispatchRun.findMany({where:summaryWhere,select:{direction:true,assignments:{where:{bookingLine:{booking:{status:{in:['CONFIRMED','COMPLETED']}}}},select:{adults:true,children:true}}}})
     const summary={total:summaryRows.length,outbound:summaryRows.filter(r=>r.direction==='OUTBOUND').length,return:summaryRows.filter(r=>r.direction==='RETURN').length,passengers:summaryRows.reduce((n,r)=>n+r.assignments.reduce((sum,a)=>sum+a.adults+a.children,0),0)}
-    return pageResult(rows.map(jobRun), total, page, { canManage, summary })
+    let documentRuns
+    if (params.get('document') === 'boat-day' && runKind === 'BOAT' && params.get('runId') && rows[0]?.slot.vehicleId) {
+      // Keep the same per-run staff authorization when collecting the other direction.
+      const anchor = rows[0]
+      documentRuns = (await tx.dispatchRun.findMany({
+        where: { kind: 'BOAT', ...(canManage ? {} : { staff: { some: { userId: actorId } } }), slot: { vehicleId: anchor.slot.vehicleId, startsAt: serviceDay(localStamp(anchor.slot.startsAt).slice(0, 10)) } },
+        include: fullRun, orderBy: [{ slot: { startsAt: 'asc' } }, { id: 'asc' }],
+      })).map(jobRun)
+    }
+    return pageResult(rows.map(jobRun), total, page, { canManage, summary, ...(documentRuns ? { documentRuns } : {}) })
   }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
 }
 

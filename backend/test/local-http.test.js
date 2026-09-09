@@ -18,3 +18,21 @@ test('directory uses a read-only transaction, parameterized search and releases 
   assert.equal(calls.at(-1).sql, 'COMMIT')
   assert.equal(released, true)
 })
+
+test('Mac API port keeps host, token and origin boundaries', async () => {
+  const { createHandler } = await import('../src/app/http.js')
+  const handler = createHandler({ port: 5001, token: 'a'.repeat(32) })
+  async function request(host, url='/health/live', headers={}) {
+    let status, data
+    await handler({ method:'GET', url, headers:{host,...headers} }, {
+      writeHead(code){status=code}, end(body){data=JSON.parse(body)},
+    })
+    return {status,data}
+  }
+  assert.equal((await request('127.0.0.1:5001')).status,200)
+  assert.equal((await request('localhost:5001')).status,200)
+  for (const host of ['127.0.0.1:5000','external.example:5001']) assert.equal((await request(host)).status,403)
+  assert.equal((await request('127.0.0.1:5001','/api/me')).status,401)
+  assert.equal((await request('127.0.0.1:5001','/api/me',{origin:'https://external.example'})).status,403)
+  assert.throws(()=>createHandler({port:9000,token:'a'.repeat(32)}),/INVALID_LOCAL_API_PORT/)
+})

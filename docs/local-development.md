@@ -23,3 +23,9 @@ The owner requested https://greenviewtour.com/ as Public reference and related B
 ## Verification
 
 `npm run check` runs lint, Backend tests and both builds. `node scripts/smoke-local.js` tests a running workspace using Playwright; on Windows uses Edge. `node scripts/smoke-auth.js` checks anonymous route protection and auth UI states with intercepted provider results. `npm run db:identity-check --workspace @greenviewtour/api` checks real Prisma reads and a rolled-back invitation transaction. Email confirmation, first-owner sign-in and reset-email delivery must also be tested with the owner. No test fixture is inserted into the real database.
+
+## macOS
+
+The shared launcher uses API port 5001 on macOS to avoid AirPlay Receiver on port 5000; other platforms retain 5000. It passes LOCAL_API_PORT to the API and Vite proxy together. Host validation accepts only loopback hosts on the selected port. Public and Backoffice remain 5173/5174.
+
+Download the database root certificate from the official Supabase dashboard and set PGSSLROOTCERT to its absolute local path in backend/.env. The file can live in backend/certs.local/ (ignored). Keep TLS verification enabled. Certificate installation does not require changing the database password or project settings.
