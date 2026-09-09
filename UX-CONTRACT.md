@@ -138,3 +138,9 @@ Owner refinement 2026-09-09: Boat print copies collect all authorized runs for t
 
 
 Owner refinement: vessel-day documents include per-program adult/child/passenger summaries for each direction, followed by a total of all programs. Group by snapshotted program ID, never infer the return list or count the same customer's two journeys as unique customers. Crew counts are separate from customer totals; four roster roles support multiple assistant captains/guides (typical 1 captain, 2 assistant captains, 1 guide, 1–2 assistant guides). Existing per-person crew selection remains canonical.
+
+## Daily operational document contract
+
+Owner-approved sage document family uses DocumentCore for exact database PNG loading, image decode/font readiness and print action; existing Core Dialog, Button and FormField remain canonical. DocumentPreview shows errors/retry instead of printing a missing logo. GET booking-document requires existing Booking authorization; Guide/Driver projections contain no payment amounts. DocumentAsset is private, RLS enabled, no anon/authenticated table grants; backend serves only fixed company-logo as PNG data URL to workspace sessions. The bounded 5 KB original is stored as BYTEA with SHA-256 rather than duplicated/recolored per document.
+
+Daily report scope is explicit in the sheet: confirmed/completed trips overlapping selected Thailand day. Counts exclude drafts/cancellations. All rows render with repeating print table headers; no list pagination limit. COUNTER amount uses stored adult/child prices plus selected non-included service lines in integer satang; missing prices block a definitive collection total. Prices are not refreshed from current catalog rates. No deposit/receipt ledger exists in this scope.

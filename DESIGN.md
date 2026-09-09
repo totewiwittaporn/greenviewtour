@@ -137,3 +137,9 @@ Owner refinement 2026-09-09: Boat print copies collect all authorized runs for t
 
 
 Owner refinement: vessel-day documents include per-program adult/child/passenger summaries for each direction, followed by a total of all programs. Group by snapshotted program ID, never infer the return list or count the same customer's two journeys as unique customers. Crew counts are separate from customer totals; four roster roles support multiple assistant captains/guides (typical 1 captain, 2 assistant captains, 1 guide, 1–2 assistant guides). Existing per-person crew selection remains canonical.
+
+## Approved daily job-order family — 9 September 2026
+
+Owner approved the latest sage document mockups. DocumentCore owns the exact database-backed PNG masthead and print readiness; JobSheets/DailyJobSheets own the business projections; dispatch.css owns document tokens: heading #29483e, column header #eaf0ec, section #dfe9e2, rule #b8c7be. Body remains white/charcoal. Keep source logo colors unmodified. Print A4 landscape with repeating table headings and natural continuation, never clip rows. Narrow screens scroll the paper preview inside Core Dialog.
+
+Boat: same vessel/service day with independent ขาไป / ขากลับ sections. Vehicle: same vehicle/service day with รับ / ส่ง sections; no return time column. Daily Booking: all confirmed/completed bookings whose trip overlaps the Thailand service day, once per booking, regardless of list pagination/search. Include stored-price service-day collection only for COUNTER. Missing prices remain explicit, zero is valid. Summaries separate program and payment terms. Existing single-booking View remains a detail view, not the daily printable job order. No payment ledger or deposit allocation is inferred.

@@ -59,7 +59,7 @@ export function jobRun(row) {
       id: row.slot.id, resourceId: row.slot.resourceId, vehicleId: row.slot.vehicleId,
       startsAt: row.slot.startsAt, endsAt: row.slot.endsAt, capacity: row.slot.capacity,
       resource: { id: row.slot.resource.id, name: row.slot.resource.name, category: row.slot.resource.category },
-      vehicle: row.slot.vehicle ? { id: row.slot.vehicle.id, name: row.slot.vehicle.name, capacity: row.slot.vehicle.capacity } : null,
+      vehicle: row.slot.vehicle ? { id: row.slot.vehicle.id, name: row.slot.vehicle.name, capacity: row.slot.vehicle.capacity, registration: row.slot.vehicle.registration, ownership: row.slot.vehicle.ownership } : null,
     },
     staff: row.staff.map(member => ({ userId: member.userId, role: member.role, name: member.user.displayName })),
     assignments, passengers: assignments.reduce((sum, item) => sum + item.adults + item.children, 0),
@@ -83,11 +83,11 @@ export async function listJobs(prisma, actorId, params) {
     const summaryRows=await tx.dispatchRun.findMany({where:summaryWhere,select:{direction:true,assignments:{where:{bookingLine:{booking:{status:{in:['CONFIRMED','COMPLETED']}}}},select:{adults:true,children:true}}}})
     const summary={total:summaryRows.length,outbound:summaryRows.filter(r=>r.direction==='OUTBOUND').length,return:summaryRows.filter(r=>r.direction==='RETURN').length,passengers:summaryRows.reduce((n,r)=>n+r.assignments.reduce((sum,a)=>sum+a.adults+a.children,0),0)}
     let documentRuns
-    if (params.get('document') === 'boat-day' && runKind === 'BOAT' && params.get('runId') && rows[0]?.slot.vehicleId) {
+    if (['boat-day','vehicle-day'].includes(params.get('document')) && params.get('runId') && rows[0]?.slot.vehicleId) {
       // Keep the same per-run staff authorization when collecting the other direction.
       const anchor = rows[0]
       documentRuns = (await tx.dispatchRun.findMany({
-        where: { kind: 'BOAT', ...(canManage ? {} : { staff: { some: { userId: actorId } } }), slot: { vehicleId: anchor.slot.vehicleId, startsAt: serviceDay(localStamp(anchor.slot.startsAt).slice(0, 10)) } },
+        where: { kind: runKind, ...(canManage ? {} : { staff: { some: { userId: actorId } } }), slot: { vehicleId: anchor.slot.vehicleId, startsAt: serviceDay(localStamp(anchor.slot.startsAt).slice(0, 10)) } },
         include: fullRun, orderBy: [{ slot: { startsAt: 'asc' } }, { id: 'asc' }],
       })).map(jobRun)
     }

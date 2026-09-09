@@ -1,3 +1,4 @@
+import { DocumentHeader } from './DocumentCore.jsx'
 import { Fragment } from 'react'
 import { programSummary } from '../../../../../packages/contracts/job-summary.js'
 import { Dropdown } from '../../core/ui/Dropdown.jsx'
@@ -39,12 +40,12 @@ export function BoatDailySheet({runs}){
   return new Set(values).size===1?values[0]:runs.map((run,i)=>`${run.direction==='RETURN'?'กลับ':'ไป'} ${stamp(run.slot?.startsAt).slice(11)}: ${values[i]}`).join(' / ')
  }
  return <section className="job-sheet boat-daily-sheet">
-  <header className="boat-daily-header">
-   <div className="boat-daily-identity"><h2>Boat Job Order · ใบงานเรือ</h2><p><strong>Boat · ชื่อเรือ:</strong> {vehicle?.name||'Not assigned'}</p><div className="boat-crew">{crewRoles.map(([label,roles])=><p key={label}><strong>{label}:</strong> {crew(roles)}</p>)}</div></div>
-   <div className="boat-daily-reference"><strong className="boat-brand">Greenview Tour</strong><p><strong>Document no. · เลขที่:</strong><br/>{documentCode}</p><p><strong>Date · วันที่:</strong> {date}</p><span>Outbound + return · ขาไปและขากลับ</span></div>
+  <DocumentHeader title="BOAT JOB ORDER / ใบงานเรือ" code={documentCode} date={date}/><header className="boat-daily-header">
+   <div className="boat-daily-identity"><p><strong>Boat · ชื่อเรือ:</strong> {vehicle?.name||'Not assigned'}</p><div className="boat-crew">{crewRoles.map(([label,roles])=><p key={label}><strong>{label}:</strong> {crew(roles)}</p>)}</div></div>
+   <div className="boat-daily-reference"><p><strong>Document no. · เลขที่:</strong><br/>{documentCode}</p><p><strong>Date · วันที่:</strong> {date}</p><span>Outbound + return · ขาไปและขากลับ</span></div>
   </header>
   <div className="boat-daily-cards">{runs.map(run=><JobSheet key={run.id} run={run} canManage={false}/>)}</div>
-  <table className="job-print-table boat-daily-table"><colgroup>{[3,10,18,13,11,4,4,6,6,19,6].map((width,i)=><col key={i} style={{width:`${width}%`}}/>)}</colgroup>
+  <table className="job-print-table boat-daily-table"><colgroup>{[3,9,16,12,10,4,4,6,6,24,6].map((width,i)=><col key={i} style={{width:`${width}%`}}/>)}</colgroup>
    <thead><tr className="boat-repeat-title"><th colSpan="11">{vehicle?.name} · {documentCode} · {date}</th></tr><tr><th>No.</th><th>Agent · เอเจนต์</th><th>Guest group · กลุ่มลูกค้า</th><th>Booking / Reference</th><th>Program · โปรแกรม</th><th>Adult<br/>ผู้ใหญ่</th><th>Child<br/>เด็ก</th><th>Arrival<br/>วันมา</th><th>Departure<br/>วันกลับ</th><th>Requests / remarks · หมายเหตุ</th><th>Actual<br/>จริง A/C</th></tr></thead>
    <tbody>{['OUTBOUND','RETURN'].map(direction=>{
     const selected=runs.filter(r=>r.direction===direction),rows=selected.flatMap(run=>run.assignments.map(a=>({...a,run}))).sort((a,b)=>a.booking.code.localeCompare(b.booking.code))

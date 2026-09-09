@@ -149,3 +149,46 @@
  .boat-daily-table td { padding-top: .2mm; padding-bottom: .2mm; }
  .boat-program-summary th { color: #000; }
 }
+
+/* Approved daily-document family: one shared palette and table owner. */
+.document-preview,.job-sheet{--doc-heading:#29483e;--doc-header:#eaf0ec;--doc-section:#dfe9e2;--doc-rule:#b8c7be}
+.document-masthead{display:flex;justify-content:space-between;align-items:center;gap:24px;border-bottom:1px solid var(--doc-rule);padding:4px 0 12px;margin-bottom:12px}
+.document-masthead img{width:212px;height:55px;object-fit:contain;flex:none}
+.document-masthead h2{font-size:19px;margin:0 0 6px}.document-masthead p{margin:0;text-align:right;font-size:11px}
+.document-table{width:100%;border-collapse:collapse;font-size:11px;line-height:1.4;table-layout:fixed}
+.document-table th,.document-table td{border:1px solid var(--doc-rule);padding:5px;vertical-align:top;overflow-wrap:anywhere;white-space:normal}
+.document-table th,.job-sheet .boat-daily-table th,.boat-program-summary th{background:var(--doc-header);color:var(--doc-heading)}
+.document-table small{display:block;font-size:.85em}
+.document-table th{font-weight:600;text-align:left}.document-table .document-money{text-align:right;font-variant-numeric:tabular-nums}
+.document-section,.document-summaries h3{background:var(--doc-section);color:var(--doc-heading);padding:7px;margin:12px 0 0!important;font-size:13px}
+.document-summaries{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+.document-counts,.document-vehicle{display:flex;justify-content:space-around;gap:12px;background:var(--doc-header);padding:10px;margin:12px 0}
+.document-counts>div{text-align:center}.document-counts strong{display:block;font-size:24px}
+.document-collection{border:1px solid var(--doc-rule);padding:8px}
+.job-sheet .job-total-row{background:var(--doc-header);color:var(--doc-heading);font-weight:600}
+.job-sheet .boat-daily-table td,.job-sheet .boat-daily-table th,.job-sheet .boat-program-summary td,.job-sheet .boat-program-summary th{border-color:var(--doc-rule)}
+.job-sheet .boat-daily-header{border-color:var(--doc-rule)}
+.job-sheet .boat-daily-table .job-section-row th{background:var(--doc-section)}
+.booking-daily-table th:nth-child(1){width:3%}.booking-daily-table th:nth-child(6),.booking-daily-table th:nth-child(7),.booking-daily-table th:nth-child(8){width:4%}
+.booking-daily-table th:nth-child(9),.booking-daily-table th:nth-child(10){width:11%}
+@media screen{.document-preview{overflow-x:auto;padding-bottom:8px}.document-preview>.job-sheet{min-width:1000px}.document-preview .boat-daily-cards{display:none}.document-preview .boat-daily-table{display:table;width:100%;table-layout:fixed;border-collapse:collapse;font-size:11px}.document-preview .boat-daily-table td,.document-preview .boat-daily-table th{border:1px solid var(--doc-rule);padding:4px;overflow-wrap:anywhere}.document-preview .boat-program-summaries{grid-template-columns:1fr 1fr}}
+@media print{
+ @page{size:A4 landscape;margin:8mm}
+ .document-preview{overflow:visible!important}.document-preview .job-sheet{min-width:0;color:#111;font-size:8.5pt;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+ .document-preview .document-masthead{display:flex;break-inside:avoid;margin-bottom:2mm;padding-bottom:2mm}.document-masthead img{width:53mm;height:13.75mm}.document-masthead h2{font-size:14pt}.document-masthead p{font-size:8pt}
+ .document-table{font-size:8pt;line-height:1.25}.document-table th,.document-table td{padding:.8mm;white-space:normal}.document-table thead{display:table-header-group}.document-table tr{break-inside:avoid}
+ .document-section{break-after:avoid}.document-summaries{gap:3mm;break-inside:avoid}.document-counts,.document-vehicle{padding:2mm;margin:2mm 0;break-inside:avoid}.document-counts strong{font-size:15pt}
+ .document-preview .boat-daily-table th,.document-preview .boat-program-summary th{color:var(--doc-heading);background:var(--doc-header)}
+ .document-preview .boat-daily-table th,.document-preview .boat-daily-table td,.document-preview .boat-program-summary th,.document-preview .boat-program-summary td{border-color:var(--doc-rule)}
+ .document-preview .boat-daily-header{border:0;font-size:8pt}.document-preview .boat-daily-reference{display:none}.document-preview .boat-daily-identity{border:0}.document-preview .boat-daily-header{grid-template-columns:1fr}
+ .document-preview .job-signoff{margin-top:4mm}.document-preview .job-footnote{font-size:7pt}
+}
+@media print{
+ .booking-daily-table{font-size:8pt;line-height:1.2}
+ .booking-daily-table td,.booking-daily-table th{padding:.55mm .7mm}
+ .document-summaries h3{font-size:8pt;padding:1.2mm;margin-top:1mm!important}
+ .document-summaries .document-table{font-size:7.5pt}
+ .document-summaries .document-table th,.document-summaries .document-table td{padding:.5mm .7mm}
+ .document-summaries{margin-top:2mm}.document-collection{margin:1.5mm 0;padding:1.2mm}
+ .document-preview .document-table th{letter-spacing:normal;text-transform:none}
+}

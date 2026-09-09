@@ -602,3 +602,13 @@ model OperationNotificationOutbox {
  snapshot OperationDailySnapshot @relation(fields:[snapshotId],references:[id],onDelete:Restrict)
  @@schema("app_private")
 }
+
+model DocumentAsset {
+ key String @id @db.VarChar(80)
+ mimeType String @db.VarChar(40)
+ content Bytes
+ sha256 String @db.Char(64)
+ sourceUrl String @db.VarChar(2048)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ @@schema("app_private")
+}
