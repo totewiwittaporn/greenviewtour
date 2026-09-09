@@ -32,3 +32,7 @@ The adapter accepts only the verified Preview ref, direct host or Singapore sess
 - Application live connection: blocked until private PostgreSQL credentials are configured.
 
 Sources: https://supabase.com/docs/guides/database/connecting-to-postgres and https://node-postgres.com/features/ssl.
+
+## Session pooler recovery — 2026-09-09
+
+The owner supplied the exact Preview session-pooler endpoint `aws-0-ap-southeast-1.pooler.supabase.com:5432`, database `postgres`, user `postgres.qplzgpyidszxbtbyknjc`. The ignored server environment now uses these values with the existing private password and verified TLS. This supersedes the initial pending-credentials status above. The workstation direct IPv6 route was unavailable (ENETUNREACH); session-pooler `db:check` returned UP for the verified Preview ref. All three pending dispatch/resource/daily-summary migrations were applied with Prisma, bringing the applied count to 12. Dispatch integration passed 23 real-database checks and removed its isolated fixtures.

@@ -22,7 +22,7 @@ const reject = async (fn, code) => { await assert.rejects(fn, error => error.cod
 const params = value => new URLSearchParams(value)
 const catalog = async (entity, data) => (await saveOperationCatalog(prisma, manager, entity, { ...initialValues(entity), ...data, id: id(), version: 0 })).row
 const fleet = async (suffix, kind) => (await saveSettings(prisma, manager, 'vehicles', { ...initialValues('vehicles'), id: id(), version: 0, code: prefix + suffix, name: prefix + suffix, kind, engineCount:kind==='SPEEDBOAT'?'2':'', capacity: '5', totalCapacity: '7', expectedCrew: '1', ownership: 'GREENVIEW' })).row
-const staff = async role => { const userId = id(); profiles.push(userId); await prisma.userProfile.create({ data: { id: userId, displayName: prefix + role, status: 'ACTIVE', roles: { create: { roleCode: role, scope: 'SELF' } } } }); return userId }
+const staff = async role => { const userId = id(); profiles.push(userId); await prisma.$executeRaw`INSERT INTO auth.users (id, aud, role, email) VALUES (${userId}::uuid, 'authenticated', 'authenticated', ${userId + '@example.invalid'})`; await prisma.userProfile.create({ data: { id: userId, displayName: prefix + role, status: 'ACTIVE', roles: { create: { roleCode: role, scope: 'SELF' } } } }); return userId }
 const command = async (actor, run, data) => { const result = await dispatchCommand(prisma, actor, { id: id(), runId: run.id, version: run.version, ...data }); run.version = result.version; return result }
 let date
 try {
@@ -105,7 +105,7 @@ try {
   const security = await pool.query("SELECT relname,relrowsecurity,has_table_privilege('anon',c.oid,'SELECT') AS anon_read,has_table_privilege('authenticated',c.oid,'SELECT') AS user_read FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='app_private' AND c.relname IN ('DispatchRun','DispatchStaff','DispatchAssignment')")
   assert.equal(security.rows.length, 3); assert.ok(security.rows.every(r => r.relrowsecurity && !r.anon_read && !r.user_read)); pass('dispatch tables are private with RLS enabled')
   console.log(JSON.stringify({ result: 'PASS', environment: 'preview', checks: checks.length, prefix }))
-} catch (error) { console.error('QA DISPATCH FAILED', error.code || error.message); process.exitCode = 1 }
+} catch (error) { console.error('QA DISPATCH FAILED', error.code || error.message, JSON.stringify(error.meta || {})); process.exitCode = 1 }
 finally {
   try {
     await prisma.$transaction(async tx => {
@@ -118,7 +118,7 @@ finally {
       await tx.bookingComponent.deleteMany({ where: { bookingId: { in: bookingIds } } }); await tx.tourBooking.deleteMany({ where: { id: { in: bookingIds } } })
       await tx.serviceSlot.deleteMany({ where: { code: { startsWith: prefix } } }); await tx.operationTrip.deleteMany({ where: { code: { startsWith: prefix } } })
       await tx.operationResource.deleteMany({ where: { code: { startsWith: prefix } } }); await tx.fleetVehicle.deleteMany({ where: { code: { startsWith: prefix } } })
-      await tx.userProfile.deleteMany({ where: { id: { in: profiles } } }); await tx.operationCommand.deleteMany({ where: { id: { in: [...ids] } } }); await tx.auditEvent.deleteMany({ where: { targetId: { in: [...ids] } } })
+      await tx.userProfile.deleteMany({ where: { id: { in: profiles } } }); for (const userId of profiles) await tx.$executeRaw`DELETE FROM auth.users WHERE id = ${userId}::uuid`; await tx.operationCommand.deleteMany({ where: { id: { in: [...ids] } } }); await tx.auditEvent.deleteMany({ where: { targetId: { in: [...ids] } } })
     }, { timeout: 30000 })
     console.log('QA dispatch fixture cleanup complete')
   } catch (error) { console.error('QA cleanup requires follow-up', error.code || error.message, prefix); process.exitCode = 1 }
