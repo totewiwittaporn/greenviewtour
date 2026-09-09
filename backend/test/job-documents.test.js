@@ -18,3 +18,27 @@ test('job totals exclude cancelled guests and distinguish zero actual from unrec
  const row=jobRun({id:'r',kind:'BOAT',direction:'RETURN',staff:[],slot:{resource:{id:'res'}},assignments:[base,{...base,id:'cancel',bookingLine:{booking:{...booking,status:'CANCELLED'}}}]})
  assert.equal(row.passengers,3);assert.equal(row.assignments.length,1);assert.equal(row.assignments[0].actualAdults,0)
 })
+
+test('combined boat document collects the vessel day without direction/pagination filters and retains crew authorization',async()=>{
+ const {listJobs}=await import('../src/modules/operations/dispatch.js')
+ const actor='30000000-0000-4000-8000-000000000001',runId='30000000-0000-4000-8000-000000000002'
+ const anchor={id:runId,kind:'BOAT',direction:'OUTBOUND',staff:[],assignments:[],slot:{vehicleId:'boat1',startsAt:new Date('2026-09-08T18:00:00Z'),resource:{id:'resource'}}}
+ for(const role of ['MANAGER','CAPTAIN']){
+  let documentWhere
+  const tx={dispatchRun:{count:async()=>1,findMany:async args=>{
+   if(args.select)return []
+   if(args.take)return [anchor]
+   documentWhere=args.where
+   assert.equal(args.skip,undefined);assert.equal(args.take,undefined)
+   return [anchor,{...anchor,id:'return',direction:'RETURN'}]
+  }}}
+  const prisma={userProfile:{findUnique:async()=>({status:'ACTIVE',roles:[{roleCode:role,scope:role==='MANAGER'?'COMPANY':'SELF'}]})},$transaction:fn=>fn(tx)}
+  const result=await listJobs(prisma,actor,new URLSearchParams({kind:'BOAT',runId,direction:'OUTBOUND',document:'boat-day'}))
+  assert.equal(result.documentRuns.length,2)
+  assert.equal(documentWhere.id,undefined);assert.equal(documentWhere.direction,undefined)
+  assert.equal(documentWhere.slot.vehicleId,'boat1')
+  assert.equal(documentWhere.slot.startsAt.gte.toISOString(),'2026-09-08T17:00:00.000Z')
+  assert.equal(documentWhere.slot.startsAt.lt.toISOString(),'2026-09-09T17:00:00.000Z')
+  assert.deepEqual(documentWhere.staff,role==='CAPTAIN'?{some:{userId:actor}}:undefined)
+ }
+})

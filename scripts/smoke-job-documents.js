@@ -17,13 +17,13 @@ try {
  const guest={id:id(1),code:'SAMPLE-001',version:3,name:'Sample guests · กลุ่มตัวอย่าง',status:'CONFIRMED',adults:2,children:1,trip,agentName:'Sample agent',agentPhone:'081-000-0000',hotel:'Sample hotel',room:'101',pickupPoint:'Hotel lobby',dropoffPoint:'Pier',allergies:'Peanut allergy',assistance:'Wheelchair assistance',programName:'2 days / 1 night',arrivalAt:trip.startsAt,departureAt:trip.endsAt,paymentTerms:'AGENT_CREDIT'}
  let run={id:id(2),code:'SAMPLE-BOAT',name:'Surin Island · Sample',kind:'BOAT',version:4,direction:'OUTBOUND',period:'AM',capacity:40,slot:{startsAt:trip.startsAt,endsAt:'2026-05-01T04:00:00Z',vehicle:{name:'Sample boat 5'}},staff:[{name:'Sample guide',role:'GUIDE'},{name:'Sample captain',role:'CAPTAIN'}],assignments:Array.from({length:3},(_,i)=>({id:id(i+10),booking:{...guest,code:`SAMPLE-${i+1}`,name:`Sample group ${i+1} · กลุ่มตัวอย่าง`},adults:2,children:1,actualAdults:i===0?0:null,actualChildren:i===0?0:null,changeReason:i===0?'Guest did not travel':'',pickupAt:'2026-05-01T01:20:00Z'})),passengers:9}
  const booking={...guest,lines:[{id:id(80),selected:true,dispatchDirection:'BOTH',quantity:3,resource:{name:'Sample boat service',category:'TOUR_BOAT',baseUnit:'PERSON'},dispatchAssignments:[{id:id(81),run,adults:2,children:1}]}]}
- let failed=false
+ let failed=false,documentRuns
  const list=rows=>({rows,total:rows.length,page:1,pageSize:25,pages:1})
  await page.route('**/api/**',async route=>{
   const req=route.request(),entity=new URL(req.url()).pathname.split('/').at(-1)
   assert.equal(req.method(),'GET','Documents must never mutate data')
   if(entity==='me')return route.fulfill({json:{user:{id:id(99),displayName:'Sample manager',roles:[],management:{company:true},operations:{guide:true,driver:true,booking:true}}}})
-  if(entity==='jobs')return failed?route.fulfill({status:500,json:{code:'LOAD_FAILED'}}):route.fulfill({json:{...list([run]),canManage:false,summary:{total:1,passengers:run.passengers,outbound:1,return:0}}})
+  if(entity==='jobs')return failed?route.fulfill({status:500,json:{code:'LOAD_FAILED'}}):route.fulfill({json:{...list([run]),...(documentRuns?{documentRuns}:{}),canManage:false,summary:{total:1,passengers:run.passengers,outbound:1,return:0}}})
   if(entity==='bookings')return route.fulfill({json:{...list([booking]),summary:{total:1,confirmed:1}}})
   return route.fulfill({json:list([])})
  })
@@ -38,12 +38,19 @@ try {
   await page.emulateMedia({media:'screen'})
  }
  await page.goto(`http://localhost:5278/operations/guide?date=2026-05-01&runId=${run.id}`)
- await page.getByRole('heading',{name:'Boat Job Order · SAMPLE-BOAT',exact:true}).waitFor()
+ await page.getByRole('heading',{name:'Boat Job Order · ใบงานเรือ',exact:true}).waitFor()
  await capture('boat-job-sample')
- assert.equal(await page.locator('.job-print-table').getByText('0 / 0',{exact:true}).count(),1)
- assert.equal(await page.locator('.job-print-table').getByText('Not recorded',{exact:true}).count(),2)
+ assert.equal(await page.locator('.boat-daily-table').getByText('0/0',{exact:true}).count(),1)
+ assert.equal(await page.locator('.boat-daily-table tbody tr td:last-child').getByText('—',{exact:true}).count(),2)
  run={...run,direction:'RETURN',code:'SAMPLE-RETURN',assignments:[run.assignments[0]],passengers:3}
- await page.goto(`http://localhost:5278/operations/guide?date=2026-05-01&runId=${run.id}`);await page.getByRole('heading',{name:'Boat Job Order · SAMPLE-RETURN',exact:true}).waitFor();await capture('boat-return-sample')
+ await page.goto(`http://localhost:5278/operations/guide?date=2026-05-01&runId=${run.id}`);await page.getByRole('heading',{name:'Boat Job Order · ใบงานเรือ',exact:true}).waitFor();await capture('boat-return-sample')
+ const baseRun={...run,kind:'BOAT',slot:{...run.slot,vehicle:{id:id(55),name:'Sample boat 5'}}}
+ documentRuns=[{...baseRun,id:id(56),direction:'OUTBOUND',assignments:Array.from({length:15},(_,i)=>({...baseRun.assignments[0],id:id(300+i),booking:{...guest,code:`OUT-${i+1}`,name:`Sample group ${i+1}`},actualAdults:null,actualChildren:null,changeReason:''}))},{...baseRun,id:id(57),direction:'RETURN',assignments:Array.from({length:5},(_,i)=>({...baseRun.assignments[0],id:id(400+i),booking:{...guest,code:`BACK-${i+1}`,name:`Returning group ${i+1}`},actualAdults:null,actualChildren:null,changeReason:''}))}]
+ await page.goto(`http://localhost:5278/operations/guide?date=2026-05-01&runId=${run.id}`)
+ await page.getByRole('heading',{name:'Boat Job Order · ใบงานเรือ',exact:true}).waitFor()
+ assert.equal(await page.locator('.boat-daily-table tbody tr:not(.job-section-row):not(.job-total-row)').count(),20)
+ await capture('boat-daily-20-groups')
+ documentRuns=undefined
  run={...run,kind:'VEHICLE',code:'SAMPLE-VAN',slot:{...run.slot,vehicle:{name:'Sample van 1'}},staff:[{name:'Sample driver',role:'DRIVER'}]}
  await page.goto(`http://localhost:5278/operations/driver?date=2026-05-01&runId=${run.id}`)
  await page.getByRole('heading',{name:'Transfer Job Order · SAMPLE-VAN',exact:true}).waitFor();await capture('vehicle-job-sample')

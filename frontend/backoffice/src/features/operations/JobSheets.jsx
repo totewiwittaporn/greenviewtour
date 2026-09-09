@@ -26,6 +26,38 @@ export function JobSheet({run,canManage,onCommand}){
  </SheetHeader><div className="job-lines">{run.assignments.map(a=><article className="job-group" key={a.id}><h3>{a.booking.name} <small>{a.booking.code}</small></h3><dl><dt>Agent</dt><dd>{a.booking.agentName||'Direct'}{run.kind==='VEHICLE'&&a.booking.agentPhone?` · ${a.booking.agentPhone}`:''}</dd><dt>Passengers</dt><dd>{a.adults} adults · {a.children} children</dd><dt>Actual</dt><dd>{a.actualAdults==null?'Not recorded':`${a.actualAdults} adults · ${a.actualChildren} children`}{a.changeReason?` · ${a.changeReason}`:''}</dd>{run.kind==='BOAT'?<><dt>Program</dt><dd>{a.booking.programName||'Standalone service'}</dd><dt>Arrival / departure</dt><dd>{day(a.booking.arrivalAt)} / {day(a.booking.departureAt)}</dd><dt>Allergies / assistance</dt><dd>{[a.booking.allergies,a.booking.assistance].filter(Boolean).join(' · ')||'None reported'}</dd></>:<><dt>Hotel / room</dt><dd>{[a.booking.hotel,a.booking.room].filter(Boolean).join(' · ')||'Not set'}</dd><dt>Pickup</dt><dd>{stamp(a.pickupAt)||'Time not set'} · {a.booking.pickupPoint||a.booking.hotel||'Point not set'}</dd><dt>Drop-off</dt><dd>{a.dropoffPoint||a.booking.dropoffPoint||'Not set'}</dd></>}<dt>Requests / notes</dt><dd>{[run.kind==='VEHICLE'?a.booking.assistance:a.booking.requestNotes,a.notes].filter(Boolean).join(' · ')||'None'}</dd></dl>{canManage&&<div className="job-actions"><Dropdown label={`Actions for ${a.booking.code}`} items={[{label:'Record actual passengers',icon:'edit',onSelect:()=>onCommand(a,'ACTUAL')},{label:'Remove assignment',icon:'close',danger:true,onSelect:()=>onCommand(a,'REMOVE')}]}><span aria-hidden="true">⋯</span></Dropdown></div>}</article>)}</div><RunTable run={run}/>{!run.assignments.length&&<p>No bookings assigned to this run.</p>}</section>
 }
 
+const shortDay=value=>value?new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit'}).format(new Date(value)):'—'
+const crewRoles=[['Captain · กัปตัน',['CAPTAIN','HEAD_CAPTAIN']],['Assistant captain · ผู้ช่วยกัปตัน',['ASSISTANT_CAPTAIN']],['Guide · ไกด์',['GUIDE','HEAD_GUIDE']],['Assistant guide · ผู้ช่วยไกด์',['ASSISTANT_TOUR_GUIDE']]]
+export function BoatDailySheet({runs}){
+ const first=runs[0]
+ if(!first)return null
+ const date=day(first.slot?.startsAt),vehicle=first.slot?.vehicle
+ const documentCode=`BOAT-${vehicle?.id?.slice(0,8)||first.code}-${stamp(first.slot?.startsAt).slice(0,10).replaceAll('-','')}`
+ const crew=roles=>{
+  const values=runs.map(run=>[...new Set(run.staff.filter(p=>roles.includes(p.role)).map(p=>p.name))].join(', ')||'________________')
+  return new Set(values).size===1?values[0]:runs.map((run,i)=>`${run.direction==='RETURN'?'กลับ':'ไป'} ${stamp(run.slot?.startsAt).slice(11)}: ${values[i]}`).join(' / ')
+ }
+ return <section className="job-sheet boat-daily-sheet">
+  <header className="boat-daily-header">
+   <div className="boat-daily-identity"><h2>Boat Job Order · ใบงานเรือ</h2><p><strong>Boat · ชื่อเรือ:</strong> {vehicle?.name||'Not assigned'}</p><div className="boat-crew">{crewRoles.map(([label,roles])=><p key={label}><strong>{label}:</strong> {crew(roles)}</p>)}</div></div>
+   <div className="boat-daily-reference"><strong className="boat-brand">Greenview Tour</strong><p><strong>Document no. · เลขที่:</strong><br/>{documentCode}</p><p><strong>Date · วันที่:</strong> {date}</p><span>Outbound + return · ขาไปและขากลับ</span></div>
+  </header>
+  <div className="boat-daily-cards">{runs.map(run=><JobSheet key={run.id} run={run} canManage={false}/>)}</div>
+  <table className="job-print-table boat-daily-table"><colgroup>{[3,10,18,13,11,4,4,6,6,19,6].map((width,i)=><col key={i} style={{width:`${width}%`}}/>)}</colgroup>
+   <thead><tr className="boat-repeat-title"><th colSpan="11">{vehicle?.name} · {documentCode} · {date}</th></tr><tr><th>No.</th><th>Agent · เอเจนต์</th><th>Guest group · กลุ่มลูกค้า</th><th>Booking / Reference</th><th>Program · โปรแกรม</th><th>Adult<br/>ผู้ใหญ่</th><th>Child<br/>เด็ก</th><th>Arrival<br/>วันมา</th><th>Departure<br/>วันกลับ</th><th>Requests / remarks · หมายเหตุ</th><th>Actual<br/>จริง A/C</th></tr></thead>
+   <tbody>{['OUTBOUND','RETURN'].map(direction=>{
+    const selected=runs.filter(r=>r.direction===direction),rows=selected.flatMap(run=>run.assignments.map(a=>({...a,run})))
+    const adults=rows.reduce((n,a)=>n+a.adults,0),children=rows.reduce((n,a)=>n+a.children,0),recorded=rows.filter(a=>a.actualAdults!=null&&a.actualChildren!=null)
+    return <Fragment key={direction}><tr className="job-section-row"><th colSpan="11">{direction==='OUTBOUND'?'Outbound · ขาไป':'Return · ขากลับ'} · {rows.length} groups / กลุ่ม {selected.map(r=>` · ${stamp(r.slot?.startsAt).slice(11)} (${r.code}, rev. ${r.version})`).join('')}</th></tr>
+     {rows.map((a,i)=><tr key={a.id}><td>{i+1}</td><td>{a.booking.agentName||'Direct booking'}</td><td><strong>{a.booking.name}</strong></td><td className="boat-booking-ref">{a.booking.code}{a.booking.agentReference?<div>{a.booking.agentReference}</div>:null}</td><td>{a.booking.programName||'Standalone service'}</td><td>{a.adults}</td><td>{a.children}</td><td>{shortDay(a.booking.arrivalAt)}</td><td>{shortDay(a.booking.departureAt)}</td><td>{[a.booking.allergies,a.booking.assistance,a.booking.requestNotes,a.notes,a.changeReason].filter(Boolean).join(' · ')||'—'}</td><td>{a.actualAdults==null||a.actualChildren==null?'—':`${a.actualAdults}/${a.actualChildren}`}</td></tr>)}
+     {!rows.length&&<tr><td colSpan="11">No bookings assigned · ยังไม่มีรายการจัดลงเรือ</td></tr>}
+     <tr className="job-total-row"><th colSpan="5">{direction==='OUTBOUND'?'Outbound total · รวมขาไป':'Return total · รวมขากลับ'}</th><td>{adults}</td><td>{children}</td><td colSpan="4">{adults+children} passengers / คน · Actual: {recorded.length?`${recorded.reduce((n,a)=>n+a.actualAdults+a.actualChildren,0)} (${recorded.length}/${rows.length} groups)`:'Not recorded'}</td></tr>
+    </Fragment>
+   })}</tbody>
+  </table><p className="boat-daily-legend">A/C = Adult/Child · ผู้ใหญ่/เด็ก &nbsp; — = Actual not recorded / ยังไม่บันทึกยอดจริง · Thailand time · เวลาประเทศไทย</p>
+ </section>
+}
+
 export function BookingSheet({booking:b}){
  const assignments=(b.lines||[]).filter(l=>l.selected!==false).flatMap(l=>(l.dispatchAssignments||[]).map(a=>({...a,service:l.snapshot?.name||l.resource?.name})))
  const selected=(b.lines||[]).filter(l=>l.selected!==false)

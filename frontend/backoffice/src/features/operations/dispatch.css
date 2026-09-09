@@ -79,3 +79,43 @@
  .job-print-table th { color: #000; }
  .job-document-title { min-width: 0; overflow: visible; }
 }
+
+/* Vessel-day print copy: two masthead cells, independent passenger sections. */
+.boat-daily-header { display: grid; grid-template-columns: 2fr 1fr; border: 1px solid var(--line); margin-bottom: 12px; }
+.boat-daily-identity, .boat-daily-reference { padding: 10px 12px; overflow-wrap: anywhere; }
+.boat-daily-identity { border-right: 1px solid var(--line); }
+.boat-daily-header h2 { margin: 0 0 6px; }
+.boat-daily-header p { margin: 3px 0; }
+.boat-crew { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+.boat-brand { font-size: 16px; }
+.boat-booking-ref { font-size: .9em; font-weight: normal; }
+.boat-daily-legend { font-size: 11px; margin: 6px 0 0; }
+@media (max-width: 560px) {
+ .boat-daily-header, .boat-crew { grid-template-columns: 1fr; }
+ .boat-daily-identity { border-right: 0; border-bottom: 1px solid var(--line); }
+}
+@media print {
+ .boat-daily-cards { display: none !important; }
+ .boat-daily-sheet .boat-daily-header { grid-template-columns: 2fr 1fr; border-color: #444; margin: 0 0 2mm; break-inside: avoid; font-size: 9pt; line-height: 1.25; }
+ .boat-daily-identity, .boat-daily-reference { padding: 2mm 3mm; }
+ .boat-daily-identity { border-right: 1px solid #444; border-bottom: 0; }
+ .boat-daily-header h2 { font-size: 13pt; margin-bottom: 1mm; }
+ .boat-daily-header p { margin: .5mm 0; }
+ .boat-brand { font-size: 12pt; }
+ .boat-crew { grid-template-columns: 1fr 1fr; gap: .5mm 3mm; }
+ .boat-daily-table { font-size: 8.5pt; line-height: 1.18; }
+ .boat-daily-table th, .boat-daily-table td { padding: .65mm 1mm; border-color: #777; }
+ .boat-daily-table .boat-repeat-title th { font-size: 7pt; padding: .5mm 1mm; font-weight: normal; }
+ .boat-daily-table .job-section-row th { padding: 1mm; }
+ .boat-daily-table .job-total-row { border-top-width: 1px; }
+ .boat-daily-table .job-section-row { break-after: avoid; }
+ .boat-daily-table .job-total-row { break-before: avoid; }
+ .boat-daily-table td:nth-child(1), .boat-daily-table td:nth-child(6), .boat-daily-table td:nth-child(7), .boat-daily-table td:nth-child(11) { text-align: center; }
+ .boat-daily-legend { font-size: 7pt; margin-top: 1mm; }
+}
+@media screen and (min-width: 760px) {
+ .boat-daily-cards { display: none; }
+ .boat-daily-table { display: table; width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11px; line-height: 1.4; }
+ .boat-daily-table th, .boat-daily-table td { border: 1px solid var(--line); padding: 4px; vertical-align: top; overflow-wrap: anywhere; white-space: normal; }
+ .boat-daily-table .job-section-row, .boat-daily-table .job-total-row { background: var(--canvas); }
+}
