@@ -1,3 +1,7 @@
+import { listOperations, saveOperationCatalog } from '../modules/operations/catalog.js'
+import { getBlueprint, saveBooking, bookingStatus, tripPreparation } from '../modules/operations/bookings.js'
+import { stockCommand } from '../modules/operations/stock.js'
+import { operationMessages } from '../modules/operations/messages.js'
 import { listSettings, saveSettings } from '../modules/service-catalog/settings.js'
 import { assertDeliverableInvitationEmail, canInvite, canResetPassword, listInvitations, createInvitation, changeInvitation, lookupInvitation, acceptInvitation, requestUserReset } from '../modules/identity-access/invitations.js'
 import { managementScope, canEditProfile, editProfile, editOwnProfile } from '../modules/identity-access/user-management.js'
@@ -119,6 +123,15 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
           return send(200, { ok: true, warning: !outcome.providerRevoked || !finalized ? 'PASSWORD_CHANGED_FOLLOW_UP_REQUIRED' : null }, '')
         } finally { await provider.logout(verified.session).catch(() => {}) }
       }
+      const operationMatch = path.match(/^\/api\/operations\/([a-z-]+)$/)
+      if (operationMatch) {
+        const { user, entry } = await sessions.authenticated(req, provider, pool)
+        if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
+        const entity = operationMatch[1]
+        if (req.method === 'GET') return send(200, entity === 'preparation' ? await tripPreparation(prisma,user.id,url.searchParams) : entity === 'blueprint' ? await getBlueprint(prisma,user.id,url.searchParams) : await listOperations(prisma,user.id,entity,url.searchParams))
+        const input = await body(req,131072)
+        return send(200, entity === 'stock-command' ? await stockCommand(prisma,user.id,input) : entity === 'booking-status' ? await bookingStatus(prisma,user.id,input) : entity === 'bookings' ? await saveBooking(prisma,user.id,input) : await saveOperationCatalog(prisma,user.id,entity,input))
+      }
       const settingsMatch = path.match(/^\/api\/settings\/(company|partners|tours|rates|locations|vehicles|channels)$/)
       if (settingsMatch) {
         const { user, entry } = await sessions.authenticated(req, provider, pool)
@@ -166,7 +179,7 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
       directory.users = directory.users.map(target => ({ ...target, canEdit: canEditProfile(profile,target), canResetPassword: canResetPassword(profile,target) }))
       return send(200, { ...directory, canChangeDepartment: scope.company, canInvite: canInvite(profile), database: 'UP', environment: 'preview' })
     } catch (error) {
-      if (error instanceof AccessError) return send(error.status, { code: error.code }, error.status === 401 ? '' : undefined)
+      if (error instanceof AccessError) return send(error.status, { code: error.code, ...(operationMessages[error.code] ? { message: operationMessages[error.code] } : {}) }, error.status === 401 ? '' : undefined)
       return send(503, { code: 'SERVICE_UNAVAILABLE' })
     }
   }

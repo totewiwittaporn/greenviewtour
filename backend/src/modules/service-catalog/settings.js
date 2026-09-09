@@ -19,7 +19,7 @@ export async function listSettings(prisma,actorId,entity,params){
  const model=catalog[entity].model
  if(entity==='company'){const rows=await prisma[model].findMany({take:1});return{rows,total:rows.length,page:1,pages:1}}
  const q=(params.get('q')||'').trim(),requested=Number(params.get('page')||1),role=params.get('role'),status=params.get('status')
- if(q.length>100||!Number.isSafeInteger(requested)||requested<1||requested>100000||(status&&!['ACTIVE','INACTIVE'].includes(status))||(role&&!['TOUR_OPERATOR','SALES_AGENT','TRANSPORT_PROVIDER'].includes(role)))throw new AccessError('INVALID_FILTER',400)
+ if(q.length>100||!Number.isSafeInteger(requested)||requested<1||requested>100000||(status&&!['ACTIVE','INACTIVE'].includes(status))||(role&&!['TOUR_OPERATOR','SALES_AGENT','TRANSPORT_PROVIDER','SERVICE_PROVIDER'].includes(role)))throw new AccessError('INVALID_FILTER',400)
  const where={...(status?{status}:{}),...(entity==='partners'&&role?{roles:{has:role}}:{})}
  if(q)where.OR=entity==='rates'?[{agent:{name:{contains:q,mode:'insensitive'}}},{tour:{name:{contains:q,mode:'insensitive'}}}]:['name','code'].map(key=>({[key]:{contains:q,mode:'insensitive'}}))
  return prisma.$transaction(async tx=>{
@@ -60,6 +60,8 @@ export async function saveSettings(prisma,actorId,entity,input){
   if(entity==='partners'&&existing)for(const[role,table,key]of[['TOUR_OPERATOR','tourProgram','operatorId'],['SALES_AGENT','agentTourPrice','agentId'],['TRANSPORT_PROVIDER','fleetVehicle','providerId']]){
    if((data.status==='INACTIVE'||!data.roles.includes(role))&&await tx[table].count({where:{[key]:existing.id,status:'ACTIVE'}}))throw new AccessError('PARTNER_IN_USE',409)
   }
+  if(entity==='vehicles'&&existing&&(data.status==='INACTIVE'||data.capacity!==existing.capacity)&&await tx.serviceSlot.count({where:{vehicleId:existing.id,status:'ACTIVE'}}))throw new AccessError('SCHEDULE_IN_USE',409)
+  if(entity==='partners'&&existing&&data.status==='INACTIVE'&&await tx.operationResource.count({where:{providerId:existing.id,status:'ACTIVE'}}))throw new AccessError('PARTNER_IN_USE',409)
   if(entity==='tours'&&existing&&data.status==='INACTIVE'&&await tx.agentTourPrice.count({where:{tourId:existing.id,status:'ACTIVE'}}))throw new AccessError('TOUR_IN_USE',409)
   const row=existing?await tx[definition.model].update({where:{id:input.id},data:{...data,version:{increment:1}}}):await tx[definition.model].create({data:{...data,id:input.id}})
   await tx.auditEvent.create({data:{actorId,targetId:row.id,action:`settings.${entity}.${existing?'updated':'created'}`,details:{fields:Object.keys(data),version:row.version}}})

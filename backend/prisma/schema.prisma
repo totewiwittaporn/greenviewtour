@@ -162,6 +162,7 @@ model BusinessPartner {
  address String? @db.VarChar(1000)
  association String? @db.VarChar(200)
  paymentTerms String? @db.VarChar(1000)
+ services OperationResource[]
  tours TourProgram[]
  agentPrices AgentTourPrice[]
  vehicles FleetVehicle[]
@@ -203,6 +204,8 @@ model TourProgram {
  supplierAdultCommission Decimal? @db.Decimal(10,2)
  supplierChildCommission Decimal? @db.Decimal(10,2)
  operator BusinessPartner? @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+ components ProgramComponent[]
+ trips OperationTrip[]
  agentPrices AgentTourPrice[]
  @@index([operatorId])
  @@index([status])
@@ -267,8 +270,219 @@ model FleetVehicle {
  providerId String? @db.Uuid
  registration String? @db.VarChar(100)
  notes String? @db.VarChar(1000)
+ slots ServiceSlot[]
  provider BusinessPartner? @relation(fields: [providerId], references: [id], onDelete: Restrict)
  @@index([providerId])
  @@index([status])
+ @@schema("app_private")
+}
+
+// Shared catalog identity; kind-specific validation belongs to operations/contracts.
+model OperationResource {
+ id String @id @db.Uuid
+ version Int @default(1)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ status String @db.VarChar(50)
+ kind String @db.VarChar(30)
+ category String @db.VarChar(50)
+ baseUnit String @db.VarChar(30)
+ packSize Int?
+ caseSize Int?
+ size String? @db.VarChar(100)
+ providerId String? @db.Uuid
+ origin String? @db.VarChar(200)
+ destination String? @db.VarChar(200)
+ salePrice Decimal? @db.Decimal(10,2)
+ costPrice Decimal? @db.Decimal(10,2)
+ notes String? @db.VarChar(2000)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ provider BusinessPartner? @relation(fields: [providerId], references: [id], onDelete: Restrict)
+ components ProgramComponent[]
+ slots ServiceSlot[]
+ lots StockLot[]
+ bookingLines BookingComponent[]
+ @@index([kind,status])
+ @@schema("app_private")
+}
+model StockLocation {
+ id String @id @db.Uuid
+ version Int @default(1)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ kind String @db.VarChar(30)
+ status String @db.VarChar(50)
+ notes String? @db.VarChar(2000)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ balances StockBalance[]
+ issuedFrom StockIssue[] @relation("IssueSource")
+ issuedTo StockIssue[] @relation("IssueDestination")
+ sources BookingComponent[]
+ @@schema("app_private")
+}
+model ProgramComponent {
+ id String @id @db.Uuid
+ version Int @default(1)
+ tourId String @db.Uuid
+ resourceId String @db.Uuid
+ selection String @db.VarChar(30)
+ basis String @db.VarChar(30)
+ quantity Int
+ usagePoint String @db.VarChar(30)
+ day Int @default(1)
+ notes String? @db.VarChar(1000)
+ status String @db.VarChar(50)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ tour TourProgram @relation(fields:[tourId], references:[id], onDelete:Restrict)
+ resource OperationResource @relation(fields:[resourceId], references:[id], onDelete:Restrict)
+ @@index([tourId,status])
+ @@schema("app_private")
+}
+model ServiceSlot {
+ id String @id @db.Uuid
+ version Int @default(1)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ resourceId String @db.Uuid
+ vehicleId String? @db.Uuid
+ startsAt DateTime @db.Timestamptz(6)
+ endsAt DateTime @db.Timestamptz(6)
+ capacity Int
+ status String @db.VarChar(50)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ resource OperationResource @relation(fields:[resourceId],references:[id],onDelete:Restrict)
+ vehicle FleetVehicle? @relation(fields:[vehicleId],references:[id],onDelete:Restrict)
+ bookingLines BookingComponent[]
+ @@index([resourceId,startsAt,endsAt])
+ @@index([vehicleId,startsAt,endsAt])
+ @@schema("app_private")
+}
+model OperationTrip {
+ id String @id @db.Uuid
+ version Int @default(1)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ tourId String? @db.Uuid
+ startsAt DateTime @db.Timestamptz(6)
+ endsAt DateTime @db.Timestamptz(6)
+ capacity Int
+ status String @default("OPEN") @db.VarChar(30)
+ notes String? @db.VarChar(2000)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ tour TourProgram? @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ bookings TourBooking[]
+ @@index([startsAt,endsAt])
+ @@schema("app_private")
+}
+model TourBooking {
+ id String @id @db.Uuid
+ version Int @default(1)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ tripId String @db.Uuid
+ adults Int
+ children Int
+ status String @default("DRAFT") @db.VarChar(30)
+ adultPrice Decimal? @db.Decimal(10,2)
+ childPrice Decimal? @db.Decimal(10,2)
+ programSnapshot Json
+ requestHash String @db.Char(64)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ trip OperationTrip @relation(fields:[tripId],references:[id],onDelete:Restrict)
+ lines BookingComponent[]
+ @@index([tripId,status])
+ @@schema("app_private")
+}
+model BookingComponent {
+ id String @id @db.Uuid
+ bookingId String @db.Uuid
+ resourceId String @db.Uuid
+ slotId String? @db.Uuid
+ sourceId String? @db.Uuid
+ quantity Int
+ issuedQty Int @default(0)
+ selected Boolean
+ included Boolean
+ usagePoint String @db.VarChar(30)
+ snapshot Json
+ unitPrice Decimal? @db.Decimal(10,2)
+ booking TourBooking @relation(fields:[bookingId],references:[id],onDelete:Restrict)
+ resource OperationResource @relation(fields:[resourceId],references:[id],onDelete:Restrict)
+ slot ServiceSlot? @relation(fields:[slotId],references:[id],onDelete:Restrict)
+ source StockLocation? @relation(fields:[sourceId],references:[id],onDelete:Restrict)
+ issues StockIssue[]
+ @@index([resourceId,sourceId])
+ @@index([slotId])
+ @@index([bookingId])
+ @@schema("app_private")
+}
+model StockLot {
+ id String @id @db.Uuid
+ resourceId String @db.Uuid
+ label String @db.VarChar(200)
+ receivedOn DateTime @db.Date
+ expiresOn DateTime? @db.Date
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ resource OperationResource @relation(fields:[resourceId],references:[id],onDelete:Restrict)
+ balances StockBalance[]
+ issues StockIssue[]
+ @@index([resourceId,expiresOn])
+ @@schema("app_private")
+}
+model StockBalance {
+ id String @id @db.Uuid
+ lotId String @db.Uuid
+ locationId String @db.Uuid
+ condition String @db.VarChar(30)
+ quantity Int
+ version Int @default(1)
+ lot StockLot @relation(fields:[lotId],references:[id],onDelete:Restrict)
+ location StockLocation @relation(fields:[locationId],references:[id],onDelete:Restrict)
+ @@unique([lotId,locationId,condition])
+ @@index([locationId,condition])
+ @@schema("app_private")
+}
+model StockIssue {
+ id String @id @db.Uuid
+ lotId String @db.Uuid
+ bookingLineId String? @db.Uuid
+ sourceId String @db.Uuid
+ destinationId String @db.Uuid
+ custodian String @db.VarChar(200)
+ quantity Int
+ settledQty Int @default(0)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ lot StockLot @relation(fields:[lotId],references:[id],onDelete:Restrict)
+ source StockLocation @relation("IssueSource",fields:[sourceId],references:[id],onDelete:Restrict)
+ destination StockLocation @relation("IssueDestination",fields:[destinationId],references:[id],onDelete:Restrict)
+ bookingLine BookingComponent? @relation(fields:[bookingLineId],references:[id],onDelete:Restrict)
+ @@index([bookingLineId])
+ @@schema("app_private")
+}
+model StockMovement {
+ id String @id @db.Uuid
+ requestHash String @db.Char(64)
+ kind String @db.VarChar(30)
+ quantity Int
+ enteredQuantity Int
+ enteredUnit String @db.VarChar(30)
+ factor Int
+ details Json
+ actorId String @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ @@index([createdAt])
+ @@schema("app_private")
+}
+model OperationCommand {
+ id String @id @db.Uuid
+ requestHash String @db.Char(64)
+ result Json
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
  @@schema("app_private")
 }

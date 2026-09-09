@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from './Button.jsx'
+import { Icon } from './Icon.jsx'
 // Shared action menu: anchored outside overflow containers, with keyboard navigation.
 export function Dropdown({ label, children, items, heading, disabled = false }) {
   const [keyboard, setKeyboard] = useState(false)
@@ -40,6 +41,6 @@ export function Dropdown({ label, children, items, heading, disabled = false }) 
     if (['ArrowDown','ArrowUp'].includes(event.key)) { event.preventDefault(); setKeyboard(true); initial.current = event.key === 'ArrowUp' ? -1 : 0; setOpen(true) }
   }}>{children}</Button></span>{open && createPortal(<div id={id} ref={popup} role="menu" aria-label={label} className="core-dropdown" data-keyboard={keyboard || undefined} style={position} onKeyDown={keydown} onPointerMove={() => setKeyboard(false)}>
     {heading && <div className="dropdown-heading" role="presentation">{heading}</div>}
-    {items.map(item => item.href ? <a key={item.label} role="menuitem" tabIndex={-1} href={item.href} target={item.target} rel={item.target ? 'noreferrer' : undefined} onClick={() => close(true)}>{item.label}</a> : <button key={item.label} type="button" role="menuitem" tabIndex={-1} className={item.danger ? 'menu-danger' : ''} disabled={item.disabled} onClick={() => { close(true); item.onSelect() }}>{item.label}</button>)}
+    {items.map(item => item.href ? <a key={item.label} role="menuitem" tabIndex={-1} href={item.href} target={item.target} rel={item.target ? 'noreferrer' : undefined} onClick={() => close(true)}>{item.icon && <Icon name={item.icon} className="menu-icon" />}<span>{item.label}</span></a> : <button key={item.label} type="button" role="menuitem" tabIndex={-1} className={item.danger ? 'menu-danger' : ''} disabled={item.disabled} onClick={() => { close(true); item.onSelect() }}>{item.icon && <Icon name={item.icon} className="menu-icon" />}<span>{item.label}</span></button>)}
   </div>, document.body)}</>
 }

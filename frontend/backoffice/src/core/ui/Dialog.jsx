@@ -7,7 +7,7 @@ function syncScrollOwner() {
   document.documentElement.toggleAttribute('data-core-modal-open', dialogs.length > 0)
   for (const dialog of dialogs) dialog.toggleAttribute('data-core-modal-top', dialog === dialogs.at(-1))
 }
-export function Dialog({ title, children, onClose, busy = false }) {
+export function Dialog({ title, children, onClose, busy = false, variant = 'default' }) {
   const ref = useRef(null), titleId = useId()
   useLayoutEffect(() => {
     const dialog = ref.current, previous = document.activeElement
@@ -24,7 +24,7 @@ export function Dialog({ title, children, onClose, busy = false }) {
       if (wasTop && previous?.isConnected && (!dialogs.length || dialogs.at(-1).contains(previous))) previous.focus({ preventScroll: true })
     }
   }, [])
-  return createPortal(<dialog ref={ref} className="core-dialog" aria-labelledby={titleId} onCancel={event => { event.preventDefault(); if (!busy && dialogs.at(-1) === ref.current) onClose() }}>
+  return createPortal(<dialog ref={ref} className="core-dialog" data-variant={variant} aria-labelledby={titleId} onCancel={event => { event.preventDefault(); if (!busy && dialogs.at(-1) === ref.current) onClose() }}>
     <header className="dialog-header"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" aria-label="Close dialog" disabled={busy} onClick={onClose}>×</button></header>
     <div className="dialog-content">{children}</div>
   </dialog>, document.body)

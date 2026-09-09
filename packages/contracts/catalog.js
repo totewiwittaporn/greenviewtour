@@ -1,3 +1,4 @@
+import { operationCatalog, localStamp, parseStamp } from './operations.js'
 import { contactValue, normalizePhone, validateCompanyContact } from './contact.js'
 import { addressFields, validateAddress } from './address.js'
 const text = (key, label, required = false, max = 200) => ({ key, label, type: 'text', required, max })
@@ -6,9 +7,10 @@ const ref = (key, label, entity, role, required = true) => ({ key, label, type: 
 const money = (key, label) => ({ key, label, type: 'money' })
 const common = [text('code', 'Code', true, 40), text('name', 'Name', true), select('status', 'Status', ['ACTIVE', 'INACTIVE'])]
 export const catalog = {
+ ...operationCatalog,
  channels: {title:'Sales channels',singular:'sales channel',model:'salesChannel',fields:[...common,select('kind','Source type',['DIRECT','AGENT'])]},
  company: { title: 'Company', singular: 'company', model: 'companySettings', fields: [text('name','Company name',true),text('legalName','Legal name'),text('taxId','Tax ID',false,30),{...text('address','Previous address',false,1000),hidden:true},...addressFields,text('phone','Phone',false,32),text('email','Email',false,254)] },
- partners: { title: 'Business partners', singular: 'partner', model: 'businessPartner', fields: [...common,{key:'roles',label:'Partner roles',type:'roles',options:['TOUR_OPERATOR','SALES_AGENT','TRANSPORT_PROVIDER'],required:true},text('contactName','Contact name'),text('phone','Phone',false,32),text('email','Email',false,254),{...text('address','Previous address',false,1000),hidden:true},...addressFields,text('association','Association'),text('paymentTerms','Payment terms',false,1000)] },
+ partners: { title: 'Business partners', singular: 'partner', model: 'businessPartner', fields: [...common,{key:'roles',label:'Partner roles',type:'roles',options:['TOUR_OPERATOR','SALES_AGENT','TRANSPORT_PROVIDER','SERVICE_PROVIDER'],required:true},text('contactName','Contact name'),text('phone','Phone',false,32),text('email','Email',false,254),{...text('address','Previous address',false,1000),hidden:true},...addressFields,text('association','Association'),text('paymentTerms','Payment terms',false,1000)] },
  tours: { title:'Tour programs',singular:'tour program',model:'tourProgram',fields:[...common,select('ownership','Organized by',['GREENVIEW','PARTNER']),ref('operatorId','Tour operator','partners','TOUR_OPERATOR',false),text('route','Route / itinerary',false,2000),text('departureTimes','Departure times',false,300),text('childPolicy','Child age / height policy',false,1000),select('confirmationMode','Booking confirmation',['REQUEST','INSTANT']),text('cancellationTerms','Cancellation terms',false,2000),text('bookingCutoff','Booking cutoff',false,300),money('adultPrice','Direct adult price (THB)'),money('childPrice','Direct child price (THB)'),select('supplierPricing','Supplier pricing basis',['NOT_SET','NET','COMMISSION']),money('supplierAdultNet','Supplier adult net (THB)'),money('supplierChildNet','Supplier child net (THB)'),money('supplierAdultCommission','Adult commission received (THB)'),money('supplierChildCommission','Child commission received (THB)')] },
  rates: {title:'Agent prices',singular:'agent price',model:'agentTourPrice',fields:[ref('agentId','Sales agent','partners','SALES_AGENT'),ref('tourId','Tour program','tours'),money('adultPrice','Agent adult price (THB)'),money('childPrice','Agent child price (THB)'),select('status','Status',['ACTIVE','INACTIVE'])]},
  locations: {title:'Hotels & pickup points',singular:'pickup point',model:'pickupLocation',fields:[...common,select('kind','Location type',['HOTEL','PICKUP_POINT','PIER','AIRPORT']),text('zone','Zone'),{...text('address','Previous address',false,1000),hidden:true},...addressFields,text('pickupNotes','Pickup notes',false,1000)]},
@@ -16,6 +18,7 @@ export const catalog = {
 }
 export const labelFor = value => ({GREENVIEW:'Greenview Tour',PARTNER:'Business partner',NOT_SET:'Not set',NET:'Net cost',COMMISSION:'Commission per passenger',REQUEST:'Request confirmation',INSTANT:'Instant confirmation'}[value] || value?.toLowerCase().replaceAll('_',' ').replace(/^./, c => c.toUpperCase()) || '')
 export function visibleField(field, values) {
+ if (field.key==='providerId' && !Object.hasOwn(values,'ownership')) return true
  if (['operatorId','providerId'].includes(field.key)) return values.ownership === 'PARTNER'
  if (field.key.startsWith('supplier')) {
   if(values.ownership !== 'PARTNER') return false
@@ -24,7 +27,7 @@ export function visibleField(field, values) {
  }
  return true
 }
-export function initialValues(entity,row={}) { return Object.fromEntries(catalog[entity].fields.map(f=>[f.key,row[f.key] === null || row[f.key] === undefined ? (f.type==='roles'?[]:f.type==='select'?f.options[0]:'') : f.type==='roles'?row[f.key]:String(row[f.key])])) }
+export function initialValues(entity,row={}) { return Object.fromEntries(catalog[entity].fields.map(f=>[f.key,row[f.key] === null || row[f.key] === undefined ? (f.type==='roles'?[]:f.type==='select'?f.options[0]:'') : f.type==='timestamp'?localStamp(row[f.key]):f.type==='roles'?row[f.key]:String(row[f.key])])) }
 export function validateCatalog(entity,input) {
  const definition=catalog[entity],data={},errors={}
  if(!definition || !input || typeof input !== 'object' || Array.isArray(input)) return {data,errors:{name:'Invalid record.'}}
@@ -36,7 +39,8 @@ export function validateCatalog(entity,input) {
   if(value===null||value===undefined||value===''){data[key]=null;if(required)errors[key]=`Enter ${f.label.toLowerCase()}.`;continue}
   if(typeof value!=='string'){errors[key]='Enter a valid value.';continue}
   const clean=value.trim()
-  if(f.type==='money'){if(!/^(0|[1-9]\d{0,7})(\.\d{1,2})?$/.test(clean))errors[key]='Enter 0–99,999,999.99, with at most two decimal places.';else data[key]=clean}
+  if(f.type==='timestamp'){try{data[key]=parseStamp(clean)}catch{errors[key]='Enter a valid date and time: YYYY-MM-DD HH:mm (Thailand).'}}
+  else if(f.type==='money'){if(!/^(0|[1-9]\d{0,7})(\.\d{1,2})?$/.test(clean))errors[key]='Enter 0–99,999,999.99, with at most two decimal places.';else data[key]=clean}
   else if(f.type==='integer'){if(!/^[1-9]\d{0,3}$/.test(clean))errors[key]='Enter a whole number from 1 to 9999.';else data[key]=Number(clean)}
   else if(f.type==='select'){if(!f.options.includes(clean))errors[key]='Select an available option.';else data[key]=clean}
   else if(f.type==='reference'){if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean))errors[key]='Select an available record.';else data[key]=clean}

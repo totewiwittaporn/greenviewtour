@@ -6,7 +6,7 @@ export async function api(path, body, options = {}) {
   const data = await response.json()
   if (!response.ok) {
     if (response.status === 401 && !path.startsWith('/api/auth/') && path !== '/api/me') window.location.assign('/login')
-    const error = new Error(data.code || 'SERVICE_UNAVAILABLE'); error.status = response.status; error.retryAfterSeconds = Number(response.headers.get('Retry-After') || data.retryAfterSeconds) || null; throw error
+    const error = new Error(data.code || 'SERVICE_UNAVAILABLE'); error.status = response.status; error.detail = typeof data.message === 'string' && data.message !== data.code ? data.message : null; error.fields = data.errors;  error.retryAfterSeconds = Number(response.headers.get('Retry-After') || data.retryAfterSeconds) || null; throw error
   }
   return data
 }
