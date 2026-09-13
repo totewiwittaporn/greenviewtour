@@ -202,6 +202,11 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
       return send(200, { ...directory, canChangeDepartment: scope.company, canInvite: canInvite(profile), database: 'UP', environment: 'preview' })
     } catch (error) {
       if (error instanceof AccessError) return send(error.status, { code: error.code, ...(operationMessages[error.code] ? { message: operationMessages[error.code] } : {}) }, error.status === 401 ? '' : undefined)
+      // Do not log messages, SQL, headers, bodies or query strings containing user data.
+      console.error(JSON.stringify({ event: 'API_REQUEST_FAILED', method: req.method,
+        path: String(req.url || '').split('?')[0].slice(0, 120),
+        errorType: /^[A-Za-z]{1,60}$/.test(error?.name || '') ? error.name : 'Error',
+        errorCode: /^(P\d{4}|[0-9A-Z]{5}|E[A-Z_]{2,30})$/.test(error?.code || '') ? error.code : 'UNCLASSIFIED' }))
       return send(503, { code: 'SERVICE_UNAVAILABLE' })
     }
   }
