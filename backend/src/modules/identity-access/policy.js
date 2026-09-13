@@ -1,5 +1,5 @@
 import { operationAccess } from '../../../../packages/contracts/operation-access.js'
-import { effectiveAccess } from '../../../../packages/contracts/access.js'
+import { effectiveAccess,accessDefinitions } from '../../../../packages/contracts/access.js'
 import { addressKeys } from '../../../../packages/contracts/address.js'
 import { managementScope } from './user-management.js'
 export { roleNames as roles } from '../../../../packages/contracts/access.js'
@@ -24,6 +24,7 @@ export const profileInclude = { permissionOverrides: true, roles: { include: { r
 export function publicProfile(profile, email) {
   return { ...Object.fromEntries(addressKeys.map(key=>[key,profile[key]])), id: profile.id, email, displayName: profile.displayName, status: profile.status, department: profile.department, updatedAt: profile.updatedAt, createdAt: profile.createdAt, address: profile.address, primaryPhone: profile.primaryPhone, emergencyPhone: profile.emergencyPhone, lineId: profile.lineId, management: managementScope(profile), operations: operationAccess(profile),
     canReceivePayment:effectiveAccess(profile,'finance.receive').allowed,
+    companyAccess:Object.fromEntries(Object.keys(accessDefinitions).filter(code=>!code.startsWith('operations.')).map(code=>[code,effectiveAccess(profile,code).allowed])),
     roles: profile.roles.map(item => ({ code: item.roleCode, name: item.role.name, scope: item.scope })),
     permissions: [...new Set(profile.roles.flatMap(grant => grant.role.permissions.map(item => `${item.permissionCode}:${grant.scope}`)))],
   }

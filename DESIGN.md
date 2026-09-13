@@ -151,3 +151,7 @@ Owner refinement 2026-09-10: Booking remains standalone intake. Operations has D
 ## Company navigation and access editor · 2026-09-13
 
 Retain the sea-green identity and existing Core typography, fields, dialog and table geometry. WorkspaceNavigation groups existing destinations by work category. UserAccess uses Core address-section fieldsets and a responsive checkbox grid (one column on narrow dialogs) for multiple duties. Each operational permission has the shared authored SelectField and an effective-access explanation; optional validity fields wrap below it. Review replaces editing within the same dialog. No new design tokens, theme or future-page placeholders are introduced.
+
+## Company workflow forms · 2026-09-13
+
+CompanyWorkPage and PersonnelFinancePage retain the existing Core dialog, fields, paged references, filterbar and DataTable owners. Approval review includes resolved employee, supplier, warehouse and item names before mutation. Summary cards explicitly identify page-only totals. Payroll is manually entered base plus itemized earnings less deductions with reasons; approval and payment recording are separate states. No new visual tokens or theme are introduced.

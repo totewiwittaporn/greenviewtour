@@ -670,3 +670,95 @@ model BookingSequence {
  value Int @default(0)
  @@schema("app_private")
 }
+
+model CompanyWorkRecord {
+ id String @id @db.Uuid
+ kind String @db.VarChar(30)
+ name String @db.VarChar(200)
+ status String @default("DRAFT") @db.VarChar(30)
+ version Int @default(1)
+ payload Json
+ parentId String? @db.Uuid
+ dueOn DateTime? @db.Date
+ assigneeId String? @db.Uuid
+ storeId String? @db.Uuid
+ createdById String @db.Uuid
+ approvedById String? @db.Uuid
+ completedById String? @db.Uuid
+ commandHash String
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ @@index([kind,status,dueOn])
+ @@index([assigneeId,kind])
+ @@unique([parentId,dueOn])
+ @@schema("app_private")
+}
+
+model WarehouseResponsibility {
+ storeId String @id @db.Uuid
+ primaryUserId String @db.Uuid
+ deputyUserIds String[] @db.Uuid
+ version Int @default(1)
+ reason String
+ updatedById String @db.Uuid
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ @@schema("app_private")
+}
+
+model PurchaseOrder {
+ id String @id @db.Uuid
+ name String @db.VarChar(200)
+ status String @default("DRAFT") @db.VarChar(30)
+ version Int @default(1)
+ supplierId String @db.Uuid
+ storeId String @db.Uuid
+ lines Json
+ total Decimal @db.Decimal(12,2)
+ receivedTotal Decimal @default(0) @db.Decimal(12,2)
+ requestId String? @db.Uuid
+ reason String @db.VarChar(2000)
+ quotationUrl String? @db.VarChar(2048)
+ createdById String @db.Uuid
+ approvedById String? @db.Uuid
+ commandHash String
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ @@index([status,createdAt])
+ @@schema("app_private")
+}
+
+model CompanyWorkCommand {
+ id String @id @db.Uuid
+ requestHash String
+ result Json
+ actorId String @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ @@schema("app_private")
+}
+
+model FinancePersonnelRecord {
+ id String @id @db.Uuid
+ kind String @db.VarChar(30)
+ title String @db.VarChar(160)
+ employeeId String @db.Uuid
+ payload Json
+ status String @default("DRAFT") @db.VarChar(30)
+ version Int @default(1)
+ createdBy String @db.Uuid
+ approvedBy String? @db.Uuid
+ payment Json?
+ clearance Json?
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ @@index([kind,status])
+ @@index([employeeId])
+ @@schema("app_private")
+}
+model FinancePersonnelCommand {
+ id String @id @db.Uuid
+ actorId String @db.Uuid
+ requestHash String @db.VarChar(64)
+ result Json
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ @@schema("app_private")
+}

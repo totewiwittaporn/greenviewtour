@@ -1,4 +1,6 @@
 import { documentBrand, dailyBookingDocument } from '../modules/operations/documents.js'
+import {listCompanyWork,saveCompanyWork,commandCompanyWork} from '../modules/company-work/service.js'
+import {listPersonnelFinance,savePersonnelFinance,commandPersonnelFinance} from '../modules/personnel-finance/service.js'
 import { canConfigureAccess, readUserAccess, saveUserAccess } from '../modules/identity-access/user-access.js'
 import { listJobs, dispatchOptions, saveRun, dispatchCommand, bookingOptions } from '../modules/operations/dispatch.js'
 import { dailySummaryState, prepareDailySummary } from '../modules/operations/notifications.js'
@@ -127,6 +129,15 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
           catch { finalized = false; console.error('PASSWORD_CHANGE_AUDIT_FINALIZATION_PENDING') }
           return send(200, { ok: true, warning: !outcome.providerRevoked || !finalized ? 'PASSWORD_CHANGED_FOLLOW_UP_REQUIRED' : null }, '')
         } finally { await provider.logout(verified.session).catch(() => {}) }
+      }
+      const companyMatch=path.match(/^\/api\/(company-work|personnel-finance)(?:\/(save|command))?$/)
+      if(companyMatch){
+        const {user,entry}=await sessions.authenticated(req,provider,pool)
+        if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401)
+        const finance=companyMatch[1]==='personnel-finance'
+        if(req.method==='GET'&&!companyMatch[2])return send(200,await(finance?listPersonnelFinance:listCompanyWork)(prisma,user.id,url.searchParams))
+        if(req.method==='POST'&&companyMatch[2])return send(200,await(companyMatch[2]==='save'?(finance?savePersonnelFinance:saveCompanyWork):(finance?commandPersonnelFinance:commandCompanyWork))(prisma,user.id,await body(req,131072)))
+        return send(405,{code:'METHOD_NOT_ALLOWED'})
       }
       const operationMatch = path.match(/^\/api\/operations\/([a-z-]+)$/)
       if (operationMatch) {

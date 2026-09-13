@@ -1,63 +1,66 @@
-# Company workflows: approved requirements and implementation boundary
+# Company workflows: implemented scope and remaining boundaries
 
-Authority: the owner's Greenview Tour discussion, confirmed for implementation on 2026-09-13. Use GitHub source; the owner's existing local checkout and data are not the implementation target. This document distinguishes requirements from executable functionality. It does not claim the complete company system is delivered.
+Authority: the owner's Greenview Tour decisions confirmed on 2026-09-13, including manual per-period payroll: enter the base wage, additions and deductions with reasons, then obtain approval. This document describes executable code in the current company-workflows change. It does not equate the new workflows with a complete accounting or HR system.
 
 ## Work categories
 
-| Category | Responsibilities | Executable in this branch |
+| Category | Executable workflow | Remaining boundary |
 | --- | --- | --- |
-| Sales & Bookings | Bookings, agents, contracts, standard rates, negotiated exceptions, guest requirements and daily booking sheets | Existing bookings, partner/rate/agreement settings and documents; agreement HTTP route repaired |
-| Tour Operations | Vehicle/boat assignment, drivers/crew, pickup, Job Orders, actual passengers and preparation | Existing dispatch, preparation and daily summaries |
-| Housekeeping | Zones, scheduled cleaning, assignment, checklist/evidence and acceptance | Housekeeping roles and department only; workflow pending |
-| Inventory, Equipment & Maintenance | Responsibility by warehouse, consumables, tools, spares, issues/returns, counts, repair jobs | Existing stock transactions and loans; company-wide delegated stock access added; scoped ownership and request/approval workflow pending |
-| Purchasing | Purchase requests, quotations, approvals, purchase orders and receiving | Pending |
-| Accounts & Finance | Receipts, agent receivables, supplier payables, expenses, reimbursements, advances, payroll and allowances | Per-user permission for recording/removing booking PAID status; accounting ledger and payment workflows pending |
-| Company & Personnel | Company, employees, positions, seasonal employment, rosters/rest/leave, compensation and user access | Company and User profiles; multiple roles and per-user operational access added; separate employment/payroll records pending |
-| Settings | Programs/services, pickup/hotels, fleet, channels, units, approval/integration configuration | Existing master-data screens |
+| Sales & Bookings | Bookings, Agent/program standard prices, agreements, guest requirements and documents | Negotiated price exceptions bound to a separately approved revision are not implemented |
+| Tour Operations | Vehicle/boat assignment, crew, Job Orders, passenger actuals, preparation and daily summaries | No new dispatch automation is implied |
+| Housekeeping | Zones, weekly/monthly/custom schedules, assigned pending jobs, checklists, completion/evidence and independent acceptance | Evidence uses an HTTPS reference; no attachment upload service |
+| Inventory, Equipment & Maintenance | Warehouse primary/deputy appointments; requests, independent approval, partial issue/return; approved count adjustments; asset-linked maintenance and acceptance | No automatic reorder policy or full asset depreciation ledger |
+| Purchasing | Draft purchase orders, supplier/quotation reference, independent approval, partial receiving into real stock lots | Supplier payment is a separate finance request; no automatic transfer or supplier message |
+| Accounts & Finance | Reimbursements, work/salary advances and reviewed clearance, trip allowances, manually itemized payroll, received-purchase payment requests, approval and external payment recording | No general ledger, tax filing, automatic statutory payroll calculation, bank integration or complete Agent receivables ledger |
+| Company & Personnel | Company/User profiles, multiple roles, special permissions, seasonal employment, separate attendance/rest/leave/availability and substitution records | No Job Order does not automatically create an absence or deduction; no employee self-service payslip module |
+| Settings | Programs/services, pickup locations, fleet, channels and other existing master data | Existing standard prices are not an approved negotiated exception |
 
-Dashboard is an overview across these categories. Reports belong to their owning category. Navigation exposes implemented destinations only; there are no disabled future modules pretending to be usable pages. Existing URLs remain valid. Tour settings are grouped under Settings, company details and Users under Company & Personnel, and agent settings under Sales & Bookings.
+Working destinations are grouped by their business category. Existing Booking, settings and operations URLs remain valid. `packages/contracts/company-routes.js` owns the new `/company/*` destinations. Navigation reflects server-confirmed capability projections; the API remains the authorization boundary.
 
-## User access implemented here
+## Roles, special permissions and confidentiality
 
-One User can hold several Roles; a Role is a bundle of duties, not an employment position. New roles: SALES, HEAD_HOUSEKEEPING and HOUSEKEEPING. Head Housekeeping directory access is limited to the assigned HOUSEKEEPING department, like existing Heads. Employment records and compensation do not belong in the public User profile response.
+A User can hold several Roles; roles describe duties rather than a single employment position. The User action Configure permissions preserves role defaults, ALLOW/DENY overrides and their activation/expiry. Active DENY takes precedence. Manager/Admin appointment authority does not itself disclose salary data: payroll and salary advances require payroll-specific view/edit/approve/pay permissions. Admin Manager has the explicit payroll default; an ordinary Manager needs the relevant special grant.
 
-Users → Actions → Configure permissions uses GET/POST `/api/users/:id/access`:
+The existing invitation/directory administration rules remain in place: no self-access editing, no Admin Manager editing through this dialog, and only Admin Manager appoints Managers. All sensitive requests reload the stored actor and applicable permissions. Access mutations and company/financial writes use the shared transaction lock and revision checks.
 
-- An active COMPANY Manager or Admin Manager may configure another ordinary user. Only Admin Manager may configure or appoint a Manager. This editor cannot grant or edit Admin Manager, nor edit the caller's own access.
-- Multiple role defaults combine. Individual ALLOW/DENY overrides optionally have UTC activation/expiry instants. An active DENY wins across all role grants and active ALLOW overrides. Inherit removes that override. Unknown permission codes are rejected.
-- Current editable permissions are operational duties and `finance.receive` (record/change PAID booking status). The existing directory/invitation administration permission system is preserved; its grants are not offered as arbitrary overrides.
-- Stock delegation currently means company-wide inventory access. Guide preparation remains restricted to the assigned boat or an authorized operational supervisor. A warehouse UUID in an incoming permission edit is rejected; warehouse-specific delegation is not implemented or silently promoted to company access.
-- The API rereads current actor and target access. Changes run inside the same advisory transaction lock as operational writes and invitations. `accessVersion` rejects stale/duplicate edits before replacing grants. Rejected writes do not partially update roles.
-- AuditEvent records actor, target, time, reason, prior roles/overrides and replacement roles/overrides. The dialog shows the most recent 20 changes. Passwords/tokens are never part of this payload.
-- An unchanged PAID booking can still have ordinary guest details edited by Booking. Transitioning into or out of PAID requires `finance.receive`. This is a status authorization boundary, **not** a receipt, bank transfer or accounting posting.
-- The browser uses server-confirmed saves, explicit review, retained values on failure, conflict recovery, duplicate-click prevention and unsaved-change protection. Already-open screens can retain their earlier visual state; the backend always rechecks access on requests.
+Warehouse responsibility is a separate record with one primary custodian and an optional deputy. It scopes the new request/count/issue workflow to the appointed warehouse; it does not turn an arbitrary warehouse UUID in the generic permission editor into company-wide stock authority. Existing company-wide stock grants and assigned-boat preparation remain separate capabilities. No real employee or family member is appointed merely by reference to their relationship with the owner.
 
-## Agent pricing requirements still to implement
+## Inventory and purchasing
 
-Existing per-Agent/program standard rates are usable without repeated Manager approval. Only a negotiated deviation requires a separate confirmation record. Sales records the baseline and proposed adult/child prices, reason and applicable booking/group/date range; Manager confirms the precise revision. An approver may not approve their own proposal even when holding both roles. Edited price or conditions invalidate the prior approval. Never overwrite standard rates to represent an exception. A draft may wait for approval; confirming a sale must fail unless its exceptional price has a valid matching approval. Preserve the final sale snapshot when master rates later change.
+A stock request changes no physical quantity. A different authorized person reviews the requested resource, source/destination, quantity, due date and reason. Issuing uses a selected matching lot, reduces its available stock and records custody. Partial issues cannot exceed the approved quantity. Returns preserve ready/cleaning/damaged condition; consumables may be consumed or wasted. Outstanding reusable stock remains visible until settled.
 
-## Warehouse responsibility and purchasing requirements
+Counts capture the observed quantity and the precise stock revision. Submitting a count does not adjust stock. Independent approval applies the difference only if that revision is still current; otherwise a recount is required. Direct unapproved COUNT commands are rejected. Count jobs and cleaning jobs share recurrence machinery but use their own inventory/housekeeping authorization. Expiry inspection, physical counting and purchasing remain separate operations.
 
-Head Captain owns boat items; Head Driver owns vehicle items; Head Housekeeping owns cleaning supplies. Cross-department tools have a named knowledgeable custodian appointed as a special duty, not a forced departmental Role. A warehouse has one primary responsible person plus explicit deputies; all requests, approvals and physical transactions retain individual attribution. Do not appoint the owner's brother without a selected User identity.
+A purchase order stores supplier, receiving location, reason, quotation reference and item quantities/unit costs. A different person approves it. Each receipt is bounded by remaining ordered quantity and creates a stock lot through the existing stock service. Receipt replay creates no duplicate stock. Supplier payment requests are bounded by received value less other approved/paid requests; approval does not pay a supplier.
 
-Separate requester, approver, issuer and receiver. A request does not reduce physical stock. Reusable tools retain custodian, due date and condition; consumables distinguish use, return and waste. Spares/repair work link the actual boat/vehicle or other asset. Purchasing rights are separate from receiving, inventory adjustment and paying a supplier.
+Maintenance links a vehicle/boat and/or an equipment resource to an assigned employee and due date. It follows proposal, approval, reported completion and independent acceptance/reopen, with history retained.
 
-Counts support weekly, monthly or explicit custom schedules. A count records observed quantities; differences require reason and approval before a physical adjustment. The inherited COUNT command currently adjusts directly under inventory authority; converting it into this approval flow remains required. Expiry/condition inspection, counting and replenishment are distinct operations.
+## Housekeeping and scheduled counts
 
-## Cleaning requirements
+Schedules support weekly, monthly and explicit custom dates within a bounded date range. Monthly dates clamp to the last day of shorter months and return to the original day in later months. Generation creates pending jobs and does not complete them; generating the same schedule/date again creates no duplicate. Existing generated job history is preserved. To change recurrence after jobs exist, create a new schedule and deactivate the old one.
 
-Define zones, active schedules, assigned employees, due dates and checklists. Support weekly, monthly and custom dates. Generate distinct pending jobs without duplicates; never mark a generated task completed. Workers report completion/evidence; supervisors review. Overdue work remains open and visible. Schedule revisions preserve historical completed jobs.
+Assigned workers report checked items, a completion note and optional evidence reference. A different authorized reviewer accepts the work or returns it. Count jobs require an approved linked count before completion. Overdue pending work remains visible.
 
-## Personnel and money requirements
+## Personnel and money
 
-Seasonal employment does not by itself erase paid or legally protected leave. No Job Order means no assignment, not automatically absence, unpaid leave or weekly rest. Keep employment/availability, rostered rest, actual assignments and attendance separate. Shift substitutions preserve each employee's history.
+Employment stores seasonal dates and position separately from compensation. Attendance can explicitly record present, rest, paid leave, unpaid leave, absence or availability without a Job Order. Seasonal work does not imply that leave rights disappear. Substitution records name an active different employee.
 
-Base wage, trip allowances, reimbursements, work advances, salary advances and advance clearance are distinct records. Separate view, edit, approve and record-payment authority; being able to appoint special duties does not automatically reveal payroll data. Payroll periods, calculation basis and deduction policy remain unresolved. The conversational 10,000/30 example is not an approved automatic deduction rule. Do not implement guessed legal rates or mark drafts paid. No bank transfers, supplier messages or staff emails are authorized by this implementation.
+The approved payroll policy is manual and per period: **base wage + additions − deductions**, with a base-wage basis and a reason on every adjustment. The system sums fixed decimal amounts in integer cents. It does not infer a daily divisor, absence deduction, tax or legally required rate from attendance. Each submitted period requires independent approval.
 
-## Release and remaining work
+Only the author edits, submits or cancels a draft. Rejected records may be revised, clearing prior approval. Monetary beneficiaries cannot approve their own request, record their own payment or accept their own advance clearance. Supplier-payment employee references identify a responsible officer, not a personal beneficiary. View, edit, approval and payment duties are separate.
 
-Source baseline: `mint/booking-operations-flow` at `2f67abbd197d3d48212d75f83b6b6ee26076b971`, not main. This branch includes that existing feature chain; it is not evidence those earlier changes have merged to main.
+An approved financial record is not paid. Record payment requires the date/reference of an externally completed payment and initiates no transfer. Paid advances accept evidenced expense/repayment lines plus returned cash equal to the advance, followed by independent clearance review. Work advances, salary advances, reimbursements, trip allowances and payroll remain distinct records; no automatic payroll deduction is created.
 
-Apply the checked-in Prisma migration with the repository's normal migration runner to the selected database before starting the new API. Never use reset/db-push against Supabase. This task has not copied local secrets, updated the owner's checkout, or applied the new migration to an external database. Existing grants are preserved by the additive migration. Code rollback after migration can ignore the additional columns/table; do not drop access/audit data as a rollback shortcut.
+Private financial command history supports identical-request replay, including uncertain create retries. Changed bodies/revisions conflict; current view/action permission is still required. General audit entries identify action/actor/revision without copying payroll amounts into the ordinary User response or general audit feed.
 
-Remaining implementation sequence: warehouse-scoped special assignments and purchasing permissions; negotiated-price approval bound to a revision; cleaning/count schedules and completion/approval; inventory request and maintenance lifecycle; employment/attendance and financial draft workflows; legal/policy-reviewed payroll calculations; end-to-end database migration and runtime verification. These are open requirements, not completed functionality.
+## Migration, verification and demo
+
+The additive migration is `20260913090001_company_workflows`. Use the repository's Prisma migration runner; never reset or db-push this database. New tables are in `app_private`, with RLS and public-role access revoked. Existing role grants and operational records are preserved. Deployment/commit status belongs in the release result rather than being inferred from this document.
+
+`backend/scripts/seed-company-workflows.js` extends the existing `DEMO FLOW` catalog through domain services. The persisted initial example contains 14 cleaning/count jobs, 9 personnel/finance drafts, a purchase of 24 units with 12 received, and one tool still outstanding. These counts describe the seeded starting point; user edits may subsequently change them. The script's marker prevents reruns from overwriting edits or duplicating receipts. Only the existing fictitious DEMO worker receives the demonstration cleaning duty/custodian appointment; no actual staff compensation or duties are changed.
+
+See [Thai workflow guide](company-workflow-guide.md), [tour demo](demo-flow.md) and [personnel/finance contract](personnel-finance.md). Validation includes backend permission/lifecycle/idempotency tests, real database rollback verification and persisted seed checks, plus `scripts/smoke-company-workflows.js` using intercepted compiled assets with no HTTP/Vite server and no live API writes.
+
+Remaining work is explicit: negotiated Agent exception approval, a full accounting ledger/receivables system, statutory payroll/tax calculation policy, bank/export integrations and evidence uploads. None is represented by the sample drafts as already completed.
+
+Verified integration evidence, 2026-09-13: `npm run check` passed with 138 backend tests and both frontend builds; after adding the final replay-permission case, all nine targeted tests passed and the current full suite contains 139 tests for CI; baseline browser fixtures and the new intercepted-asset company browser suite passed. The persisted seed reported 14 jobs and 9 drafts; rerun returned `ALREADY_PRESENT`. Live checks confirmed RLS on all six new tables and no anon/authenticated SELECT. The strict premium audit reported zero findings in `screenshots.local/company-premium-audit.json`. These results validate the implemented scope, not the deferred negotiated pricing or full accounting system.
