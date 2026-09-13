@@ -71,7 +71,7 @@ try {
   await page.getByRole('button', { name: 'Save password', exact: true }).click()
   await page.getByText('Password updated', { exact: true }).waitFor()
   for (const route of ['login', 'register']) {
-    await page.goto(`http://localhost:5174/${route}`)
+    await page.goto(`${process.env.GREENVIEW_TEST_ORIGIN || 'http://localhost:5174'}/${route}`)
     await page.setViewportSize({ width: 390, height: 844 })
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true)
     await page.screenshot({ path: fileURLToPath(new URL(`${route}-mobile.png`, output)), fullPage: true })
