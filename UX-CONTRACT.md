@@ -27,7 +27,7 @@ Business authority: docs/authentication.md and docs/identity-access.md. AuthLayo
 
 Sign in returns to the workspace; users without company directory rights see their own welcome screen. Unauthorized API responses never leave the directory accessible. Register is invitation-only and asks users to confirm email before signing in. Reset completes with an explicit sign-in link; it does not silently open the workspace. Inline status/error messages remain in the form. All auth routes have an English document title, keyboard focus and narrow-screen layout. Browser sessions are HttpOnly cookies; no client token persistence.
 
-The directory supports scoped profile edits and Manager-led invitations. Role changes for existing accounts remain outside this change. Public UI remains Thai; Backoffice remains English.
+The directory supports scoped profile edits, Manager-led invitations and the per-user access editor documented below. Public UI remains Thai; Backoffice remains English.
 
 ## User Info and profile Actions
 
@@ -57,3 +57,113 @@ Owner refinement 2026-09-08: clear menu items on pointer opening; sea-tint hover
 
 - Select scroll lock: stable root gutter is the width owner; suppress duplicate body margin compensation only when supported. Popup open/close must preserve page and dialog geometry with visible scrollbars.
 - Auth throttling: preserve safe provider error categories, send Retry-After for the known local window, and show a countdown before manual retry. An unknown provider limit uses a conservative UI delay without claiming the provider quota has reset. `.local` invitation addresses are rejected before creating a link or submitting a password; existing bootstrap account login remains available.
+
+## Company master-data settings
+
+Business authority: docs/tour-settings.md and owner approval dated 2026-09-08. `CatalogPage` under settings/shared owns recurring create/view/edit behavior; shared contracts/catalog.js owns field definitions and validation. Core ReferenceField owns bounded lookup interaction, delegates domain fetching, and reuses SearchField and SelectField. SearchField now accepts a label/placeholder and unique ID; Users retains its existing defaults. DataTable, Dropdown, Dialog, FormField and TextAreaField remain canonical.
+
+Search/status/page restore from URL; remote requests debounce 300ms, defer during IME and cancel superseded work. Lookups are active-role filtered and page through 25 results. Success closes the form and refreshes the current list with inline status. Failed saves preserve values; stale conflicts require closing and refreshing before editing again. Unsaved closes require an app-owned discard choice; page unload uses beforeunload. Availability/role changes require explicit confirmation. No hard delete is exposed. View dialogs contain no mutations. Prices remain decimal strings across the API; empty fields are not coerced to zero. Local Backoffice only; no Public publishing control is shown.
+
+## Settings refinement: address, company and navigation
+
+Authority: owner message dated 2026-09-08 approving GitHub publication and requesting shared form/navigation improvements. Business details are recorded in docs/tour-settings.md.
+
+AddressFields (core/ui) owns ordered, optional structured address inputs and safe Google Maps links, backed by packages/contracts/address.js on both client and server. Company now uses the quick-address variant specified below; sibling forms retain typed inputs until their individual review. Legacy address remains preserved separately. Company is a singleton full-page form with Save company details and conflict reload recovery; there is no Add company button, company table or hard delete.
+
+FormField and TextAreaField use Core fieldGuidance for placeholders; an explicit field placeholder overrides the default. Placeholders complement permanent labels, disappear natively while typing and reappear when cleared. Map links open in a separate tab. The shared Maps editor shows a saved link only; legacy coordinate storage remains intact.
+
+NavigationProvider (core/navigation) owns same-document navigation, route location, popstate and shared unsaved-change guards. It intercepts ordinary internal workspace links, preserving Shell/profile, browser back/forward and modified clicks. Catalog query replacement preserves navigation history metadata. Link changes, history moves and sign-out requests consult registered drafts; document unload retains browser protection. Profile reload uses the shared Dialog rather than window.confirm. Successful profile saves still explicitly refresh account data.
+
+## Company quick-address refinement
+
+Owner clarification 2026-09-08: Company uses the shared AddressFields quick variant: a compact address summary and Quick address button. AddressPicker opens the canonical Dialog, uses SelectField with dependent province/district/subdistrict options from a pinned, licensed local dataset, then enables optional house details. Changing a parent clears its child selections. Draft changes apply to the owning form only through Use this address; dirty dismissal requires a discard choice. Existing unrecognized text is retained until the user explicitly replaces it. New/changed company address hierarchies are checked server-side. Other forms can adopt this variant during their individual reviews.
+
+MapLocationField is the shared link-only editor. Coordinate inputs are removed; existing coordinate values remain preserved in storage. FormattedField and contracts/contact.js own Company Tax ID and Phone presentation/normalization: format on blur, retain original digits and optional country prefix, allow empty values, validate on client and server. Admin Manager retains its existing full company-management access; other access is Manager only.
+
+## Address entry clarification
+
+Owner clarification 2026-09-08: Keep the individual editable address fields on Company. Quick address is an optional helper, not a replacement summary. Save address applies the modal draft back to the named page fields; Save company details persists it. Postal code follows the subdistrict and is read-only, automatically derived from the complete province/district/subdistrict match for both manual and quick entry. Unknown/partial matches clear the derived code instead of retaining a stale one. Core and server use the same pinned postal dataset. Postal code is stored as an optional five-character field across the existing address models; no existing data is bulk-rewritten.
+
+## English-first bilingual entry
+
+Owner refinement 2026-09-08: Backoffice headings remain English. Address choices show English · Thai and search both languages, ignoring spaces/hyphens; Phang-Nga is the display/canonical English alias for province 82. Recognized new area selections store English names, while free-text names and house details retain the language entered. Existing Thai areas remain recognized without bulk migration. Shared GeographyFields now supplies dependent dropdowns on the page and in Quick address, including employee/partner/pickup consumers of AddressFields. No unrestricted area text is newly entered.
+
+SearchableSelectField is the canonical searchable variant, built on pinned Base UI Combobox 1.8.0 (input-inside-popup pattern). It reuses Core dropdown/control tokens; ordinary small selects retain Radix Select. Search supports English/Thai, clear, no matches, keyboard/IME and dialog portal focus. Parent selection clears child fields. The existing postal-code derivation still matches Thai or English names and handles known Moo exceptions.
+
+Core Company phone entry converts complete local Thai numbers to +66 on blur and the server repeats that normalization. Display uses +66-81-234-5678 (mobile), with landline groupings supported. Supplied international prefixes remain unchanged; no country is inferred for non-Thai-shaped numbers. Tax ID preserves its existing grouping and leading zeros.
+
+## Stacked modal scrolling
+
+Owner refinement 2026-09-08: Core Dialog locks document scrolling until the final modal closes. Native top-layer modal semantics isolate background interaction; the Core stack enables only the frontmost dialog content scroller. Covered dialogs retain their scroll position and stable gutter. The header remains outside the content scroller. Dialog roots portal to body so nested dialogs remain independent. SearchableSelectField uses fixed positioning within its owning dialog portal, outside the scrolling body, with bounded option scrolling and no scroll chaining. Compact modal address sections and action groups use token-colored dividers with 12px spacing. Page form spacing remains owned by its existing layout.
+
+Owner correction 2026-09-08: Section dividers also apply to page content. Shared address-section fieldsets separate Address and Map location with the Core border token and 12px margins. Company save actions use the same divider rhythm as modal actions. The address helper row uses compact spacing.
+
+## Canonical dataset surfaces
+
+Owner approval 2026-09-08 supersedes the earlier 3-card and most-recent-100 invitation presentation. DataTable, Pagination, SummaryCards and Tabs in core/ui own all Users, Invitations and catalog presentation. Pagination uses 25 rows per page, honest zero/unknown ranges, disabled boundary/loading controls, and server-clamped pages. Invitations now supports complete server-paginated, scoped name/email search; employee PII search remains transient, never persisted in URL/storage. Summaries count all authorized records, independently of search/status/page, within a consistent read transaction. No permissions, mutation behavior or database schema change.
+
+| Capability | Canonical owner | Source of truth | Allowed variants | Verification |
+| --- | --- | --- | --- | --- |
+| Pagination | core/ui/Pagination.jsx | this contract | Users / Invitations / catalog | range, zero, unknown, boundaries, page clamp |
+| Summary | core/ui/SummaryCards.jsx | DESIGN.md | four meaningful per-dataset metrics | authorized totals, desktop four, portrait two columns |
+| Tabs and TabPanel | core/ui/Tabs.jsx + core/ui/TabPanel.jsx | this contract | Users and all three route-backed settings groups | shared indicator/content motion, reduced motion, inactive inert/aria-hidden, optional layout reservation, keyboard, direct links, history, dirty leave protection |
+| Table states | core/ui/DataTable.jsx | this contract | loading / error / empty / populated | retry, overflow, stable geometry |
+
+Company remains a form. Company & Tours contains Company and Tour programs. Partners & Sales contains Business partners, Agent prices and Sales channels. Transport & Pickup contains Hotels & pickup points and Vehicles & boats. These are navigation groups only; domain tables and permissions remain independently owned. A tab reveals one dataset immediately, remembers its own committed filters/page for the session, and does not expose inactive content to keyboard or accessibility navigation. Switching from a dirty Company form opens the existing discard decision before navigation.
+
+Tab motion correction: Tabs owns a measured sliding indicator for any tab label width or wrapped row. Users and all three settings groups share the 180ms content fade/5px slide; the indicator takes 200ms. Reduced motion disables both. Settings preserve native page/form height and existing dirty-navigation guards.
+
+## Tour operations
+
+Owner authorization 2026-09-09 adds local company-manager operational master data, dated service availability/trips, booking snapshots and stock movements. Services / Assets & Equipment / Bookings & Trips navigation is authorized using the existing company-management permission; backend authorization is authoritative.
+
+CatalogPage owns recurring metadata CRUD for operationCatalog, while BookingsPage and StockPage own domain commands through Core forms, Dialog, ReferenceField, SelectField, Dropdown, DataTable, SummaryCards and Pagination. Date-time entry is typed `YYYY-MM-DD HH:mm`, interpreted by shared contracts in Asia/Bangkok. Date-only stock fields retain `YYYY-MM-DD` semantics. List filters/paging follow the Settings route-memory convention. Unsaved edits and in-flight commands participate in the navigation guard; errors preserve fields and duplicate submits are locked. Server human-readable errors are exposed separately from error codes in core/auth/api.js.
+
+Booking components show whether included, required, optional or excluded; included amounts are not charged again. Confirmation/cancellation/completion use explicit app-owned confirmation and versioned commands. Stock receiving, transferring, issuing, counting and condition/settlement commands retain entered units. Count corrections require a reason. Pack/case choices appear only when configured for that bottled resource. Reusable returns distinguish ready, cleaning and damaged; consumables distinguish consumed, wasted and intact returns. Sending stock to a boat/island changes custody/location, not implied consumption. No invented prices, capacities, pack sizes or stock opening quantities.
+
+Trip preparation uses the shared Dialog table variant; Required, Issued, To issue and To settle have distinct operational meanings. To settle counts issued units still awaiting return or consumption/waste recording, while To issue is required minus issued.
+
+Owner refinement 2026-09-09 separates Booking intake from Guide boat assignment and Driver vehicle assignment. Reusable services, program components, equipment, consumables and stock locations live under Settings; dated trips, service slots, bookings, dispatch and stock transactions remain work navigation above Settings. Core `workspaceRoutes.js` is the shared route ownership and canonical-path source for App, Shell and NavigationProvider. Legacy operational-master URLs resolve to their Settings paths with query state preserved. Ordinary owned links update only content; the workspace/profile DOM and authentication fetch remain mounted. Unowned, external, hash, download and modified-click links keep browser semantics. Role capability projections come from the server; hiding navigation never replaces backend authorization. Legacy service slots remain manager-only.
+
+Core Dropdown layer correction 2026-09-09: action menus portal into their trigger's nearest native Dialog, falling back to document.body outside dialogs, matching SelectField ownership. Fixed viewport anchoring remains outside scrollable dialog content; the dialog has no transformed containing block. Escape consumes the menu key, closes only the menu and restores its trigger before a subsequent Escape can close the dialog. The dispatch browser regression verifies portal ownership, Escape/focus and clicking a menu action inside a job dialog.
+
+Filterbar field errors remain visible through Core FormField; ordinary empty helper slots may collapse. Shared job sheets preserve readable mobile groups and use a compact, repeating-header table for A4 landscape print, including run identity and revision on continuation pages. See docs/tour-dispatch-workflow.md for operational ownership and role projections.
+
+## Job-order documents
+
+`features/operations/JobSheets.jsx` is the shared document owner inside Core Dialog's table variant. Boat and vehicle jobs use responsive labeled group cards on screen and full repeating-header tables for A4 landscape print. Booking uses the same masthead, payment-term labels and a handoff table; incomplete transport allocation remains explicit per selected service and direction. See `docs/tour-dispatch-workflow.md` for server projections. Actual zero passengers remains distinct from unrecorded counts. Check-in/handoff blanks are handwritten fields, not persisted check-in controls. Printing does not change any booking, run or revision. A failed dispatch refresh does not expose the stale job's Print control.
+
+
+Owner refinement 2026-09-09: Boat print copies collect all authorized runs for the same vessel and Thailand service day, with independent outbound and return sections in one continuous table. The masthead has exactly two cells: vessel and four crew roles on the left, document reference and date on the right. Crew differences identify direction/time. The date/vessel document reference is derived, while source run codes and revisions remain visible. JobSheets.jsx/dispatch.css own the compact print variant; target 15 outbound + 5 return groups on one A4 landscape page at 8.5pt with normal-length notes. Long content wraps and continues to additional pages, never clips or silently drops groups. Management actions remain scoped to individual runs.
+
+
+Owner refinement: vessel-day documents include per-program adult/child/passenger summaries for each direction, followed by a total of all programs. Group by snapshotted program ID, never infer the return list or count the same customer's two journeys as unique customers. Crew counts are separate from customer totals; four roster roles support multiple assistant captains/guides (typical 1 captain, 2 assistant captains, 1 guide, 1–2 assistant guides). Existing per-person crew selection remains canonical.
+
+## Daily operational document contract
+
+Owner-approved sage document family uses DocumentCore for exact database PNG loading, image decode/font readiness and print action; existing Core Dialog, Button and FormField remain canonical. DocumentPreview shows errors/retry instead of printing a missing logo. GET booking-document requires existing Booking authorization; Guide/Driver projections contain no payment amounts. DocumentAsset is private, RLS enabled, no anon/authenticated table grants; backend serves only fixed company-logo as PNG data URL to workspace sessions. The bounded 5 KB original is stored as BYTEA with SHA-256 rather than duplicated/recolored per document.
+
+Daily report scope is explicit in the sheet: confirmed/completed trips overlapping selected Thailand day. Counts exclude drafts/cancellations. All rows render with repeating print table headers; no list pagination limit. COUNTER amount uses stored adult/child prices plus selected non-included service lines in integer satang; missing prices block a definitive collection total. Prices are not refreshed from current catalog rates. No deposit/receipt ledger exists in this scope.
+
+## Booking-led operations navigation and selection
+
+Owner instruction 2026-09-10 is the business source for Booking → Boat/Driver → Stock. workspaceRoutes, operationGroups and Shell own route groups; historical `/operations/guide`, stock and issues links remain compatible. Single-dataset destinations do not expose redundant tabs. Stock supplies and loans derive from an authorized selected boat run; separate Inventory balances/history remains company-manager only. BoatStockPage uses backend preparation shares, available balances and versioned stock commands; it never invents requirements or opening quantities.
+
+DispatchPage owns shared Boat/Driver layout with selected run at left and paged pending Booking services at right. Choosing a booking copies remaining adult/child counts into AssignmentEditor; partial allocation is explicit. Capacity preview prevents oversized submissions; server version and capacity validation remain authoritative and preserve edits on conflict. Return vehicle jobs do not require a pickup time.
+
+DateField extends Core FormField with native `date` input. Browser/OS owns calendar locale and popup geometry; EN-first application labels and Thai content remain supported. Stored dates use ISO `YYYY-MM-DD`, with no UTC conversion. Native keyboard/calendar operation remains available. Core filterbar input/Select/Button height is 38px; Dialog and authentication density variants remain unchanged.
+
+Core DataTable allocation and allocation-selector layouts use content-height tables capped at 360px, with a 112px state reservation, because Boat/Driver compose run selection, pending bookings and assigned bookings in one workspace. Selector tables have no dataset minimum width; multi-column allocation tables retain 460px horizontal-scroll width. Standard dataset tables retain their existing geometry. Core SearchField defaults to neutral Search copy; domain-specific consumers can supply a label/placeholder.
+
+
+Owner refinement 2026-09-09: Booking owns service dates independently of record creation and fleet schedules. Fixed programs calculate return; open-return has explicit pending/our/other, and return-only never invents outbound. Program/agent/date quote is authoritative, saved price and removal-credit snapshots remain stable on same-sale edits. Existing source policies are recorded in docs/booking-operations-audit.md. Booking readiness does not require staff to choose inventory source or ordinary service slots. Physical availability is checked at scoped issue/allocation. Reception print omits hotel/transfer, uses arrival or return-only service day, and CSS print margin boxes provide page current/total on supported Chromium/Edge printers. Core DataTable allocation variants reserve bounded content height without inheriting directory minimum widths.
+
+## Company duties and per-user access · 2026-09-13
+
+Authority and implementation limits: docs/company-workflows.md. WorkspaceNavigation owns grouping of working destinations by business category, preserves existing URLs and delegates all eligibility to the shared route permission policy. Company and Users belong to Company & Personnel; agent settings belong to Sales & Bookings. Unimplemented modules do not appear as disabled navigation.
+
+Users row Configure permissions is offered only by the server's canConfigureAccess result. UserAccess reuses Dialog, Button, FormField, SelectField, address-section fieldsets and Navigation's dirty guard. Native checkboxes select multiple duties. Default/inherit, allow and deny remain visibly distinct; effective access explains its source. Optional datetime-local fields explicitly collect UTC instants (native platform calendar is acceptable, same policy as existing DateField). Manager authority is enforced again in the transaction. Only Admin Manager appoints Managers; this UI never edits self or Admin Manager grants.
+
+Permission mutation is pessimistic: Review changes → Confirm permissions. There is no autosave or automatic retry. Failure retains edits; a 409 requires closing/reopening to inspect the latest saved version. Closing a dirty form asks Keep editing / Discard changes. The modal scroll owner, keyboard focus and narrow layout remain Core-owned. History is read-only. Bookings show a help message when paid-status changes are unavailable, while preserving unrelated edits.
+
+Validation owners: backend/test/user-access.test.js and scripts/smoke-user-access.js. The fixture runner uses a separate frontend port and ephemeral API port to avoid disturbing a running local workspace. Fixtures do not send emails or use business data.

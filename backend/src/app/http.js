@@ -1,3 +1,12 @@
+import { documentBrand, dailyBookingDocument } from '../modules/operations/documents.js'
+import { canConfigureAccess, readUserAccess, saveUserAccess } from '../modules/identity-access/user-access.js'
+import { listJobs, dispatchOptions, saveRun, dispatchCommand, bookingOptions } from '../modules/operations/dispatch.js'
+import { dailySummaryState, prepareDailySummary } from '../modules/operations/notifications.js'
+import { listOperations, saveOperationCatalog } from '../modules/operations/catalog.js'
+import { getBlueprint, saveBooking, bookingStatus, tripPreparation, amendBookingDetails, amendBookingReturn } from '../modules/operations/bookings.js'
+import { stockCommand, boatPreparation } from '../modules/operations/stock.js'
+import { operationMessages } from '../modules/operations/messages.js'
+import { listSettings, saveSettings } from '../modules/service-catalog/settings.js'
 import { assertDeliverableInvitationEmail, canInvite, canResetPassword, listInvitations, createInvitation, changeInvitation, lookupInvitation, acceptInvitation, requestUserReset } from '../modules/identity-access/invitations.js'
 import { managementScope, canEditProfile, editProfile, editOwnProfile } from '../modules/identity-access/user-management.js'
 import { createHash, timingSafeEqual } from 'node:crypto'
@@ -8,10 +17,10 @@ import { profileInclude, publicProfile } from '../modules/identity-access/policy
 import { SessionStore } from '../platform/auth/sessions.js'
 const digest = value => createHash('sha256').update(value).digest()
 const origins = ['http://localhost:5174', 'http://127.0.0.1:5174']
-async function body(req) {
+async function body(req, maxBytes = 8192) {
   if (!req.headers['content-type']?.startsWith('application/json')) throw new AccessError('JSON_REQUIRED', 415)
   let text = ''
-  for await (const chunk of req) { text += chunk; if (Buffer.byteLength(text) > 8192) throw new AccessError('REQUEST_TOO_LARGE', 413) }
+  for await (const chunk of req) { text += chunk; if (Buffer.byteLength(text) > maxBytes) throw new AccessError('REQUEST_TOO_LARGE', 413) }
   try { const value = JSON.parse(text); if (!value || Array.isArray(value) || typeof value !== 'object') throw new Error(); return value }
   catch { throw new AccessError('INVALID_REQUEST', 400) }
 }
@@ -19,7 +28,8 @@ function password(value, strong = false) {
   if (typeof value !== 'string' || value.length < (strong ? 12 : 1) || value.length > 128) throw new AccessError('INVALID_PASSWORD', 400)
   return value
 }
-export function createHandler({ pool, prisma, provider, token, users = listUsers, sessions = new SessionStore() }) {
+export function createHandler({ pool, prisma, provider, token, port = 5000, users = listUsers, sessions = new SessionStore() }) {
+  if (![5000, 5001].includes(port)) throw new Error('INVALID_LOCAL_API_PORT')
   if (!token || token.length < 32) throw new Error('LOCAL_API_TOKEN_REQUIRED')
   let attempts = 0, windowEnd = 0
   return async (req, res) => {
@@ -28,8 +38,8 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
       res.end(JSON.stringify(data))
     }
     try {
-      if (!['127.0.0.1:5000', 'localhost:5000'].includes(req.headers.host)) return send(403, { code: 'LOCAL_HOST_REQUIRED' })
-      const url = new URL(req.url, 'http://127.0.0.1:5000')
+      if (![`127.0.0.1:${port}`, `localhost:${port}`].includes(req.headers.host)) return send(403, { code: 'LOCAL_HOST_REQUIRED' })
+      const url = new URL(req.url, `http://127.0.0.1:${port}`)
       if (url.pathname === '/health/live' && req.method === 'GET') return send(200, { status: 'UP', service: 'greenviewtour-local-api' })
       if (req.headers.origin && !origins.includes(req.headers.origin)) return send(403, { code: 'ORIGIN_DENIED' })
       const supplied = req.headers['x-greenview-local-token']
@@ -118,24 +128,47 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
           return send(200, { ok: true, warning: !outcome.providerRevoked || !finalized ? 'PASSWORD_CHANGED_FOLLOW_UP_REQUIRED' : null }, '')
         } finally { await provider.logout(verified.session).catch(() => {}) }
       }
+      const operationMatch = path.match(/^\/api\/operations\/([a-z-]+)$/)
+      if (operationMatch) {
+        const { user, entry } = await sessions.authenticated(req, provider, pool)
+        if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
+        const entity = operationMatch[1]
+        if (req.method === 'GET') return send(200, entity === 'document-brand' ? await documentBrand(prisma) : entity === 'booking-document' ? await dailyBookingDocument(prisma,user.id,url.searchParams.get('date')) : entity === 'daily-summary' ? await dailySummaryState(prisma,user.id,url.searchParams.get('date'),process.env,Number(url.searchParams.get('page')||1)) : entity === 'jobs' ? await listJobs(prisma,user.id,url.searchParams) : entity === 'dispatch-options' ? await dispatchOptions(prisma,user.id,url.searchParams) : entity === 'booking-options' ? await bookingOptions(prisma,user.id,url.searchParams) : entity === 'boat-preparation' ? await boatPreparation(prisma,user.id,url.searchParams) : entity === 'preparation' ? await tripPreparation(prisma,user.id,url.searchParams) : entity === 'blueprint' ? await getBlueprint(prisma,user.id,url.searchParams) : await listOperations(prisma,user.id,entity,url.searchParams))
+        const input = await body(req,131072)
+        return send(200, entity === 'daily-summary' ? await prepareDailySummary(prisma,user.id,input) : entity === 'runs' ? await saveRun(prisma,user.id,input) : entity === 'dispatch-command' ? await dispatchCommand(prisma,user.id,input) : entity === 'stock-command' ? await stockCommand(prisma,user.id,input) : entity === 'booking-return' ? await amendBookingReturn(prisma,user.id,input) : entity === 'booking-details' ? await amendBookingDetails(prisma,user.id,input) : entity === 'booking-status' ? await bookingStatus(prisma,user.id,input) : entity === 'bookings' ? await saveBooking(prisma,user.id,input) : await saveOperationCatalog(prisma,user.id,entity,input))
+      }
+      const settingsMatch = path.match(/^\/api\/settings\/(company|partners|tours|rates|agreements|locations|vehicles|channels)$/)
+      if (settingsMatch) {
+        const { user, entry } = await sessions.authenticated(req, provider, pool)
+        if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
+        return send(200, req.method === 'GET'
+          ? await listSettings(prisma, user.id, settingsMatch[1], url.searchParams)
+          : await saveSettings(prisma, user.id, settingsMatch[1], await body(req, 32768)))
+      }
       const invitationMatch = path.match(/^\/api\/invitations\/([0-9a-f-]{36})\/(renew|revoke)$/)
       const resetMatch = path.match(/^\/api\/users\/([0-9a-f-]{36})\/reset-password$/)
       if (path === '/api/invitations' || invitationMatch || resetMatch || (path === '/api/me/profile' && req.method === 'POST')) {
         const { user, entry } = await sessions.authenticated(req, provider, pool)
         if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
-        if (req.method === 'GET' && path === '/api/invitations') return send(200, await listInvitations(prisma, user.id))
+        if (req.method === 'GET' && path === '/api/invitations') return send(200, await listInvitations(prisma, user.id, url.searchParams))
         if (req.method !== 'POST') return send(405, { code: 'METHOD_NOT_ALLOWED' })
-        const input = await body(req)
+        const input = await body(req, path === '/api/me/profile' ? 32768 : 8192)
         if (path === '/api/me/profile') return send(200, await editOwnProfile(prisma, user.id, input))
         if (resetMatch) return send(200, await requestUserReset(prisma, provider, user.id, resetMatch[1]))
         if (invitationMatch) return send(200, await changeInvitation(prisma, user.id, invitationMatch[1], invitationMatch[2]))
         return send(201, await createInvitation(prisma, user.id, input))
       }
+      const accessMatch = path.match(/^\/api\/users\/([0-9a-f-]{36})\/access$/)
+      if(accessMatch) {
+        const {user,entry}=await sessions.authenticated(req,provider,pool)
+        if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401)
+        return send(200,req.method==='GET'?await readUserAccess(prisma,user.id,accessMatch[1]):await saveUserAccess(prisma,user.id,accessMatch[1],await body(req,32768)))
+      }
       const editMatch = path.match(/^\/api\/users\/([0-9a-f-]{36})\/profile$/)
       if (req.method === 'POST' && editMatch) {
         const { user, entry } = await sessions.authenticated(req, provider, pool)
         if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED',401)
-        return send(200, await editProfile(prisma,user.id,editMatch[1],await body(req)))
+        return send(200, await editProfile(prisma,user.id,editMatch[1],await body(req, 32768)))
       }
       if (req.method !== 'GET') return send(405, { code: 'METHOD_NOT_ALLOWED' })
       if (path === '/api/auth/recovery-status') {
@@ -154,10 +187,10 @@ export function createHandler({ pool, prisma, provider, token, users = listUsers
       let filters
       try { filters = parseUsersQuery(url.searchParams) } catch { throw new AccessError('INVALID_FILTER', 400) }
       const directory = await users(pool, { ...filters, department: scope.department })
-      directory.users = directory.users.map(target => ({ ...target, canEdit: canEditProfile(profile,target), canResetPassword: canResetPassword(profile,target) }))
+      directory.users = directory.users.map(target => ({ ...target, canConfigureAccess:canConfigureAccess(profile,target), canEdit: canEditProfile(profile,target), canResetPassword: canResetPassword(profile,target) }))
       return send(200, { ...directory, canChangeDepartment: scope.company, canInvite: canInvite(profile), database: 'UP', environment: 'preview' })
     } catch (error) {
-      if (error instanceof AccessError) return send(error.status, { code: error.code }, error.status === 401 ? '' : undefined)
+      if (error instanceof AccessError) return send(error.status, { code: error.code, ...(operationMessages[error.code] ? { message: operationMessages[error.code] } : {}) }, error.status === 401 ? '' : undefined)
       return send(503, { code: 'SERVICE_UNAVAILABLE' })
     }
   }

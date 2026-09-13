@@ -12,11 +12,12 @@ try {
   pool = createDatabasePool()
   prisma = createPrisma(pool)
   const provider = createAuthProvider()
-  const server = createServer(createHandler({ pool, prisma, provider, token: process.env.LOCAL_API_TOKEN }))
+  const port = Number(process.env.LOCAL_API_PORT || 5000)
+  const server = createServer(createHandler({ pool, prisma, provider, port, token: process.env.LOCAL_API_TOKEN }))
   server.requestTimeout = 10000
   server.headersTimeout = 10000
-  server.on('error', async () => { console.error('API_START_FAILED: check port 5000.'); await pool.end(); process.exitCode = 1 })
-  server.listen(5000, '127.0.0.1', () => console.log('Greenview Tour API: http://localhost:5000'))
+  server.on('error', async () => { console.error('API_START_FAILED: check the local API port.'); await pool.end(); process.exitCode = 1 })
+  server.listen(port, '127.0.0.1', () => console.log(`Greenview Tour API: http://127.0.0.1:${port}`))
   const stop = () => {
     server.close(async () => { await prisma.$disconnect(); await pool.end(); process.exit(0) })
     setTimeout(() => process.exit(1), 5000).unref()

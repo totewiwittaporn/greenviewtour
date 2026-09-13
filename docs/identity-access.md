@@ -31,3 +31,7 @@ Managers cannot change their own grants or elevate accounts through another endp
 Account states: Invited, Active, Suspended, Deactivated. Suspension/deactivation must invalidate existing access, preserve historical attribution, and support reassignment of pending work. Final-admin protection, bootstrap identity, authentication provider, scope membership and session-revocation mechanism must be specified before runtime implementation.
 
 Finance/approval rights, insurance submission authorization, sensitive passenger access and exact team-lead scheduling authority still require workflow definition. Do not infer them from the role hierarchy. No accounting or legal policy is implemented by this document.
+
+## Implemented extension · 2026-09-13
+
+The current role catalog also includes SALES, HEAD_HOUSEKEEPING and HOUSEKEEPING. Users Actions now supports multiple ordinary roles and time-bounded per-user operational allow/deny overrides, including paid-status permission. See company-workflows.md for the authoritative scope, precedence, no-self/Manager hierarchy, audit and remaining warehouse/personnel workflows. Admin Manager grants remain bootstrap-controlled; this editor cannot create or change them.

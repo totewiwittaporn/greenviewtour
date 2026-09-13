@@ -1,0 +1,7 @@
+# Bilingual searchable address and country-first Company phone
+
+2026-09-08. Core GeographyFields now owns dependent searchable selects in both the page and Quick address. SearchableSelectField uses pinned Base UI Combobox 1.8.0 with input inside the popup, English/Thai matching, clear/no-results states and canonical Core tokens. Search text is separate from committed values. Phang-Nga supports Thai and spelling/spacing aliases. Existing Thai records remain recognized; complete new settings addresses normalize to English without translating free-text details.
+
+Company phone normalizes Thai local numbers to +66 on blur and at the server. Mobile/Bangkok/provincial landlines keep their digits, and existing foreign country prefixes are retained. No schema change or bulk rewrite.
+
+Verification: npm run check passed lint, 46 backend tests and both frontend builds. Edge smoke passed bilingual Thai/English search, no results, clear, keyboard selection, dependent resets, optional modal apply/discard, postal derivation, phone presentation, map validation, failed-save retention, persistent navigation and narrow popup layout. Desktop/mobile screenshots inspected. Preview rollback integration passed settings CRUD, English area normalization and postal persistence. Static UI audit: zero findings. Existing chunk-size warning remains; the additional accessible combobox dependency increases the main bundle.

@@ -58,6 +58,8 @@ Show real Preview data, including zero accounts. Authenticated identity comes fr
 
 Authentication extends the existing sea palette: one island-photo panel anchors the team identity, while a quiet form panel owns the task. On narrow screens the photograph becomes a compact masthead. AuthLayout and FormField join the canonical UI owners; they reuse the existing runtime color, typography and focus tokens. No separate login theme or copied form-control implementations.
 
+Action menu items declare a semantic icon key rendered by Core Dropdown through Core Icon, alongside their visible English label. Icons use a fixed 18px slot and inherit item color, including destructive states.
+
 User Info and row Actions use the shared anchored Dropdown, with a compact white surface, quiet divider and sea-green focus. View, Edit and invitation forms use the shared 520px Dialog with a header X and natural scrolling. Keep account summary in a definition list, profile fields in FormField, and row Actions as a three-dot trigger. These additions reuse Backoffice runtime tokens; no account-specific color theme is introduced.
 
 Modal text fields and SelectField triggers use a compact 36px height and 12px control type. Auth screens keep 44px fields. Menu/listbox rows are clear by default; pointer hover or keyboard navigation adds the sea-tint background without an item outline. SelectField wraps Radix Select and shares the Dropdown surface/option tokens, with a same-width popup inside the owning dialog layer.
@@ -71,3 +73,81 @@ User management uses Users and Invitations tabs above the page heading. Each tab
 Tab datasets use the same summary, toolbar, table viewport and footer rhythm. Inactive panels remain in one CSS grid area solely to reserve height; `inert`, visibility and aria-hidden remove interaction and accessibility exposure. Keep the page scrollbar gutter stable. A short opacity/vertical transition and sliding tab indicator are disabled for reduced motion. Tables scroll internally within a shared responsive viewport, preventing a long invitation list from resizing the entire page.
 
 The root scrollbar gutter owns width reservation. Radix body scroll locks must not add a second right margin when stable gutters are supported. Verify with visible classic scrollbars, since headless defaults hide them. Invitation activation errors distinguish local throttling, provider throttling, email quotas, recipient configuration and password policy; 429 pauses manual resubmission while preserving entries. No automatic retries.
+
+## Tour settings
+
+Company master-data pages extend the existing sea-green Backoffice, with the same page heading, bordered table, 36px dialog controls and three-dot actions. Search and status sit in a wrapping toolbar. Supplier and ownership fields appear only when relevant. All reference lookups use shared ReferenceField with an authored SelectField and explicit paged results. Natural document scrolling and the existing dialog scroll owner remain unchanged. Prices show THB and distinguish missing values from zero.
+
+## Structured addresses and persistent navigation
+
+Owner refinement 2026-09-08: Company is one full-page editing form, not a list of companies. Arrange its identity/contact fields in two columns and its address hierarchy in three columns, stacking on narrow screens. AddressFields owns province → district → subdistrict → house number → Moo → optional village, followed by a map-location section. Reuse the same fields in partner, pickup and employee forms. Muted placeholder examples are owned by Core fieldGuidance/FormField/TextAreaField; labels remain visible. Existing address strings remain available as Previous address, never guessed into administrative areas.
+
+Core NavigationProvider keeps Shell and the authenticated profile mounted during internal page changes. Content routes change independently; unsaved link/back/forward transitions use the same app-owned discard decision. Normal external links and modified-click new tabs retain browser behavior. No font/color theme changes.
+
+## Company quick-address refinement
+
+Owner clarification 2026-09-08: Company uses the shared AddressFields quick variant: a compact address summary and Quick address button. AddressPicker opens the canonical Dialog, uses SelectField with dependent province/district/subdistrict options from a pinned, licensed local dataset, then enables optional house details. Changing a parent clears its child selections. Draft changes apply to the owning form only through Use this address; dirty dismissal requires a discard choice. Existing unrecognized text is retained until the user explicitly replaces it. New/changed company address hierarchies are checked server-side. Other forms can adopt this variant during their individual reviews.
+
+MapLocationField is the shared link-only editor. Coordinate inputs are removed; existing coordinate values remain preserved in storage. FormattedField and contracts/contact.js own Company Tax ID and Phone presentation/normalization: format on blur, retain original digits and optional country prefix, allow empty values, validate on client and server. Admin Manager retains its existing full company-management access; other access is Manager only.
+
+## Address entry clarification
+
+Owner clarification 2026-09-08: Keep the individual editable address fields on Company. Quick address is an optional helper, not a replacement summary. Save address applies the modal draft back to the named page fields; Save company details persists it. Postal code follows the subdistrict and is read-only, automatically derived from the complete province/district/subdistrict match for both manual and quick entry. Unknown/partial matches clear the derived code instead of retaining a stale one. Core and server use the same pinned postal dataset. Postal code is stored as an optional five-character field across the existing address models; no existing data is bulk-rewritten.
+
+## English-first bilingual entry
+
+Owner refinement 2026-09-08: Backoffice headings remain English. Address choices show English · Thai and search both languages, ignoring spaces/hyphens; Phang-Nga is the display/canonical English alias for province 82. Recognized new area selections store English names, while free-text names and house details retain the language entered. Existing Thai areas remain recognized without bulk migration. Shared GeographyFields now supplies dependent dropdowns on the page and in Quick address, including employee/partner/pickup consumers of AddressFields. No unrestricted area text is newly entered.
+
+SearchableSelectField is the canonical searchable variant, built on pinned Base UI Combobox 1.8.0 (input-inside-popup pattern). It reuses Core dropdown/control tokens; ordinary small selects retain Radix Select. Search supports English/Thai, clear, no matches, keyboard/IME and dialog portal focus. Parent selection clears child fields. The existing postal-code derivation still matches Thai or English names and handles known Moo exceptions.
+
+Core Company phone entry converts complete local Thai numbers to +66 on blur and the server repeats that normalization. Display uses +66-81-234-5678 (mobile), with landline groupings supported. Supplied international prefixes remain unchanged; no country is inferred for non-Thai-shaped numbers. Tax ID preserves its existing grouping and leading zeros.
+
+## Stacked modal scrolling
+
+Owner refinement 2026-09-08: Core Dialog locks document scrolling until the final modal closes. Native top-layer modal semantics isolate background interaction; the Core stack enables only the frontmost dialog content scroller. Covered dialogs retain their scroll position and stable gutter. The header remains outside the content scroller. Dialog roots portal to body so nested dialogs remain independent. SearchableSelectField uses fixed positioning within its owning dialog portal, outside the scrolling body, with bounded option scrolling and no scroll chaining. Compact modal address sections and action groups use token-colored dividers with 12px spacing. Page form spacing remains owned by its existing layout.
+
+Owner correction 2026-09-08: Section dividers also apply to page content. Shared address-section fieldsets separate Address and Map location with the Core border token and 12px margins. Company save actions use the same divider rhythm as modal actions. The address helper row uses compact spacing.
+
+## Dataset Core and settings tabs
+
+Owner approval 2026-09-08: Users is the visual reference for all dataset surfaces. DataTable owns semantic table markup, column headings, loading/error/empty states and an internally bounded scroll region. Pagination owns result ranges, page size, current/total pages and Previous/Next states. Unknown totals render a dash/status rather than zero. SummaryCards owns four cards: four columns on desktop, two columns at 1100px and below, including portrait tablet/mobile. Counts represent the complete authorized dataset before list filters. Keep Company a natural-height form with its existing dividers.
+
+Core Tabs owns tablist keyboard semantics and the measured sliding indicator for any number of tabs. Core TabPanel owns active/inactive visibility, inert and aria-hidden semantics, content entrance animation and reduced-motion behavior. Users and all three settings groups must compose these same components; feature CSS only controls layout. TabPanel preserveLayout reserves inactive Users panel geometry; route-backed settings hide inactive panels. Arrow/Home/End explores labels; Enter/Space activates. Settings retain their existing deep-link routes and group into Company & Tours (Company, Tour programs), Partners & Sales (Business partners, Agent prices, Sales channels), and Transport & Pickup (Hotels & pickup points, Vehicles & boats). Each active dataset has one table. Internal tab navigation remembers filters/page in memory, respects unsaved-change guards and keeps the workspace mounted. Browser back/forward and direct links restore route parameters. Tables own bounded height; the surrounding tab and Company form never inherit a forced table height.
+
+Tab motion correction: Tabs owns a measured sliding indicator for any tab label width or wrapped row. Users and all three settings groups share the 180ms content fade/5px slide; the indicator takes 200ms. Reduced motion disables both. Settings preserve native page/form height and existing dirty-navigation guards.
+
+## Tour operations composition
+
+Owner approval 2026-09-09: Services, Assets & Equipment, and Bookings & Trips extend the existing sea-green dataset system. Each route-backed tab has one primary dataset and reuses Core Tabs/TabPanel motion, summaries, tables, pagination and three-dot icon Actions. CatalogPage remains the canonical metadata-driven editor for both Settings and operational master data; API ownership follows the entity contract. No new visual theme or screen-local control geometry.
+
+Services are separately sellable resources; programs compose services, reusable equipment and consumables. Equipment and consumables use distinct workflows: reusable returns record condition, while consumable use records consumption/waste. Units are explicit and conversions use each resource's configured bottle pack/case count. Dated services and trips use typed Thailand-time fields. Booking line editing is a domain-specific form using shared fields and preserves package selection rules and snapshot prices.
+
+Core Dialog's table variant uses a 960px maximum width for multi-column preparation reports, with the existing mobile margins, focus/scroll ownership and responsive table overflow. Form dialogs retain their established width.
+
+Navigation refinement 2026-09-09: shared Core workspace route metadata separates reusable Settings from daily work and covers every implemented workspace route in the same-document navigation provider. Booking, Guide operations, Driver operations and Stock operations precede Settings. Existing sea-green Shell, shared tab motion, table geometry and form controls remain canonical; no screen-local navigation handler is introduced.
+
+Core Dropdown uses its owning Dialog as its portal host when opened from modal content, matching SelectField. It retains viewport anchoring, shared surface tokens and menu geometry; modal top-layer ownership is behavioral and does not introduce a new visual variant.
+
+## Operational documents
+
+JobSheets.jsx owns the shared Greenview document masthead and print tables for boat, transfer and Booking copies. The supplied May 2026 Job Order is the reference for ruled A4 landscape tables, a distinct direction band and passenger totals. Screen cards retain existing sea-green tokens; printed sheets use black borders and a pale green total band for economical printing. The date/run and revision repeat on continuation pages. Existing field permissions take precedence over the sample's payment/hotel columns. Each dispatch run has its own independent direction and actual counts; do not derive return passengers from the outbound list. Booking handoff exposes incomplete allocations per direction. No new Core control variant is introduced.
+
+
+Owner refinement 2026-09-09: Boat print copies collect all authorized runs for the same vessel and Thailand service day, with independent outbound and return sections in one continuous table. The masthead has exactly two cells: vessel and four crew roles on the left, document reference and date on the right. Crew differences identify direction/time. The date/vessel document reference is derived, while source run codes and revisions remain visible. JobSheets.jsx/dispatch.css own the compact print variant; target 15 outbound + 5 return groups on one A4 landscape page at 8.5pt with normal-length notes. Long content wraps and continues to additional pages, never clips or silently drops groups. Management actions remain scoped to individual runs.
+
+
+Owner refinement: vessel-day documents include per-program adult/child/passenger summaries for each direction, followed by a total of all programs. Group by snapshotted program ID, never infer the return list or count the same customer's two journeys as unique customers. Crew counts are separate from customer totals; four roster roles support multiple assistant captains/guides (typical 1 captain, 2 assistant captains, 1 guide, 1–2 assistant guides). Existing per-person crew selection remains canonical.
+
+## Approved daily job-order family — 9 September 2026
+
+Owner approved the latest sage document mockups. DocumentCore owns the exact database-backed PNG masthead and print readiness; JobSheets/DailyJobSheets own the business projections; dispatch.css owns document tokens: heading #29483e, column header #eaf0ec, section #dfe9e2, rule #b8c7be. Body remains white/charcoal. Keep source logo colors unmodified. Print A4 landscape with repeating table headings and natural continuation, never clip rows. Narrow screens scroll the paper preview inside Core Dialog.
+
+Boat: same vessel/service day with independent ขาไป / ขากลับ sections. Vehicle: same vehicle/service day with รับ / ส่ง sections; no return time column. Daily Booking: all confirmed/completed bookings whose trip overlaps the Thailand service day, once per booking, regardless of list pagination/search. Include stored-price service-day collection only for COUNTER. Missing prices remain explicit, zero is valid. Summaries separate program and payment terms. Existing single-booking View remains a detail view, not the daily printable job order. No payment ledger or deposit allocation is inferred.
+
+## Booking-led allocation workspace
+
+Owner refinement 2026-09-10: Booking remains standalone intake. Operations has Driver, Boat and Stock children; reusable settings stay under Settings. Separate Inventory contains balances and immutable movement history, while schedules contain dated trip/run availability. Dispatch uses a vehicle/run selector beside booking candidates and assigned passengers; the existing sea-green token family and Core tables, search, pagination and three-dot actions remain canonical. Capacity progress represents actual planned passengers, never decoration. At narrow widths the selector stacks above the allocation content. Core DateField uses native date semantics and browser/OS calendar presentation; ISO values remain unchanged and filter controls share 38px height via Core styles.
+
+## Company navigation and access editor · 2026-09-13
+
+Retain the sea-green identity and existing Core typography, fields, dialog and table geometry. WorkspaceNavigation groups existing destinations by work category. UserAccess uses Core address-section fieldsets and a responsive checkbox grid (one column on narrow dialogs) for multiple duties. Each operational permission has the shared authored SelectField and an effective-access explanation; optional validity fields wrap below it. Review replaces editing within the same dialog. No new design tokens, theme or future-page placeholders are introduced.

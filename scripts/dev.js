@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const vite = fileURLToPath(new URL('../node_modules/vite/bin/vite.js', import.meta.url))
+const apiPort = process.platform === 'darwin' ? 5001 : 5000
 const children = []
 let stopping = false
 function stop(code = 0) {
@@ -41,17 +42,17 @@ async function waitFor(url, name) {
 }
 try {
   if (process.env.NODE_ENV === 'production') throw new Error('This launcher is for local development only.')
-  for (const port of [5000, 5173, 5174]) await portAvailable(port)
-  const env = { ...process.env, LOCAL_API_TOKEN: randomBytes(32).toString('hex') }
+  for (const port of [apiPort, 5173, 5174]) await portAvailable(port)
+  const env = { ...process.env, LOCAL_API_PORT: String(apiPort), LOCAL_API_TOKEN: randomBytes(32).toString('hex') }
   launch(['backend/src/app/server.js'], root, env)
   launch([vite, '--host', '127.0.0.1', '--port', '5173', '--strictPort'], `${root}/frontend/public-web`, env)
   launch([vite, '--host', '127.0.0.1', '--port', '5174', '--strictPort'], `${root}/frontend/backoffice`, env)
   await Promise.all([
-    waitFor('http://127.0.0.1:5000/health/live', 'Backend'),
+    waitFor(`http://127.0.0.1:${apiPort}/health/live`, 'Backend'),
     waitFor('http://127.0.0.1:5173', 'Public web'),
     waitFor('http://127.0.0.1:5174', 'Backoffice'),
   ])
-  console.log('\nREADY\nPublic: http://localhost:5173\nUsers: http://localhost:5174/settings/users\nAPI: http://localhost:5000/health/live\nPress Ctrl+C to stop all three services.\n')
+  console.log(`\nREADY\nPublic: http://localhost:5173\nUsers: http://localhost:5174/settings/users\nAPI: http://127.0.0.1:${apiPort}/health/live\nPress Ctrl+C to stop all three services.\n`)
   if (process.argv.includes('--open') && process.platform === 'win32') {
     const opener = spawn('powershell.exe', ['-NoProfile', '-Command', "Start-Process 'http://localhost:5173'; Start-Process 'http://localhost:5174/settings/users'"], { stdio: 'ignore' })
     opener.on('error', () => console.log('Open the URLs above in your browser.'))
