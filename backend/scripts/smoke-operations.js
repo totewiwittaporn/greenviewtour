@@ -62,7 +62,7 @@ try{
  await status(sb,'CANCEL');await status(oversell,'CONFIRM');pass('cancellation releases service capacity')
  let water=await book(trip.id,[{resourceId:drink.id,selected:true,quantity:24,sourceId:boat.id,usagePoint:'BOAT'}]);water=await status(water,'CONFIRM')
  const wb=await balance(drink.id,'READY',boat.id)
- await expectCode(()=>command({action:'COUNT',balanceId:wb.id,version:wb.version,countedQuantity:23,note:'QA reserve protection'}),'INSUFFICIENT_STOCK')
+ await expectCode(()=>command({action:'COUNT',balanceId:wb.id,version:wb.version,countedQuantity:23,note:'QA reserve protection'}),'COUNT_APPROVAL_REQUIRED')
  const waterIssue=await command({action:'ISSUE',balanceId:wb.id,version:wb.version,destinationId:boat.id,quantity:24,unit:'BASE',custodian:'QA',bookingLineId:water.lines[0].id})
  await command({action:'SETTLE',issueId:waterIssue.details.issueId,quantity:20,unit:'BASE',disposition:'CONSUMED'})
  await command({action:'SETTLE',issueId:waterIssue.details.issueId,quantity:4,unit:'BASE',disposition:'RETURN_READY',locationId:boat.id})

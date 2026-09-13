@@ -8,13 +8,17 @@ async function add(tx,lotId,locationId,condition,quantity){
  return tx.stockBalance.upsert({where:{lotId_locationId_condition:{lotId,locationId,condition}},create:{id:randomUUID(),lotId,locationId,condition,quantity},update:{quantity:{increment:quantity},version:{increment:1}}})
 }
 function units(resource,input){try{return convertQuantity(resource,input.quantity,input.unit||'BASE')}catch(error){fail(error.message,400)}}
-export async function stockCommand(prisma,actorId,input){
+export async function stockCommand(prisma,actorId,input,{authorizeDelegated=null,approvedCount=false}={}){
  keys(input,['id','action','resourceId','locationId','quantity','unit','lotLabel','receivedOn','expiresOn','unitCost','note','balanceId','version','destinationId','custodian','bookingLineId','countedQuantity','condition','issueId','disposition','runId'])
  uuid(input.id)
  if(!['RECEIVE','TRANSFER','ISSUE','COUNT','CONDITION','SETTLE'].includes(input.action))fail('INVALID_ACTION',400)
+ if(input.action==='COUNT'&&!approvedCount)fail('COUNT_APPROVAL_REQUIRED',409)
  const requestHash=hash(input)
  return write(prisma,actorId,async tx=>{
-  const {access}=await authorize(tx,actorId,['ISSUE','SETTLE'].includes(input.action)?'stockOrPrepare':'stock')
+  const {actor,access:inherited}=await authorize(tx,actorId,'active')
+  const delegated=authorizeDelegated?await authorizeDelegated(tx,actor,input):false
+  const access={...inherited,stock:inherited.stock||delegated}
+  if(!access.stock&&(!['ISSUE','SETTLE'].includes(input.action)||!access.prepareStock))fail('PERMISSION_DENIED',403)
   if(!access.stock&&input.action==='ISSUE'&&(!input.runId||!input.bookingLineId))fail('PERMISSION_DENIED',403)
   let preparation=null
   if(input.action==='ISSUE'&&input.runId&&!input.bookingLineId)fail('BOOKING_LINE_UNAVAILABLE')
@@ -97,7 +101,7 @@ export async function stockCommand(prisma,actorId,input){
   details={...details,resourceId:resource.id,resourceName:resource.name,resourceCode:resource.code,baseUnit:resource.baseUnit,lotId:lot.id,lotLabel:lot.label,sourceId:source?.id||null,sourceName:source?.name||'Supplier / opening stock',destinationId:destination?.id||null,destinationName:destination?.name||null}
   const row=await tx.stockMovement.create({data:{id:input.id,requestHash,kind:input.action,...converted,details,actorId}})
   await audit(tx,actorId,row.id,`stock.${input.action.toLowerCase()}`,{resourceId:resource.id,quantity:converted.quantity});return {row}
- },['ISSUE','SETTLE'].includes(input.action)?'stockOrPrepare':'stock')
+ },'active')
 }
 
 // Quantities belong to the booking once, not once per boat leg. Allocate the

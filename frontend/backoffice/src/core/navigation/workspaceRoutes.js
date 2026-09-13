@@ -1,4 +1,5 @@
 import { catalog } from '../../../../../packages/contracts/catalog.js'
+import {companyRoutes} from '../../../../../packages/contracts/company-routes.js'
 import { settingsGroups } from '../../features/settings/shared/settingsGroups.js'
 import { operationGroups, operationTitles } from '../../features/operations/operationGroups.js'
 
@@ -11,6 +12,7 @@ export function workspaceRoute(pathname) {
  if (path === '/settings/users') return { kind: 'users', title: 'Users', path }
  const [, scope, entity, extra] = path.split('/')
  if (extra !== undefined) return null
+ if(scope==='company'&&Object.hasOwn(companyRoutes,entity))return {kind:'company',entity,definition:companyRoutes[entity],title:companyRoutes[entity].title,path}
  if ((scope === 'settings' || scope === 'operations') && settingsEntities.has(entity)) return {kind:'settings',entity,title:catalog[entity].title,path:`/settings/${entity}`}
  const group = scope === 'operations' && operationGroups.find(item => item.entities.includes(entity))
  return group ? {kind:'operations',entity,group,title:operationTitles[entity],path} : null
