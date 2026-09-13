@@ -37,6 +37,8 @@ test('time windows, duplicates and malformed payloads fail closed',()=>{
  for(const overrides of [
   [{permissionCode:'operations.stock',effect:'ALLOW',scopeId:'unknown'}],
   [{permissionCode:'operations.stock',effect:'ALLOW',startsAt:'tomorrow'}],
+  [{permissionCode:'operations.stock',effect:'ALLOW',startsAt:'2026-02-30T00:00:00Z'}],
+  [{permissionCode:'operations.stock',effect:'ALLOW',startsAt:'2026-09-13T24:00:00Z'}],
   [{permissionCode:'operations.stock',effect:'ALLOW',startsAt:'2026-09-14T00:00:00Z',expiresAt:'2026-09-13T00:00:00Z'}],
   [1,2].map(()=>({permissionCode:'operations.stock',effect:'DENY'})),
  ])assert.throws(()=>validateAccessInput(manager,{...input,overrides}),/INVALID_ACCESS_INPUT/)

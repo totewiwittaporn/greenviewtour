@@ -31,7 +31,7 @@ export function validateAccessInput(actor,input) {
  if(input.roles.some(code=>!available.has(code))||new Set(input.roles).size!==input.roles.length)fail('ROLE_ASSIGNMENT_DENIED')
  const overrides=input.overrides.map(row=>{
   if(!row||Object.keys(row).some(k=>!['permissionCode','effect','startsAt','expiresAt'].includes(k))||!Object.hasOwn(accessDefinitions,row.permissionCode)||!['ALLOW','DENY'].includes(row.effect))fail('INVALID_ACCESS_INPUT',400)
-  const date=value=>{if(value===null||value===undefined||value==='')return null;if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value)||!Number.isFinite(+new Date(value)))fail('INVALID_ACCESS_INPUT',400);return new Date(value)}
+  const date=value=>{if(value===null||value===undefined||value==='')return null;if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(value)||!Number.isFinite(+new Date(value))||new Date(value.slice(0,10)+'T00:00:00Z').toISOString().slice(0,10)!==value.slice(0,10)||Number(value.slice(11,13))>23)fail('INVALID_ACCESS_INPUT',400);return new Date(value)}
   const startsAt=date(row.startsAt),expiresAt=date(row.expiresAt)
   if(expiresAt&&startsAt&&expiresAt<=startsAt)fail('INVALID_ACCESS_INPUT',400)
   return {permissionCode:row.permissionCode,effect:row.effect,startsAt,expiresAt}
