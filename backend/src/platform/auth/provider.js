@@ -27,8 +27,9 @@ export function createAuthProvider(env = process.env, factory = createClient) {
   const url = `https://${PREVIEW_PROJECT_REF}.supabase.co`
   const key = env.SUPABASE_PUBLISHABLE_KEY
   if (env.SUPABASE_URL !== url || !key?.startsWith('sb_publishable_')) throw new Error('AUTH_CONFIG_REQUIRED')
-  const client = () => factory(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    global: { fetch: (input, options) => fetch(input, { ...options, signal: AbortSignal.timeout(10000) }) } })
+  const client = (timeoutMs = 10000) => factory(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { fetch: (input, options) => fetch(input, { ...options, signal: AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(options?.signal ? [options.signal] : [])]) }) } })
+  const pendingUsers = new Map()
   const checked = checkAuthResult
   return {
     async login(email, password) { return checked(await client().auth.signInWithPassword({ email, password }), 'INVALID_CREDENTIALS') },
@@ -36,7 +37,21 @@ export function createAuthProvider(env = process.env, factory = createClient) {
     async recover(email) { checked(await client().auth.resetPasswordForEmail(email, { redirectTo: 'http://localhost:5174/reset-password' }), 'RECOVERY_FAILED') },
     async verifyRecovery(email, token) { return checked(await client().auth.verifyOtp({ email, token, type: 'recovery' }), 'RECOVERY_INVALID') },
     async refresh(refresh_token) { return checked(await client().auth.refreshSession({ refresh_token }), 'SESSION_EXPIRED').session },
-    async user(accessToken) { return checked(await client().auth.getUser(accessToken), 'SESSION_EXPIRED').user },
+    async user(accessToken) {
+      // Coalesce only simultaneous verification; never cache a completed identity check.
+      if (!pendingUsers.has(accessToken)) pendingUsers.set(accessToken, (async () => {
+        for (let attempt=0;attempt<2;attempt++) {
+          try { return checked(await client(5000).auth.getUser(accessToken), 'SESSION_EXPIRED').user }
+          catch (error) {
+            const transient=error.code==='AUTH_UNAVAILABLE'||['TypeError','TimeoutError','AbortError'].includes(error.name)
+            if (!transient) throw error
+            if (attempt) throw new AccessError('AUTH_UNAVAILABLE',503)
+            await new Promise(resolve=>setTimeout(resolve,200))
+          }
+        }
+      })().finally(()=>pendingUsers.delete(accessToken)))
+      return pendingUsers.get(accessToken)
+    },
     async password(session, password) {
       const auth = client().auth
       checked(await auth.setSession({ access_token: session.access_token, refresh_token: session.refresh_token }), 'SESSION_EXPIRED')

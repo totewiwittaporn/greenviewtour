@@ -76,3 +76,10 @@ test('local throttling identifies its source and supplies a bounded Retry-After 
   assert.ok(data.retryAfterSeconds > 0 && data.retryAfterSeconds <= 60)
   assert.equal(headers['Retry-After'], String(data.retryAfterSeconds))
 })
+test('unexpected service failure logs a category without SQL, credentials or search text', async t => {
+  const logs = []
+  t.mock.method(console, 'error', value => logs.push(JSON.parse(value)))
+  const result = await request({ url: '/api/users?q=private-search', users: async () => { throw Object.assign(Error('secret SQL and password'), { code: 'P2028' }) } })
+  assert.equal(result.status, 503)
+  assert.deepEqual(logs, [{ event: 'API_REQUEST_FAILED', method: 'GET', path: '/api/users', errorType: 'Error', errorCode: 'P2028' }])
+})

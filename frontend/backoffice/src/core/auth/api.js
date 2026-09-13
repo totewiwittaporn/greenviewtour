@@ -1,9 +1,17 @@
 export async function api(path, body, options = {}) {
-  const response = await fetch(path, { credentials: 'same-origin', ...options,
+  const request = { credentials: 'same-origin', ...options,
     ...(body !== undefined ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
-    signal: options.signal || AbortSignal.timeout(15000),
-  })
-  const data = await response.json()
+    signal: AbortSignal.any([AbortSignal.timeout(15000), ...(options.signal ? [options.signal] : [])]),
+  }
+  let response = await fetch(path, request)
+  // Only repeat a read after an explicit temporary server failure. Never replay writes.
+  if (response.status === 503 && body === undefined && (!request.method || request.method === 'GET')) {
+    await response.body?.cancel()
+    await new Promise(resolve => setTimeout(resolve, 300))
+    request.signal.throwIfAborted()
+    response = await fetch(path, request)
+  }
+  const data = await response.json().catch(() => { if (response.ok) throw new Error('SERVICE_UNAVAILABLE'); return { code: 'SERVICE_UNAVAILABLE' } })
   if (!response.ok) {
     if (response.status === 401 && !path.startsWith('/api/auth/') && path !== '/api/me') window.location.assign('/login')
     const error = new Error(data.code || 'SERVICE_UNAVAILABLE'); error.status = response.status; error.detail = typeof data.message === 'string' && data.message !== data.code ? data.message : null; error.fields = data.errors;  error.retryAfterSeconds = Number(response.headers.get('Retry-After') || data.retryAfterSeconds) || null; throw error

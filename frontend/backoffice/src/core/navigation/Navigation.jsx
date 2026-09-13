@@ -1,3 +1,4 @@
+import { operationHref } from './operationContext.js'
 import { workspaceRoute } from './workspaceRoutes.js'
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Dialog } from '../ui/Dialog.jsx'
@@ -8,7 +9,7 @@ const current=()=>({pathname:window.location.pathname,search:window.location.sea
 export function NavigationProvider({children}){
  const [location,setLocation]=useState(current),[pending,setPending]=useState(null)
  const savedLocations=useRef(new Map())
- const hrefFor=useCallback(path=>savedLocations.current.get(path)||path,[])
+ const hrefFor=useCallback(path=>operationHref(savedLocations.current.get(path)||path,window.location.href),[])
  const guards=useRef(new Map()),index=useRef(0),restore=useRef(null),approved=useRef(false)
  useEffect(()=>{
   index.current=window.history.state?.gvIndex??0
@@ -27,7 +28,7 @@ export function NavigationProvider({children}){
   if([...guards.current.values()].some(Boolean)){setPending(target);return}
   commit(target)
  },[commit])
- const navigate=useCallback(href=>{const url=new URL(href,window.location.href);if(url.href===window.location.href)return;if(url.origin!==window.location.origin||url.hash||!workspaceRoute(url.pathname)){request({action:()=>window.location.assign(url.href)});return}request({href:canonicalHref(url)})},[request])
+ const navigate=useCallback(href=>{const url=new URL(href,window.location.href);if(url.href===window.location.href)return;if(url.origin!==window.location.origin||url.hash||!workspaceRoute(url.pathname)){request({action:()=>window.location.assign(url.href)});return}request({href:operationHref(canonicalHref(url),window.location.href)})},[request])
  const runAction=useCallback(action=>request({action}),[request])
  useEffect(()=>{
   const clicked=event=>{

@@ -19,7 +19,7 @@ export async function listOperations(prisma,actorId,entity,params){
   const allowed={tourId:['components','trips'],resourceId:['slots'],tripId:['bookings']}[key]
   if(!allowed.includes(entity))fail('INVALID_FILTER',400);where[key]=uuid(params.get(key))
  }
- if(q)where.OR=entity==='components'?[{tour:{name:{contains:q,mode:'insensitive'}}},{resource:{name:{contains:q,mode:'insensitive'}}}]:['stock','issues'].includes(entity)?[{lot:{resource:{name:{contains:q,mode:'insensitive'}}}},{lot:{label:{contains:q,mode:'insensitive'}}}]:entity==='movements'?[{kind:{contains:q,mode:'insensitive'}}]:['code','name'].map(k=>({[k]:{contains:q,mode:'insensitive'}}))
+ if(q)where.OR=entity==='components'?[{tour:{name:{contains:q,mode:'insensitive'}}},{resource:{name:{contains:q,mode:'insensitive'}}}]:['stock','issues'].includes(entity)?[{lot:{resource:{name:{contains:q,mode:'insensitive'}}}},{lot:{label:{contains:q,mode:'insensitive'}}}]:entity==='movements'?[{kind:{contains:q,mode:'insensitive'}},...['resourceName','resourceCode','lotLabel','sourceName','destinationName','note','custodian','bookingCode'].map(key=>({details:{path:[key],string_contains:q,mode:'insensitive'}}))]:['code','name'].map(k=>({[k]:{contains:q,mode:'insensitive'}}))
  return prisma.$transaction(async tx=>{
   const total=await tx[model].count({where}),pages=Math.max(1,Math.ceil(total/25)),page=Math.min(requested,pages)
   let rows=await tx[model].findMany({where,include:include[entity],skip:(page-1)*25,take:25,orderBy:entity==='stock'?[{id:'asc'}]:[{createdAt:'desc'},{id:'asc'}]})

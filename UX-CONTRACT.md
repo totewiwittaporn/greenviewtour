@@ -183,3 +183,11 @@ Payroll requires an explicit period, base wage and its basis/reason, plus additi
 Payment UI says Record payment and explicitly describes an already completed external payment with a date/reference. It must not imply bank execution. Advance clearance requires evidenced amounts plus returned cash to balance exactly and independent acceptance. Persisted demonstration financial records remain drafts; browser fixtures and rollback tests do not become real payment history.
 
 Validation: backend/test/personnel-finance.test.js, the company-work backend tests and domain-service seed verification. scripts/smoke-company-workflows.js intercepts compiled assets and fixture API responses at a test origin in Edge, with no HTTP/Vite server and no real credentials. It verifies base/reason entry, required-field validation, conflict retention, successful save/edit, dirty discard, search reset, navigation, purchase approval details, mobile keyboard selection and document overflow. Evidence screenshots live in screenshots.local and are not product data.
+
+## Live workflow corrections · 2026-09-13
+
+Driver, Boat, Supplies, Loans and Daily summaries carry the current service date through Core navigation. Dispatch date/direction/page are stored in the URL; Supplies and Loans also share the selected boat run. A changed date clears stale run selection. Vehicle run identifiers never become boat run identifiers. Back/forward and reload keep the stored URL context.
+
+Movement search covers action, item name/code, lot, locations, custodian and transaction note. An empty filtered result asks the user to clear or change the search. It does not claim that no movements exist. The existing Core table and filterbar remain the UI owners.
+
+Requests retain caller cancellation and a 15-second overall timeout. Only GET responses with explicit HTTP 503 retry once; mutations are never automatically replayed. Persistent failure stays visible and existing draft/conflict safeguards remain. Concurrent identity verification is coalesced only while in flight; completed identity checks are never cached. Invalid sessions and rate limits do not retry.
