@@ -14,8 +14,8 @@ export async function stockCommand(prisma,actorId,input){
  if(!['RECEIVE','TRANSFER','ISSUE','COUNT','CONDITION','SETTLE'].includes(input.action))fail('INVALID_ACTION',400)
  const requestHash=hash(input)
  return write(prisma,actorId,async tx=>{
-  const {access}=await authorize(tx,actorId,['ISSUE','SETTLE'].includes(input.action)?'prepareStock':'manager')
-  if(!access.manager&&input.action==='ISSUE'&&(!input.runId||!input.bookingLineId))fail('PERMISSION_DENIED',403)
+  const {access}=await authorize(tx,actorId,['ISSUE','SETTLE'].includes(input.action)?'stockOrPrepare':'stock')
+  if(!access.stock&&input.action==='ISSUE'&&(!input.runId||!input.bookingLineId))fail('PERMISSION_DENIED',403)
   let preparation=null
   if(input.action==='ISSUE'&&input.runId&&!input.bookingLineId)fail('BOOKING_LINE_UNAVAILABLE')
   if(input.runId)preparation=projectBoatPreparation(await preparationRun(tx,actorId,input.runId))
@@ -36,7 +36,7 @@ export async function stockCommand(prisma,actorId,input){
   }else if(input.action==='SETTLE'){
    const issue=await tx.stockIssue.findUnique({where:{id:uuid(input.issueId)},include:{lot:{include:{resource:true}}}})
    if(!issue)fail('NOT_FOUND',404)
-   if(!access.manager){if(!issue.runId)fail('PERMISSION_DENIED',403);await preparationRun(tx,actorId,issue.runId)}
+   if(!access.stock){if(!issue.runId)fail('PERMISSION_DENIED',403);await preparationRun(tx,actorId,issue.runId)}
    lot=issue.lot;resource=lot.resource;converted=units(resource,input)
    if(converted.quantity>issue.quantity-issue.settledQty)fail('RETURN_EXCEEDS_ISSUE')
    const disposition=input.disposition
@@ -97,7 +97,7 @@ export async function stockCommand(prisma,actorId,input){
   details={...details,resourceId:resource.id,resourceName:resource.name,resourceCode:resource.code,baseUnit:resource.baseUnit,lotId:lot.id,lotLabel:lot.label,sourceId:source?.id||null,sourceName:source?.name||'Supplier / opening stock',destinationId:destination?.id||null,destinationName:destination?.name||null}
   const row=await tx.stockMovement.create({data:{id:input.id,requestHash,kind:input.action,...converted,details,actorId}})
   await audit(tx,actorId,row.id,`stock.${input.action.toLowerCase()}`,{resourceId:resource.id,quantity:converted.quantity});return {row}
- },['ISSUE','SETTLE'].includes(input.action)?'prepareStock':'manager')
+ },['ISSUE','SETTLE'].includes(input.action)?'stockOrPrepare':'stock')
 }
 
 // Quantities belong to the booking once, not once per boat leg. Allocate the
@@ -126,10 +126,10 @@ const preparationInclude={
  assignments:{include:{bookingLine:{include:{booking:{include:{trip:true,lines:{include:{resource:true,source:true,issues:true,dispatchAssignments:{include:{run:true}}}}}}}}}},
 }
 async function preparationRun(tx,actorId,runId){
- const {access}=await authorize(tx,actorId,'prepareStock')
+ const {access}=await authorize(tx,actorId,'stockOrPrepare')
  const run=await tx.dispatchRun.findUnique({where:{id:uuid(runId)},include:preparationInclude})
  if(!run||run.kind!=='BOAT')fail('NOT_FOUND',404)
- if(!access.manager&&!access.manageGuide&&!run.staff.some(s=>s.userId===actorId))fail('PERMISSION_DENIED',403)
+ if(!access.stock&&!access.manageGuide&&!run.staff.some(s=>s.userId===actorId))fail('PERMISSION_DENIED',403)
  return run
 }
 export function projectBoatPreparation(run){

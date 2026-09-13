@@ -26,7 +26,7 @@ export function validateInvitation(input, actor) {
   assertDeliverableInvitationEmail(email)
   if (typeof input.displayName !== 'string' || !input.displayName.trim() || input.displayName.trim().length > 100) throw new AccessError('INVALID_DISPLAY_NAME', 400)
   if (!departments.includes(input.department)) throw new AccessError('INVALID_DEPARTMENT', 400)
-  const roleDepartment = { MANAGER: 'MANAGEMENT', HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER' }[input.roleCode]
+  const roleDepartment = { MANAGER: 'MANAGEMENT', HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER', HEAD_HOUSEKEEPING: 'HOUSEKEEPING' }[input.roleCode]
   if (roleDepartment && roleDepartment !== input.department) throw new AccessError('ROLE_DEPARTMENT_MISMATCH', 400)
   return { email, displayName: input.displayName.trim(), department: input.department, roleCode: input.roleCode }
 }

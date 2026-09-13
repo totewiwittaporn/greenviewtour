@@ -28,6 +28,8 @@ model UserProfile {
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
   roles UserRole[]
+  accessVersion Int @default(1)
+  permissionOverrides UserPermissionOverride[]
   dispatchStaff DispatchStaff[]
   @@schema("app_private")
  province String? @db.VarChar(100)
@@ -48,6 +50,18 @@ model Role {
   permissions RolePermission[]
   invitations InvitationRole[]
   @@schema("app_private")
+}
+model UserPermissionOverride {
+ id String @id @default(uuid()) @db.Uuid
+ userId String @db.Uuid
+ permissionCode String @db.VarChar(100)
+ effect String @db.VarChar(10)
+ scopeId String? @db.Uuid
+ startsAt DateTime? @db.Timestamptz(6)
+ expiresAt DateTime? @db.Timestamptz(6)
+ user UserProfile @relation(fields:[userId],references:[id],onDelete:Cascade)
+ @@index([userId])
+ @@schema("app_private")
 }
 model Permission {
   code String @id @db.VarChar(100)

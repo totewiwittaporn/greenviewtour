@@ -164,3 +164,7 @@ html[data-core-modal-open], html[data-core-modal-open] body { overflow:hidden; o
 .table-panel .table-scroll[data-layout="allocation"] table { min-width:460px; }
 .table-panel .table-scroll[data-layout="allocation-selector"] table { min-width:0; table-layout:fixed; }
 .table-scroll[data-layout="allocation-selector"] :is(th,td) { white-space:normal; overflow-wrap:anywhere; }
+
+.access-role-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 12px; }
+.access-role-grid > label { display: flex; align-items: center; gap: 8px; }
+.access-permission { padding-block: 12px; border-bottom: 1px solid var(--line); }

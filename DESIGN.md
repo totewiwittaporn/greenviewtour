@@ -147,3 +147,7 @@ Boat: same vessel/service day with independent ขาไป / ขากลับ
 ## Booking-led allocation workspace
 
 Owner refinement 2026-09-10: Booking remains standalone intake. Operations has Driver, Boat and Stock children; reusable settings stay under Settings. Separate Inventory contains balances and immutable movement history, while schedules contain dated trip/run availability. Dispatch uses a vehicle/run selector beside booking candidates and assigned passengers; the existing sea-green token family and Core tables, search, pagination and three-dot actions remain canonical. Capacity progress represents actual planned passengers, never decoration. At narrow widths the selector stacks above the allocation content. Core DateField uses native date semantics and browser/OS calendar presentation; ISO values remain unchanged and filter controls share 38px height via Core styles.
+
+## Company navigation and access editor · 2026-09-13
+
+Retain the sea-green identity and existing Core typography, fields, dialog and table geometry. WorkspaceNavigation groups existing destinations by work category. UserAccess uses Core address-section fieldsets and a responsive checkbox grid (one column on narrow dialogs) for multiple duties. Each operational permission has the shared authored SelectField and an effective-access explanation; optional validity fields wrap below it. Review replaces editing within the same dialog. No new design tokens, theme or future-page placeholders are introduced.

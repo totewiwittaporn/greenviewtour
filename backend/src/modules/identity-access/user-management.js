@@ -3,8 +3,8 @@ import { postalCodeFor } from '../../../../packages/contracts/thai-address.js'
 import { addressFields, addressKeys, validateAddress } from '../../../../packages/contracts/address.js'
 import { AccessError } from './membership.js'
 import { profileInclude } from './policy.js'
-export const departments = ['MANAGEMENT', 'BOOKING', 'ACCOUNT', 'GUIDE', 'CAPTAIN', 'DRIVER']
-const heads = { HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER' }
+export const departments = ['MANAGEMENT', 'BOOKING', 'ACCOUNT', 'GUIDE', 'CAPTAIN', 'DRIVER', 'SALES', 'HOUSEKEEPING']
+const heads = { HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER', HEAD_HOUSEKEEPING: 'HOUSEKEEPING' }
 export function managementScope(actor) {
   if (actor?.status !== 'ACTIVE') return null
   if (actor.roles.some(grant => ['ADMIN_MANAGER','MANAGER'].includes(grant.roleCode) && grant.scope === 'COMPANY' && grant.role.permissions.some(item => item.permissionCode === 'users.read'))) return { company: true, department: null }

@@ -1,4 +1,5 @@
 import { documentBrand, dailyBookingDocument } from '../modules/operations/documents.js'
+import { canConfigureAccess, readUserAccess, saveUserAccess } from '../modules/identity-access/user-access.js'
 import { listJobs, dispatchOptions, saveRun, dispatchCommand, bookingOptions } from '../modules/operations/dispatch.js'
 import { dailySummaryState, prepareDailySummary } from '../modules/operations/notifications.js'
 import { listOperations, saveOperationCatalog } from '../modules/operations/catalog.js'
@@ -136,7 +137,7 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         const input = await body(req,131072)
         return send(200, entity === 'daily-summary' ? await prepareDailySummary(prisma,user.id,input) : entity === 'runs' ? await saveRun(prisma,user.id,input) : entity === 'dispatch-command' ? await dispatchCommand(prisma,user.id,input) : entity === 'stock-command' ? await stockCommand(prisma,user.id,input) : entity === 'booking-return' ? await amendBookingReturn(prisma,user.id,input) : entity === 'booking-details' ? await amendBookingDetails(prisma,user.id,input) : entity === 'booking-status' ? await bookingStatus(prisma,user.id,input) : entity === 'bookings' ? await saveBooking(prisma,user.id,input) : await saveOperationCatalog(prisma,user.id,entity,input))
       }
-      const settingsMatch = path.match(/^\/api\/settings\/(company|partners|tours|rates|locations|vehicles|channels)$/)
+      const settingsMatch = path.match(/^\/api\/settings\/(company|partners|tours|rates|agreements|locations|vehicles|channels)$/)
       if (settingsMatch) {
         const { user, entry } = await sessions.authenticated(req, provider, pool)
         if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
@@ -156,6 +157,12 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         if (resetMatch) return send(200, await requestUserReset(prisma, provider, user.id, resetMatch[1]))
         if (invitationMatch) return send(200, await changeInvitation(prisma, user.id, invitationMatch[1], invitationMatch[2]))
         return send(201, await createInvitation(prisma, user.id, input))
+      }
+      const accessMatch = path.match(/^\/api\/users\/([0-9a-f-]{36})\/access$/)
+      if(accessMatch) {
+        const {user,entry}=await sessions.authenticated(req,provider,pool)
+        if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401)
+        return send(200,req.method==='GET'?await readUserAccess(prisma,user.id,accessMatch[1]):await saveUserAccess(prisma,user.id,accessMatch[1],await body(req,32768)))
       }
       const editMatch = path.match(/^\/api\/users\/([0-9a-f-]{36})\/profile$/)
       if (req.method === 'POST' && editMatch) {
@@ -180,7 +187,7 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
       let filters
       try { filters = parseUsersQuery(url.searchParams) } catch { throw new AccessError('INVALID_FILTER', 400) }
       const directory = await users(pool, { ...filters, department: scope.department })
-      directory.users = directory.users.map(target => ({ ...target, canEdit: canEditProfile(profile,target), canResetPassword: canResetPassword(profile,target) }))
+      directory.users = directory.users.map(target => ({ ...target, canConfigureAccess:canConfigureAccess(profile,target), canEdit: canEditProfile(profile,target), canResetPassword: canResetPassword(profile,target) }))
       return send(200, { ...directory, canChangeDepartment: scope.company, canInvite: canInvite(profile), database: 'UP', environment: 'preview' })
     } catch (error) {
       if (error instanceof AccessError) return send(error.status, { code: error.code, ...(operationMessages[error.code] ? { message: operationMessages[error.code] } : {}) }, error.status === 401 ? '' : undefined)

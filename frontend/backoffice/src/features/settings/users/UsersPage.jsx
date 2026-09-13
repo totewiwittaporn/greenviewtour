@@ -6,6 +6,7 @@ import { Dropdown } from '../../../core/ui/Dropdown.jsx'
 import { StaffInvitations } from './StaffInvitations.jsx'
 import { ResetPassword } from './ResetPassword.jsx'
 import { UserActions } from './UserActions.jsx'
+import { UserAccess } from './UserAccess.jsx'
 import { api } from '../../../core/auth/api.js'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../core/ui/Button.jsx'
@@ -67,6 +68,7 @@ export default function UsersPage({ onProfileSaved }) {
       <DataTable label="Users table" columns={['User', 'Phone', 'Department / Role', 'Email verification', 'Last sign-in', 'Actions']} busy={loading} error={error} onRetry={() => setRefresh(n => n + 1)} isEmpty={!data?.users.length} loadingLabel="Loading users…" empty={<><h3>{query ? 'No matching users' : 'Your team starts here'}</h3><p>{query ? 'Try another email address or clear the search.' : 'No user accounts have been created yet.'}</p>{query && <Button onClick={() => setSearch('')}>Clear search</Button>}</>}>
         {data?.users.map(user => <tr key={user.id}><td><div className="user-cell"><span className="avatar">{(user.email || '?')[0].toUpperCase()}</span><div><strong>{user.displayName || user.email}</strong><small>{user.email}</small></div></div></td><td><div className="phone-cell">{user.primaryPhone ? <a href={`tel:${user.primaryPhone.replace(/[^+0-9]/g, '')}`} aria-label={`Call ${user.displayName}: ${user.primaryPhone}`}>{user.primaryPhone}</a> : <span className="muted">Not provided</span>}{user.emergencyPhone && <><small>Emergency</small><a href={`tel:${user.emergencyPhone.replace(/[^+0-9]/g, '')}`} aria-label={`Call emergency number for ${user.displayName}: ${user.emergencyPhone}`}>{user.emergencyPhone}</a></>}</div></td><td><strong>{user.department || 'Not assigned'}</strong><small className="role-label">{user.roles?.map(role => role.roleCode).join(' · ')}</small></td><td><span className={`badge ${user.email_confirmed_at ? 'verified' : ''}`}>{user.email_confirmed_at ? 'Verified' : 'Pending'}</span></td><td>{formatDate(user.last_sign_in_at)}</td><td><Dropdown label={`Actions for ${user.email}`} items={[
           { label: 'View user', icon: 'view', onSelect: () => setSelected({ user, mode: 'view' }) },
+          ...(user.canConfigureAccess ? [{label:'Configure permissions',icon:'settings',onSelect:()=>setSelected({user,mode:'access'})}] : []),
           ...(user.canEdit ? [{ label: 'Edit user', icon: 'edit', onSelect: () => setSelected({ user, mode: 'edit' }) }] : []),
           ...(user.canResetPassword ? [{ label: 'Send password reset', icon: 'mail', onSelect: () => setResetUser(user) }] : []),
         ]}><span aria-hidden="true">⋯</span></Dropdown></td></tr>)}
@@ -78,7 +80,8 @@ export default function UsersPage({ onProfileSaved }) {
     </div>
     {resetUser && <ResetPassword user={resetUser} onClose={() => setResetUser(null)} />}
     {notice && <p role="status">{notice}</p>}
-    {selected && <UserActions user={selected.user} initialMode={selected.mode} canChangeDepartment={data?.canChangeDepartment} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); setNotice('User profile updated.'); setRefresh(n => n + 1); onProfileSaved?.() }} />}
+    {selected?.mode==='access' && <UserAccess user={selected.user} onClose={()=>setSelected(null)} onSaved={()=>{setSelected(null);setNotice('User permissions updated.');setRefresh(n=>n+1);onProfileSaved?.()}}/>}
+    {selected && selected.mode!=='access' && <UserActions user={selected.user} initialMode={selected.mode} canChangeDepartment={data?.canChangeDepartment} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); setNotice('User profile updated.'); setRefresh(n => n + 1); onProfileSaved?.() }} />}
     {data && <p style={{ visibility: tab === 'users' ? 'visible' : 'hidden' }} className="last-checked" role="status">Last updated {new Intl.DateTimeFormat('en-GB', { timeStyle: 'medium', timeZone: 'Asia/Bangkok' }).format(new Date(data.checkedAt))} · Bangkok time</p>}
   </>
 }

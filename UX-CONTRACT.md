@@ -27,7 +27,7 @@ Business authority: docs/authentication.md and docs/identity-access.md. AuthLayo
 
 Sign in returns to the workspace; users without company directory rights see their own welcome screen. Unauthorized API responses never leave the directory accessible. Register is invitation-only and asks users to confirm email before signing in. Reset completes with an explicit sign-in link; it does not silently open the workspace. Inline status/error messages remain in the form. All auth routes have an English document title, keyboard focus and narrow-screen layout. Browser sessions are HttpOnly cookies; no client token persistence.
 
-The directory supports scoped profile edits and Manager-led invitations. Role changes for existing accounts remain outside this change. Public UI remains Thai; Backoffice remains English.
+The directory supports scoped profile edits, Manager-led invitations and the per-user access editor documented below. Public UI remains Thai; Backoffice remains English.
 
 ## User Info and profile Actions
 
@@ -157,3 +157,13 @@ Core DataTable allocation and allocation-selector layouts use content-height tab
 
 
 Owner refinement 2026-09-09: Booking owns service dates independently of record creation and fleet schedules. Fixed programs calculate return; open-return has explicit pending/our/other, and return-only never invents outbound. Program/agent/date quote is authoritative, saved price and removal-credit snapshots remain stable on same-sale edits. Existing source policies are recorded in docs/booking-operations-audit.md. Booking readiness does not require staff to choose inventory source or ordinary service slots. Physical availability is checked at scoped issue/allocation. Reception print omits hotel/transfer, uses arrival or return-only service day, and CSS print margin boxes provide page current/total on supported Chromium/Edge printers. Core DataTable allocation variants reserve bounded content height without inheriting directory minimum widths.
+
+## Company duties and per-user access · 2026-09-13
+
+Authority and implementation limits: docs/company-workflows.md. WorkspaceNavigation owns grouping of working destinations by business category, preserves existing URLs and delegates all eligibility to the shared route permission policy. Company and Users belong to Company & Personnel; agent settings belong to Sales & Bookings. Unimplemented modules do not appear as disabled navigation.
+
+Users row Configure permissions is offered only by the server's canConfigureAccess result. UserAccess reuses Dialog, Button, FormField, SelectField, address-section fieldsets and Navigation's dirty guard. Native checkboxes select multiple duties. Default/inherit, allow and deny remain visibly distinct; effective access explains its source. Optional datetime-local fields explicitly collect UTC instants (native platform calendar is acceptable, same policy as existing DateField). Manager authority is enforced again in the transaction. Only Admin Manager appoints Managers; this UI never edits self or Admin Manager grants.
+
+Permission mutation is pessimistic: Review changes → Confirm permissions. There is no autosave or automatic retry. Failure retains edits; a 409 requires closing/reopening to inspect the latest saved version. Closing a dirty form asks Keep editing / Discard changes. The modal scroll owner, keyboard focus and narrow layout remain Core-owned. History is read-only. Bookings show a help message when paid-status changes are unavailable, while preserving unrelated edits.
+
+Validation owners: backend/test/user-access.test.js and scripts/smoke-user-access.js. The fixture runner uses a separate frontend port and ephemeral API port to avoid disturbing a running local workspace. Fixtures do not send emails or use business data.

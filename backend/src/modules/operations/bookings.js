@@ -1,4 +1,5 @@
 import { programBookingPlan,storedJourney } from './booking-plan.js'
+import { effectiveAccess } from '../../../../packages/contracts/access.js'
 import { bookingJourney,bookingQuote,specialRequirements } from '../../../../packages/contracts/booking-plan.js'
 import { dispatchCategories } from './dispatch.js'
 import { randomUUID } from 'node:crypto'
@@ -15,6 +16,12 @@ async function blueprint(tx,tripId,adults,children){
  return {trip,adultPrice:trip.tour?trip.tour.adultPrice?.toString()??null:'0',childPrice:trip.tour?trip.tour.childPrice?.toString()??null:'0',lines}
 }
 async function intakeAccess(tx,actorId){const {access}=await authorize(tx,actorId,'islandBooking');return access}
+export async function authorizePaidChange(tx,actorId,before,after){
+ if((before==='PAID'||after==='PAID')&&before!==after){
+  const {actor}=await authorize(tx,actorId,'islandBooking')
+  if(!effectiveAccess(actor,'finance.receive').allowed)fail('PAYMENT_PERMISSION_REQUIRED',403)
+ }
+}
 function intakePlanView(plan){
  const safeResource=r=>r?Object.fromEntries(['id','name','code','category','kind','baseUnit','size','mealPeriod','accommodationType','occupancy','origin','destination'].map(k=>[k,r[k]])):null
  return {...plan,program:plan.program?{id:plan.program.id,name:plan.program.name,journeyMode:plan.program.journeyMode,durationDays:plan.program.durationDays,childPolicy:plan.program.childPolicy}:undefined,trip:{id:plan.trip.id,tourId:plan.trip.tourId,name:plan.trip.name,startsAt:plan.trip.startsAt,endsAt:plan.trip.endsAt},lines:plan.lines.map(l=>({...l,resource:safeResource(l.resource),snapshot:l.snapshot?Object.fromEntries(Object.entries(l.snapshot).filter(([k])=>k!=='costPrice')):undefined}))}
@@ -87,6 +94,7 @@ export async function saveBooking(prisma,actorId,input){
    details[key]=input[key]===undefined?existing?.[key]||null:input[key]===null||input[key]===''?null:string(input[key],max,false)
   }
   details.paymentTerms=input.paymentTerms||existing?.paymentTerms||'UNSET'
+  await authorizePaidChange(tx,actorId,existing?.paymentTerms,details.paymentTerms)
   if(!['UNSET','PREPAID','PAID','COUNTER','AGENT_CREDIT','AFTER_SERVICE'].includes(details.paymentTerms))fail('INVALID_PAYMENT_TERMS',400)
   if(details.paymentTerms==='AFTER_SERVICE'){
    if(!details.afterServiceReason)fail('AFTER_SERVICE_REASON_REQUIRED',400)
@@ -217,6 +225,7 @@ export async function amendBookingDetails(prisma,actorId,input){
    if(booking.paymentTerms!=='AFTER_SERVICE'||resolvedReason!==booking.afterServiceReason)await authorize(tx,actorId,'manager')
   }else data.afterServiceReason=null
   data.paymentTerms=paymentTerms
+  await authorizePaidChange(tx,actorId,booking.paymentTerms,paymentTerms)
   await tx.tourBooking.update({where:{id:booking.id},data:{...data,version:{increment:1}}})
   // Jobs derive these details live; bump every affected job revision so printed copies can be compared.
   const links=await tx.dispatchAssignment.findMany({where:{bookingLine:{bookingId:booking.id}},select:{runId:true}})

@@ -5,7 +5,7 @@ import { active,audit,authorize,fail,hash,int,keys,uuid,write } from './common.j
 const include={services:{provider:true},components:{tour:true,resource:true},slots:{resource:true,vehicle:true},trips:{tour:true},bookings:{trip:{include:{tour:true}},lines:{include:{resource:true,source:true,slot:true,dispatchAssignments:{include:{run:{include:{slot:{include:{vehicle:true}}}}}}}}},stock:{lot:{include:{resource:true}},location:true},issues:{lot:{include:{resource:true}},bookingLine:{include:{booking:{include:{trip:true}}}}}}
 const extra={resources:'operationResource',bookings:'tourBooking',stock:'stockBalance',issues:'stockIssue',movements:'stockMovement'}
 export async function listOperations(prisma,actorId,entity,params){
- const {access}=await authorize(prisma,actorId,entity==='bookings'?'islandBooking':['bookings','services','resources','stores','trips','slots'].includes(entity)?'booking':'manager')
+ const {access}=await authorize(prisma,actorId,['stock','issues','movements'].includes(entity)?'stock':['resources','stores'].includes(entity)?'stockOrBooking':entity==='bookings'?'islandBooking':['bookings','services','resources','stores','trips','slots'].includes(entity)?'booking':'manager')
  const definition=operationCatalog[entity],model=definition?.model||extra[entity];if(!model)fail('NOT_FOUND',404)
  const q=(params.get('q')||'').trim(),requested=Number(params.get('page')||1),status=params.get('status')
  if(q.length>100||!Number.isSafeInteger(requested)||requested<1||requested>100000)fail('INVALID_FILTER',400)

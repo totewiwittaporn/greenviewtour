@@ -7,7 +7,7 @@ import { useUnsavedChanges } from '../../../core/navigation/Navigation.jsx'
 import { FormField } from '../../../core/ui/FormField.jsx'
 import { SelectField } from '../../../core/ui/SelectField.jsx'
 import { api } from '../../../core/auth/api.js'
-const departments = ['MANAGEMENT','BOOKING','ACCOUNT','GUIDE','CAPTAIN','DRIVER']
+const departments = ['MANAGEMENT','BOOKING','ACCOUNT','GUIDE','CAPTAIN','DRIVER','SALES','HOUSEKEEPING']
 export function UserActions({ user, canChangeDepartment, onClose, onSaved, initialMode = 'view', self = false }) {
   const [mode,setMode] = useState(initialMode), [displayName,setDisplayName] = useState(user.displayName || ''), [department,setDepartment] = useState(user.department || '')
   const [busy,setBusy] = useState(false), [error,setError] = useState(''), [fieldError,setFieldError] = useState(''), [discard,setDiscard] = useState(false)

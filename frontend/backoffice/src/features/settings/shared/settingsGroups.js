@@ -1,6 +1,6 @@
 export const settingsGroups = [
-  { id: 'company-tours', label: 'Company & Tours', entities: ['company', 'tours'] },
-  { id: 'tour-services', label: 'Tour services', entities: ['services', 'components'] },
+  { id: 'company-tours', label: 'Company', entities: ['company'] },
+  { id: 'tour-services', label: 'Tour programs & services', entities: ['tours', 'services', 'components'] },
   { id: 'equipment-supplies', label: 'Equipment & Supplies', entities: ['equipment', 'consumables', 'stores'] },
   { id: 'partners-sales', label: 'Partners & Sales', entities: ['partners', 'rates', 'agreements', 'channels'] },
   { id: 'transport-pickup', label: 'Transport & Pickup', entities: ['locations', 'vehicles'] },
