@@ -1,3 +1,5 @@
+import {requireOpenServiceDays} from './service-day.js'
+import { requirePriceApproval } from './booking-price.js'
 import { programBookingPlan,storedJourney } from './booking-plan.js'
 import { effectiveAccess } from '../../../../packages/contracts/access.js'
 import { bookingJourney,bookingQuote,specialRequirements } from '../../../../packages/contracts/booking-plan.js'
@@ -30,7 +32,8 @@ export async function getBlueprint(prisma,actorId,params){
  const access=await intakeAccess(prisma,actorId)
  const adults=int(params.get('adults'),0,9999),children=int(params.get('children'),0,9999)
  if(adults+children<1)fail('INVALID_PASSENGER_COUNT',400)
- if(params.get('tourId')){const existing=params.get('bookingId')?await prisma.tourBooking.findUnique({where:{id:uuid(params.get('bookingId'))},include:full}):null;if(existing&&!access.booking&&existing.createdById!==actorId)fail('PERMISSION_DENIED',403);const plan=await programBookingPlan(prisma,{...Object.fromEntries(params),adults,children},existing);if(!access.booking&&plan.program.journeyMode!=='RETURN_ONLY')fail('PERMISSION_DENIED',403);return intakePlanView(plan)}
+ if(params.get('tourId')){const existing=params.get('bookingId')?await prisma.tourBooking.findUnique({where:{id:uuid(params.get('bookingId'))},include:full}):null;if(existing&&!access.booking&&existing.createdById!==actorId)fail('PERMISSION_DENIED',403);const plan=await programBookingPlan(prisma,{...Object.fromEntries(params),adults,children},existing);await requireOpenServiceDays(tx,[plan.journey?.outboundDate,plan.journey?.returnDate,input.serviceDate])
+  if(!access.booking&&plan.program.journeyMode!=='RETURN_ONLY')fail('PERMISSION_DENIED',403);return intakePlanView(plan)}
  if(!access.booking)fail('PERMISSION_DENIED',403)
  return blueprint(prisma,params.get('tripId'),adults,children)
 }
@@ -129,6 +132,7 @@ export async function saveBooking(prisma,actorId,input){
   }
   if(!modern)Object.assign(details,{outboundDate:new Date(localStamp(plan.trip.startsAt).slice(0,10)+'T00:00:00Z'),returnDate:new Date(localStamp(plan.trip.endsAt).slice(0,10)+'T00:00:00Z'),returnStatus:'OUR'})
   const data={...details,createdById:existing?.createdById||actorId,code,name,tripId:plan.trip.id,adults,children,adultPrice:modern?plan.adultPrice:plan.trip.tour?money(input.adultPrice):'0',childPrice:modern?plan.childPrice:plan.trip.tour?money(input.childPrice):'0',requestHash,programSnapshot:preserve?existing.programSnapshot:{tourId:plan.trip.tourId,name:plan.trip.tour?.name||'Standalone service',route:plan.trip.tour?.route||null,cancellationTerms:plan.trip.tour?.cancellationTerms||null,startsAt:plan.trip.startsAt.toISOString(),endsAt:plan.trip.endsAt.toISOString(),savedAt:new Date().toISOString(),...(modern?{bookingOwnedTrip:true,journeyMode:plan.program.journeyMode,durationDays:plan.program.durationDays,priceSource:plan.priceSource,allowedPaymentTerms:plan.allowedPaymentTerms,childPolicy:plan.program.childPolicy,bookingCutoff:plan.program.bookingCutoff,confirmationMode:plan.program.confirmationMode}: {})}}
+  if(existing?.programSnapshot?.priceException){if(!modern&&preserve)Object.assign(data,existing.programSnapshot.priceException.standard);data.programSnapshot={...data.programSnapshot,priceException:null};await audit(tx,actorId,existing.id,'booking.price.invalidated',{previous:existing.programSnapshot.priceException,reason:'Booking draft edited; request a new price review.'})}
   if(existing)await tx.bookingComponent.deleteMany({where:{bookingId:existing.id}})
   const row=existing?await tx.tourBooking.update({where:{id:existing.id},data:{...data,version:{increment:1},lines:{create:lines}},include:full}):await tx.tourBooking.create({data:{id:input.id,...data,lines:{create:lines}},include:full})
   await audit(tx,actorId,row.id,'booking.saved',{version:row.version,lineCount:lines.length});return {row}
@@ -142,10 +146,14 @@ export async function bookingStatus(prisma,actorId,input){
   if(prior){if(prior.requestHash!==requestHash)fail('COMMAND_CONFLICT');return prior.result}
   const booking=await tx.tourBooking.findUnique({where:{id:input.bookingId},include:full})
   if(!booking||booking.version!==input.version)fail('SETTINGS_CONFLICT')
+  const attendance=await tx.bookingAttendance.findMany({where:{bookingId:booking.id}})
+  if(input.action!=='COMPLETE')await requireOpenServiceDays(tx,[booking.outboundDate,booking.returnDate])
+  if(input.action==='CANCEL'&&attendance.length)fail('CHECK_IN_REVIEW_REQUIRED')
   const access=await intakeAccess(tx,actorId);if(!access.booking&&(booking.createdById!==actorId||booking.programSnapshot?.journeyMode!=='RETURN_ONLY'))fail('PERMISSION_DENIED',403)
   let status
   if(input.action==='CONFIRM'){
    if(booking.status!=='DRAFT')fail('BOOKING_LOCKED')
+   requirePriceApproval(booking)
    if(booking.programSnapshot?.bookingOwnedTrip&&booking.allergyStatus==='UNKNOWN')fail('ALLERGY_STATUS_REQUIRED',400)
    if(bookingQuote(booking).total===null)fail('PRICE_REQUIRED')
    if(booking.paymentTerms==='UNSET')fail('PAYMENT_TERMS_REQUIRED',400)
@@ -161,8 +169,11 @@ export async function bookingStatus(prisma,actorId,input){
     const assignments=await tx.dispatchAssignment.findMany({where:{bookingLineId:line.id},include:{run:true}})
     const expected=line.resource.baseUnit==='PERSON'?Math.min(line.quantity,booking.adults+booking.children):booking.adults+booking.children
     for(const direction of (line.dispatchDirection==='BOTH'?['OUTBOUND','RETURN']:[line.dispatchDirection]).filter(d=>d!=='RETURN'||booking.returnStatus==='OUR')){
-     const leg=assignments.filter(a=>a.run.direction===direction)
-     if(leg.reduce((n,a)=>n+a.adults+a.children,0)!==expected||leg.some(a=>a.actualAdults===null||a.actualChildren===null))fail('DISPATCH_INCOMPLETE')
+     const leg=assignments.filter(a=>a.status!=='CANCELLED'&&a.run.direction===direction)
+     const entry=attendance.find(a=>a.direction===direction)
+     const missing=(entry?.noShowAdults||0)+(entry?.noShowChildren||0)
+     const served=leg.filter(a=>a.actualAdults!==null&&a.actualChildren!==null).reduce((n,a)=>n+a.adults+a.children,0)
+     if(leg.reduce((n,a)=>n+a.adults+a.children,0)!==Math.max(expected-missing,served)||leg.some(a=>a.actualAdults===null||a.actualChildren===null))fail('DISPATCH_INCOMPLETE')
     }
    }
    if(booking.lines.some(l=>l.selected&&l.resource.kind!=='SERVICE'&&l.issuedQty!==l.quantity))fail('PREPARATION_INCOMPLETE')
@@ -254,6 +265,8 @@ export async function amendBookingReturn(prisma,actorId,input){
   if(await tx.dispatchAssignment.count({where:{bookingLine:{bookingId:booking.id},run:{direction:'RETURN'}}}))fail('RETURN_ALREADY_ASSIGNED')
   // A changed stay affects per-night services; do not silently resize already committed supplies.
   if(booking.lines.some(l=>l.selected&&['PER_PERSON_NIGHT','PER_ROOM_NIGHT'].includes(l.snapshot?.basis)))fail('RETURN_STAY_COMPONENTS_LOCKED')
+  if(await tx.bookingAttendance.count({where:{bookingId:booking.id,direction:'RETURN'}}))fail('CHECK_IN_REVIEW_REQUIRED')
+  await requireOpenServiceDays(tx,[booking.returnDate,journey.returnDate])
   const data=storedJourney(journey)
   await tx.tourBooking.update({where:{id:booking.id},data:{...data,version:{increment:1}}})
   const end=localStamp(new Date((journey.returnDate||journey.outboundDate)+'T23:59:00+07:00'))

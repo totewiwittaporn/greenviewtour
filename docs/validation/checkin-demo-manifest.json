@@ -1,0 +1,11 @@
+{
+  "bookingId": "44039d1c-5494-44c3-8a70-18cdfd76015f",
+  "tripId": "c2bfae0e-30f9-41e5-8d45-cf78fd2db3ad",
+  "vehicleId": "8af8a8a4-ffc1-4465-90f9-2d4b64545922",
+  "slotId": "8cefb5f5-e6b9-4e84-b6cf-efb92fdf7804",
+  "runId": "9b07a15d-3d79-4db0-8883-e7e2c798d1b1",
+  "code": "DEMO-CHECKIN-2026-09-15",
+  "date": "2026-09-15",
+  "retained": true,
+  "purpose": "Manual example; simulated funds only"
+}

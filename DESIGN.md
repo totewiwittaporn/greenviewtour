@@ -155,3 +155,63 @@ Retain the sea-green identity and existing Core typography, fields, dialog and t
 ## Company workflow forms · 2026-09-13
 
 CompanyWorkPage and PersonnelFinancePage retain the existing Core dialog, fields, paged references, filterbar and DataTable owners. Approval review includes resolved employee, supplier, warehouse and item names before mutation. Summary cards explicitly identify page-only totals. Payroll is manually entered base plus itemized earnings less deductions with reasons; approval and payment recording are separate states. No new visual tokens or theme are introduced.
+
+
+## Equipment returns · 15 September 2026
+
+Owner decision: remove separate equipment-washing reporting. Ordinary intact equipment returns use RETURN_READY in one transaction. Damaged returns and loss remain explicit; consumables retain consumption. BoatStockPage, StockPage and CompanyWorkPage reuse the existing shared SelectField. New transactions cannot create CLEANING stock. Historical movements remain immutable; existing CLEANING balances can be reviewed and moved to READY or DAMAGED using the existing condition action, without a recurring washing task. Housekeeping zone jobs remain separate.
+
+
+## Per-booking Agent price review · 15 September 2026
+
+Owner authorized continuing the proposed independent Manager review workflow. BookingPriceReview reuses Dialog/FormField/TextAreaField/Button, loads the current Booking revision, and shows standard/proposed rates, total, services and request/review reasons. Only another Manager reviews pending requests. Pending/rejected requests block confirmation. Draft saves restore standard rates and clear the request; explicit UI guidance explains re-requesting. Shared backend booking-price owns actions and confirmation checks; immutable audit entries retain history. Commands are actor-bound, revision-checked and idempotent, and replay rechecks current authority. Confirmed bookings are read-only for negotiated rates. Unit coverage: backend/test/booking-price.test.js and booking-flow.test.js. Browser coverage is recorded in docs/validation/agent-price-review.md.
+
+### Internal finance and company document evidence
+
+Receivables reuse the company navigation, DataTable, Pagination, Dialog, FormField and DateField owners. `EvidenceAttachments` is the shared document list/upload workflow for Booking, finance records, internal statements and individual received payments. Company-issued receipts/tax invoices remain external artifacts. Internal statements are labeled explicitly; uploads never imply payment. Amounts are THB with two decimals. Attachments use file-picker selection with visible type/size limits and retained entries on failure; download-only original files, with parent authorization on each access.
+
+
+## Table density and responsive dialogs · 15 September 2026
+
+Owner requested UI review before further manual authoring. Shared DataTable distributes column widths, reserves compact Actions columns and limits descriptive text/header previews to two lines. Full text remains in the DOM and a title; evidence also offers a keyboard-accessible details dialog. Interactive controls must never be clipped by text truncation, including minified production builds.
+
+Evidence download labels use at most eight Thai-safe grapheme clusters plus ellipsis; accessible names, details and downloaded filenames retain the original. Statement/payment/evidence row actions use the shared ellipsis dropdown. Shared spacing stays compact but separated (8px action gap, 12–14px table padding). Table dialogs may expand to 1040px within viewport gutters, superseding the narrow form-dialog width for table content. Phone dialogs use 8–12px gutters and readable fields; wide tables scroll inside the dialog only when the columns genuinely require more width. User manual revisions and final manual screenshots wait for owner UI approval.
+
+Owner refinement: table body text, including Users names and roles, uses normal weight (400). Safari and Chrome are the primary browser verification targets.
+
+
+## Document photos and billing signatures · 15 September 2026
+
+Owner decision: system-only signatures for both company presenter and Agent recipient. Each signer reviews the bill on the staff device, enters their name and draws in a wide 1000:260 pad. Company signs first; Agent receipt is a separate state from payment. Native pointer input plus keyboard drawing, clear, explicit acknowledgement, pending lock and unsaved-discard protection use existing Core dialog/form/button owners. Authorised finance staff record the in-person signature; this is not an independently authenticated Agent login. Immutable private audit events retain strokes, server time, recorder, signed document snapshot and hash; retries use the existing actor-bound command ledger and transaction lock. Bill versions protect concurrent actions. Void history retains signatures; a new bill requires new signatures.
+
+EvidenceAttachments remains the shared owner for Booking/finance/bill/payment documents. Booking already exposes Supporting documents under row actions. Added Agent ticket and Agent booking confirmation categories. Existing permissions remain unchanged. File selection supports a phone camera capture hint and normal device files; desktop camera capture is not promised. Photos are locally re-encoded without EXIF, limited to 2400px longest side, with a JPEG quality floor of 0.72; flat PNG documents use lossless encoding if smaller. This bounds compression to preserve readability rather than claiming an absolute minimum. Preview and before/after size are shown before attachment; PDFs remain unchanged. Uploads are at most 5 MB; input photos at most 25 MB. Original full-resolution photos are not uploaded or duplicated. Browser decoding failures retain an actionable JPEG conversion message. SVG signature strokes avoid storing large photo bitmaps.
+
+Safari and Chrome are primary browser targets. Actual phone camera hardware remains a separate device verification step; desktop checks cannot prove iPhone camera behavior.
+
+Document viewing refinement: every shared evidence list offers View document ↗ in the ellipsis menu, separately from metadata details and download. DocumentViewer fetches bytes with current parent authorization, validates PDF/JPEG/PNG type and magic bytes, uses a short-lived object URL and revokes it on close; no external viewer or public URL. Images support fit/zoom and PDFs use the browser's built-in viewer. Owner revised viewing to a separate browser tab at /documents/:id. Shared Dropdown uses a native target=_blank link with noreferrer. The standalone reader keeps the original workspace unchanged, displays the server-provided filename, and owns its loading/error/retry and image zoom states. View does not trigger a file download. Close the browser tab to return; no public link or third-party viewer is created.
+
+
+## Core consistency audit and native PDF · 15 September 2026
+
+Owner screenshots identified a Refresh without its icon, a status filter against the panel edge, and a three-dot action label wrapping onto two lines. These screens already used Core but lacked a consistent presentation contract. RefreshButton is now the canonical refresh owner for eleven feature consumers. Dropdown rowActions renders the Core more SVG (36px desktop/40px touch) instead of font-dependent text; seventeen action triggers migrated. Panel-first filterbars reserve 20px top padding (16px mobile). Existing SelectField remains the status-filter owner. Dispatch run selection uses Button with its business class; invitation-link output uses TextAreaField. Native semantic print tables remain owned by the document layouts; standard checkboxes retain native semantics.
+
+PDF View now links directly to the authenticated evidence endpoint with view=inline, opening the browser's native reader in a new tab with the original filename. Authorization is unchanged and rechecked; only PDFs receive inline disposition, with no-store and nosniff. Downloads retain attachment disposition. The /documents/:id image reader remains; legacy PDF reader URLs redirect to the native endpoint. No custom PDF heading, iframe, or duplicated PDF controls are needed in the final native flow.
+
+## Member commerce — September 2026
+
+The member portal is a separate Thai customer surface. It uses the existing sea palette, Noto Sans Thai at a 16px body baseline, 44px controls, 14px panels, a 1120px content width, and a one-column layout below 760px. Runtime ownership is `frontend/member/src/core/styles.css`; shared member controls belong to `src/core/ui.jsx` and leave protection to `src/core/LeaveGuard.jsx`. No UI imports cross application boundaries. Member headers use medium weight; long catalog descriptions truncate only on listing cards with a detail link.
+
+Public master-data catalog and promotion pages extend the existing Public card family. The homepage now reads published tour records rather than maintaining separate tour offers. Backoffice commerce, popup and independent guide forms reuse existing Core owners and density. Independent guide assignments appear beside Boat assignments; they do not require a fictitious vehicle.
+
+## Member and staff authentication refinement · 15 September 2026
+Owner request: member authentication adopts the existing island-photo/form composition; staff AuthLayout becomes a quiet centered card. This supersedes the earlier team photo-panel direction. Member core/AuthLayout owns the customer composition, core/ui owns password toggles and buttons; no cross-app UI imports. Anonymous member navigation contains only Tours and Sign in, with a separate public-home link in the footer. Personal trips/profile appear only for a signed-in customer. Authentication and role provisioning behavior remain owned by the existing APIs.
+
+## Public login entry points
+Owner prefers separate entry points: customer sign-in is the visible header action; staff access is a quiet, readable footer link, never a role picker. Public Core SiteNavigation owns the shared header/footer across home, catalog and promotions. Local links target member 5175 and staff 5174. Deployed staff destination requires VITE_STAFF_LOGIN_URL; no unapproved staff subdomain is invented. Placement does not replace server authorization. Customer sign-in stays visible on mobile.
+
+## Local demo checkout
+Member DemoCheckout composes Core Button/Notice in the existing quote panel. Only the server-allowlisted retained tour exposes the simulator. Copy explicitly says no money, no scannable QR, and LINE preview only. Success shows the created DEMO Booking and persisted customer-scoped message. Backoffice Review repeats the simulation label. No new visual theme or role-switch UI.
+
+## Service check-in
+
+Customer check-in is a distinct Tour Operations destination. Reuse Core DateField, FormField, SummaryCards, DataTable, Dropdown, Dialog, SelectField, Button and Pagination with the existing sea palette and normal table weight. The primary task is confirming arrivals, not editing the Booking. A no-show review uses the Core table dialog to show old/new passenger allocations before confirmation. Check-in is separate from next-day dispatch snapshots.

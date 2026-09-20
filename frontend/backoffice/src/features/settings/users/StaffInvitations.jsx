@@ -1,3 +1,5 @@
+import {TextAreaField} from '../../../core/ui/TextAreaField.jsx'
+import {RefreshButton} from '../../../core/ui/RefreshButton.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../../core/auth/api.js'
 import { Icon } from '../../../core/ui/Icon.jsx'
@@ -27,7 +29,7 @@ function InvitationLink({ result }) {
     try { await navigator.clipboard.writeText(link); setCopied('Invitation link copied.') }
     catch { field.current?.focus(); field.current?.select(); setCopied('Copy is unavailable. The link is selected; copy it manually.') }
   }
-  return <><p>Invitation ready for <strong>{result.invitation.email}</strong>.</p><p>The employee opens this link, chooses their own password and confirms their email.</p><label htmlFor="invitation-link">Invitation link</label><textarea id="invitation-link" ref={field} className="invite-link resize-none" readOnly value={link} /><p className="field-help">Expires {date(result.invitation.expiresAt)} · Bangkok time. Keep this link private. It is shown only now.</p><p className="field-help">This Local link opens on this computer. A hosted workspace is needed for access from another device.</p><div className="dialog-actions"><Button className="button-primary" onClick={copy}>Copy invitation link</Button></div>{copied && <p role="status">{copied}</p>}</>
+  return <><p>Invitation ready for <strong>{result.invitation.email}</strong>.</p><p>The employee opens this link, chooses their own password and confirms their email.</p><TextAreaField label="Invitation link" ref={field} className="core-textarea invite-link resize-none" readOnly value={link} /><p className="field-help">Expires {date(result.invitation.expiresAt)} · Bangkok time. Keep this link private. It is shown only now.</p><p className="field-help">This Local link opens on this computer. A hosted workspace is needed for access from another device.</p><div className="dialog-actions"><Button className="button-primary" onClick={copy}>Copy invitation link</Button></div>{copied && <p role="status">{copied}</p>}</>
 }
 function InviteForm({ catalog, onClose, onCreated }) {
   const [values, setValues] = useState({ displayName: '', email: '', roleCode: '', department: '' }), [errors, setErrors] = useState({})
@@ -102,12 +104,12 @@ export function StaffInvitations({ open, onClose }) {
       { label: 'Joined', value: state.data?.summary?.joined, detail: 'Employees who have activated', icon: 'check' },
       { label: 'Expired or revoked', value: state.data?.summary?.inactive, detail: 'Inactive invitation links', icon: 'globe' },
     ]} />
-    <section className="panel table-panel invite-panel"><div className="panel-heading"><div><h2>Employee invitations</h2><p>Manage employee access · Times shown in Bangkok time</p></div></div><div className="filterbar"><SearchField value={search} onChange={setSearch} onCompositionChange={setComposing} label="Search invitations by name or email" placeholder="Search by name or email…" /><Button busy={state.loading} disabled={state.loading} onClick={refresh}><Icon name="refresh" />Refresh invitations</Button></div>
+    <section className="panel table-panel invite-panel"><div className="panel-heading"><div><h2>Employee invitations</h2><p>Manage employee access · Times shown in Bangkok time</p></div></div><div className="filterbar"><SearchField value={search} onChange={setSearch} onCompositionChange={setComposing} label="Search invitations by name or email" placeholder="Search by name or email…" /><RefreshButton busy={state.loading} disabled={state.loading} onClick={refresh} label="Refresh invitations"/></div>
     <DataTable label="Employee invitations" columns={['Employee', 'Role / Department', 'Status', 'Expires', 'Actions']} busy={state.loading} error={state.error} onRetry={refresh} loadingLabel="Loading invitations…" isEmpty={!items.length} empty={<><h3>{query ? 'No matching invitations' : 'No invitations yet'}</h3><p>{query ? 'Try another name or email, or clear the search.' : 'Choose Add employee to invite your first team member.'}</p>{query && <Button onClick={() => setSearch('')}>Clear search</Button>}</>}>
-      {items.map(item => <tr key={item.id}><td><strong>{item.displayName}</strong><small className="role-label">{item.email}</small></td><td>{item.roles.join(' · ')}<small className="role-label">{item.department}</small></td><td><span className={`badge ${item.status === 'Joined' ? 'verified' : ''}`}>{item.status}</span></td><td>{date(item.expiresAt)}</td><td>{item.status === 'Joined' ? <span className="muted">Joined</span> : <Dropdown label={`Invitation actions for ${item.email}`} items={[
+      {items.map(item => <tr key={item.id}><td><strong>{item.displayName}</strong><small className="role-label">{item.email}</small></td><td>{item.roles.join(' · ')}<small className="role-label">{item.department}</small></td><td><span className={`badge ${item.status === 'Joined' ? 'verified' : ''}`}>{item.status}</span></td><td>{date(item.expiresAt)}</td><td>{item.status === 'Joined' ? <span className="muted">Joined</span> : <Dropdown rowActions label={`Invitation actions for ${item.email}`} items={[
         { label: 'Create new link', icon: 'link', onSelect: () => setSelection({ item, action: 'renew' }) },
         ...(!['Revoked','Expired'].includes(item.status) ? [{ label: 'Revoke invitation', icon: 'revoke', danger: true, onSelect: () => setSelection({ item, action: 'revoke' }) }] : []),
-      ]}><span aria-hidden="true">⋯</span></Dropdown>}</td></tr>)}
+      ]}/>}</td></tr>)}
     </DataTable>
     <Pagination page={state.data?.page ?? page} pageSize={25} total={state.loading || state.error ? undefined : state.data?.total} busy={state.loading} onPageChange={setPage} label="Invitations pagination" />
   </section>

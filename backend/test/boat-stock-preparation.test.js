@@ -128,3 +128,21 @@ test('guest dietary and preparation instructions flow to assistant without agent
  assert.equal(result.guestRequirements[0].requestNotes,'Use child mask')
  assert.equal('paymentTerms' in result.guestRequirements[0],false)
 })
+
+test('equipment returns are ready in one step and reject retired cleaning without changing stock',async()=>{
+ const {resource}=fixture()
+ const lot={id:id(30),resource,expiresOn:null}
+ let returned,settled=0
+ const tx={$executeRaw:async()=>{},userProfile:{findUnique:async()=>profile('MANAGER')},stockMovement:{findUnique:async()=>null,create:async({data})=>data},stockIssue:{findUnique:async()=>({id:id(21),lot,quantity:3,settledQty:0,destinationId:id(32)}),update:async({data})=>{settled+=data.settledQty.increment}},stockBalance:{upsert:async({create})=>{returned=create;return create}},stockLocation:{findUnique:async()=>({id:id(32),name:'Store',status:'ACTIVE'})},auditEvent:{create:async()=>{}}}
+ const prisma={$transaction:fn=>fn(tx)}
+ const input={id:id(20),action:'SETTLE',issueId:id(21),locationId:id(32),quantity:2,disposition:'RETURN_CLEANING'}
+ await assert.rejects(stockCommand(prisma,id(6),input),{code:'INVALID_DISPOSITION'})
+ assert.equal(returned,undefined)
+ assert.equal(settled,0)
+ const result=await stockCommand(prisma,id(6),{...input,disposition:'RETURN_READY'})
+ assert.equal(returned.condition,'READY')
+ assert.equal(returned.quantity,2)
+ assert.equal(settled,2)
+ assert.equal(result.row.details.disposition,'RETURN_READY')
+ await assert.rejects(stockCommand(prisma,id(6),{...input,disposition:'RETURN_READY',quantity:4}),{code:'RETURN_EXCEEDS_ISSUE'})
+})

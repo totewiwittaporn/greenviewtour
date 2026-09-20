@@ -32,7 +32,7 @@ function planFixture(){
  const agent={id:id(4),status:'ACTIVE',roles:['SALES_AGENT'],allowedPaymentTerms:['PREPAID','COUNTER','AGENT_CREDIT'],defaultPaymentTerms:'AGENT_CREDIT'}
  let rateQuery
  const rates=[]
- const tx={tourProgram:{findUnique:async()=>program},businessPartner:{findUnique:async()=>agent},agentTourPrice:{findMany:async q=>{rateQuery=q;return rates}}}
+ const tx={serviceDayClose:{count:async()=>0},bookingAttendance:{findMany:async()=>[],findUnique:async()=>null,count:async()=>0},tourProgram:{findUnique:async()=>program},businessPartner:{findUnique:async()=>agent},agentTourPrice:{findMany:async q=>{rateQuery=q;return rates}}}
  return {tx,program,agent,rates,query:()=>rateQuery,input:{tourId:program.id,serviceDate:'2026-11-10',adults:2,children:1}}
 }
 test('program plan snapshots negotiated annual agent price, allowed terms, components and Thailand envelope',async()=>{
@@ -70,7 +70,7 @@ test('return-only and open return program plans never fabricate an outbound/retu
 function saveFixture(){
  const f=planFixture(), records=new Map(), trips=new Map(), events=[]
  let sequence=0
- const tx={...f.tx,
+ const tx={serviceDayClose:{count:async()=>0},bookingAttendance:{findMany:async()=>[],findUnique:async()=>null,count:async()=>0},...f.tx,
   $executeRaw:async()=>{events.push('lock')},
   userProfile:{findUnique:async()=>({status:'ACTIVE',roles:[{roleCode:'BOOKING',scope:'SELF'}]})},
   bookingSequence:{upsert:async ({where})=>{events.push('sequence');return {year:where.year,value:++sequence}}},
@@ -118,4 +118,13 @@ test('modern Booking confirmation does not require meal slots or supply warehous
  f.tx.operationResource.findUnique=async({where})=>where.id===id(42)?{id:id(42),status:'ACTIVE',kind:'CONSUMABLE',category:'DRINK'}:{...f.program.components[0].resource,status:'ACTIVE'}
  const result=await bookingStatus(f.prisma,id(20),{id:id(43),bookingId:row.id,version:1,action:'CONFIRM'})
  assert.equal(result.status,'CONFIRMED')
+})
+
+test('editing an approved negotiated booking restores its standard snapshot instead of laundering the override',async()=>{
+ const f=planFixture()
+ const existing={agentId:f.agent.id,outboundDate:new Date('2026-11-10'),adultPrice:'10',childPrice:'5',paymentTerms:'COUNTER',lines:[],programSnapshot:{bookingOwnedTrip:true,tourId:f.program.id,journeyMode:'FIXED',durationDays:1,priceSource:{kind:'AGENT'},priceException:{status:'APPROVED',standard:{adultPrice:'1200',childPrice:'900'}}}}
+ const plan=await programBookingPlan(f.tx,{...f.input,agentId:f.agent.id},existing)
+ assert.equal(plan.adultPrice,'1200')
+ assert.equal(plan.childPrice,'900')
+ assert.equal(plan.preserve,true)
 })

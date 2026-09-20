@@ -6,12 +6,12 @@ Authority: the owner's Greenview Tour decisions confirmed on 2026-09-13, includi
 
 | Category | Executable workflow | Remaining boundary |
 | --- | --- | --- |
-| Sales & Bookings | Bookings, Agent/program standard prices, agreements, guest requirements and documents | Negotiated price exceptions bound to a separately approved revision are not implemented |
+| Sales & Bookings | Bookings, Agent/program standard prices, agreements, guest requirements and documents | Negotiated price exceptions require a different Manager and are invalidated on draft edits |
 | Tour Operations | Vehicle/boat assignment, crew, Job Orders, passenger actuals, preparation and daily summaries | No new dispatch automation is implied |
 | Housekeeping | Zones, weekly/monthly/custom schedules, assigned pending jobs, checklists, completion/evidence and independent acceptance | Evidence uses an HTTPS reference; no attachment upload service |
 | Inventory, Equipment & Maintenance | Warehouse primary/deputy appointments; requests, independent approval, partial issue/return; approved count adjustments; asset-linked maintenance and acceptance | No automatic reorder policy or full asset depreciation ledger |
 | Purchasing | Draft purchase orders, supplier/quotation reference, independent approval, partial receiving into real stock lots | Supplier payment is a separate finance request; no automatic transfer or supplier message |
-| Accounts & Finance | Reimbursements, work/salary advances and reviewed clearance, trip allowances, manually itemized payroll, received-purchase payment requests, approval and external payment recording | No general ledger, tax filing, automatic statutory payroll calculation, bank integration or complete Agent receivables ledger |
+| Accounts & Finance | Reimbursements, work/salary advances and reviewed clearance, trip allowances, manually itemized payroll, received-purchase payment requests, approval and external payment recording | No general ledger, tax filing, automatic statutory payroll calculation, bank integration; internal Agent statements and partial/full payment recording are available |
 | Company & Personnel | Company/User profiles, multiple roles, special permissions, seasonal employment, separate attendance/rest/leave/availability and substitution records | No Job Order does not automatically create an absence or deduction; no employee self-service payslip module |
 | Settings | Programs/services, pickup locations, fleet, channels and other existing master data | Existing standard prices are not an approved negotiated exception |
 
@@ -61,6 +61,6 @@ The additive migration is `20260913090001_company_workflows`. Use the repository
 
 See [Thai workflow guide](company-workflow-guide.md), [tour demo](demo-flow.md) and [personnel/finance contract](personnel-finance.md). Validation includes backend permission/lifecycle/idempotency tests, real database rollback verification and persisted seed checks, plus `scripts/smoke-company-workflows.js` using intercepted compiled assets with no HTTP/Vite server and no live API writes.
 
-Remaining work is explicit: negotiated Agent exception approval, a full accounting ledger/receivables system, statutory payroll/tax calculation policy, bank/export integrations and evidence uploads. None is represented by the sample drafts as already completed.
+Update 15 September 2026: negotiated Agent exception approval is implemented; see user-manual-th.md, section 10. Remaining work is explicit: a full accounting ledger, statutory payroll/tax calculation policy and bank integrations. Internal Agent statements, private finance/booking/payment evidence attachments and payroll CSV export are now implemented. None is represented by the sample drafts as already completed.
 
 Verified integration evidence, 2026-09-13: `npm run check` passed with 138 backend tests and both frontend builds; after adding the final replay-permission case, all nine targeted tests passed and the current full suite contains 139 tests for CI; baseline browser fixtures and the new intercepted-asset company browser suite passed. The persisted seed reported 14 jobs and 9 drafts; rerun returned `ALREADY_PRESENT`. Live checks confirmed RLS on all six new tables and no anon/authenticated SELECT. The strict premium audit reported zero findings in `screenshots.local/company-premium-audit.json`. These results validate the implemented scope, not the deferred negotiated pricing or full accounting system.

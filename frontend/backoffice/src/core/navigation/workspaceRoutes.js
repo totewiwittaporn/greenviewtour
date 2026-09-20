@@ -8,6 +8,7 @@ export const normalizePath = path => path.replace(/\/+$/, '') || '/'
 export function workspaceRoute(pathname) {
  const path = normalizePath(pathname)
  if (path === '/') return { kind: 'home', title: 'Workspace', path }
+ if (path === '/customers') return {kind:'customers',title:'Customers',path}
  if (path === '/profile') return { kind: 'profile', title: 'Edit profile', path }
  if (path === '/settings/users') return { kind: 'users', title: 'Users', path }
  const [, scope, entity, extra] = path.split('/')

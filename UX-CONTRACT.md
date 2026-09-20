@@ -191,3 +191,80 @@ Driver, Boat, Supplies, Loans and Daily summaries carry the current service date
 Movement search covers action, item name/code, lot, locations, custodian and transaction note. An empty filtered result asks the user to clear or change the search. It does not claim that no movements exist. The existing Core table and filterbar remain the UI owners.
 
 Requests retain caller cancellation and a 15-second overall timeout. Only GET responses with explicit HTTP 503 retry once; mutations are never automatically replayed. Persistent failure stays visible and existing draft/conflict safeguards remain. Concurrent identity verification is coalesced only while in flight; completed identity checks are never cached. Invalid sessions and rate limits do not retry.
+
+
+## Equipment returns · 15 September 2026
+
+Owner decision: remove separate equipment-washing reporting. Ordinary intact equipment returns use RETURN_READY in one transaction. Damaged returns and loss remain explicit; consumables retain consumption. BoatStockPage, StockPage and CompanyWorkPage reuse the existing shared SelectField. New transactions cannot create CLEANING stock. Historical movements remain immutable; existing CLEANING balances can be reviewed and moved to READY or DAMAGED using the existing condition action, without a recurring washing task. Housekeeping zone jobs remain separate.
+
+
+## Per-booking Agent price review · 15 September 2026
+
+Owner authorized continuing the proposed independent Manager review workflow. BookingPriceReview reuses Dialog/FormField/TextAreaField/Button, loads the current Booking revision, and shows standard/proposed rates, total, services and request/review reasons. Only another Manager reviews pending requests. Pending/rejected requests block confirmation. Draft saves restore standard rates and clear the request; explicit UI guidance explains re-requesting. Shared backend booking-price owns actions and confirmation checks; immutable audit entries retain history. Commands are actor-bound, revision-checked and idempotent, and replay rechecks current authority. Confirmed bookings are read-only for negotiated rates. Unit coverage: backend/test/booking-price.test.js and booking-flow.test.js. Browser coverage is recorded in docs/validation/agent-price-review.md.
+
+Price-review refinement: pending/rejected price requests show a disabled Confirm · price approval required action. Server confirmation validation remains authoritative if a client is stale.
+
+## Receivables and evidence
+
+Internal statement selection is bounded to 50 completed Agent-credit bookings from one Agent and preserved across server pages. Selection is transient (sensitive records, consistent with company forms). Mutations lock while pending, preserve input on failure and use idempotent IDs. Changing submitted input starts a new command ID. Payment commands require exact displayed revision; refresh/reopen on conflict. Uploaded files have immutable identity and parent-scoped authorization. Dirty upload/create/payment dialogs use existing navigation protection and discard dialogs. Payroll export applies current filters across all pages, with 5,000-row cap and a record count in success feedback.
+
+
+## Table density and responsive dialogs · 15 September 2026
+
+Owner requested UI review before further manual authoring. Shared DataTable distributes column widths, reserves compact Actions columns and limits descriptive text/header previews to two lines. Full text remains in the DOM and a title; evidence also offers a keyboard-accessible details dialog. Interactive controls must never be clipped by text truncation, including minified production builds.
+
+Evidence download labels use at most eight Thai-safe grapheme clusters plus ellipsis; accessible names, details and downloaded filenames retain the original. Statement/payment/evidence row actions use the shared ellipsis dropdown. Shared spacing stays compact but separated (8px action gap, 12–14px table padding). Table dialogs may expand to 1040px within viewport gutters, superseding the narrow form-dialog width for table content. Phone dialogs use 8–12px gutters and readable fields; wide tables scroll inside the dialog only when the columns genuinely require more width. User manual revisions and final manual screenshots wait for owner UI approval.
+
+Owner refinement: table body text, including Users names and roles, uses normal weight (400). Safari and Chrome are the primary browser verification targets.
+
+
+## Document photos and billing signatures · 15 September 2026
+
+Owner decision: system-only signatures for both company presenter and Agent recipient. Each signer reviews the bill on the staff device, enters their name and draws in a wide 1000:260 pad. Company signs first; Agent receipt is a separate state from payment. Native pointer input plus keyboard drawing, clear, explicit acknowledgement, pending lock and unsaved-discard protection use existing Core dialog/form/button owners. Authorised finance staff record the in-person signature; this is not an independently authenticated Agent login. Immutable private audit events retain strokes, server time, recorder, signed document snapshot and hash; retries use the existing actor-bound command ledger and transaction lock. Bill versions protect concurrent actions. Void history retains signatures; a new bill requires new signatures.
+
+EvidenceAttachments remains the shared owner for Booking/finance/bill/payment documents. Booking already exposes Supporting documents under row actions. Added Agent ticket and Agent booking confirmation categories. Existing permissions remain unchanged. File selection supports a phone camera capture hint and normal device files; desktop camera capture is not promised. Photos are locally re-encoded without EXIF, limited to 2400px longest side, with a JPEG quality floor of 0.72; flat PNG documents use lossless encoding if smaller. This bounds compression to preserve readability rather than claiming an absolute minimum. Preview and before/after size are shown before attachment; PDFs remain unchanged. Uploads are at most 5 MB; input photos at most 25 MB. Original full-resolution photos are not uploaded or duplicated. Browser decoding failures retain an actionable JPEG conversion message. SVG signature strokes avoid storing large photo bitmaps.
+
+Safari and Chrome are primary browser targets. Actual phone camera hardware remains a separate device verification step; desktop checks cannot prove iPhone camera behavior.
+
+Document viewing refinement: every shared evidence list offers View document ↗ in the ellipsis menu, separately from metadata details and download. DocumentViewer fetches bytes with current parent authorization, validates PDF/JPEG/PNG type and magic bytes, uses a short-lived object URL and revokes it on close; no external viewer or public URL. Images support fit/zoom and PDFs use the browser's built-in viewer. Owner revised viewing to a separate browser tab at /documents/:id. Shared Dropdown uses a native target=_blank link with noreferrer. The standalone reader keeps the original workspace unchanged, displays the server-provided filename, and owns its loading/error/retry and image zoom states. View does not trigger a file download. Close the browser tab to return; no public link or third-party viewer is created.
+
+
+## Core consistency audit and native PDF · 15 September 2026
+
+Owner screenshots identified a Refresh without its icon, a status filter against the panel edge, and a three-dot action label wrapping onto two lines. These screens already used Core but lacked a consistent presentation contract. RefreshButton is now the canonical refresh owner for eleven feature consumers. Dropdown rowActions renders the Core more SVG (36px desktop/40px touch) instead of font-dependent text; seventeen action triggers migrated. Panel-first filterbars reserve 20px top padding (16px mobile). Existing SelectField remains the status-filter owner. Dispatch run selection uses Button with its business class; invitation-link output uses TextAreaField. Native semantic print tables remain owned by the document layouts; standard checkboxes retain native semantics.
+
+PDF View now links directly to the authenticated evidence endpoint with view=inline, opening the browser's native reader in a new tab with the original filename. Authorization is unchanged and rechecked; only PDFs receive inline disposition, with no-store and nosniff. Downloads retain attachment disposition. The /documents/:id image reader remains; legacy PDF reader URLs redirect to the native endpoint. No custom PDF heading, iframe, or duplicated PDF controls are needed in the final native flow.
+
+## Member commerce and independent guide assignments
+
+Business source: `docs/member-commerce-plan.md`, owner scope approval and full-transfer decision dated 2026-09-15. Public offers are loaded from published master records; promotions are filtered before pagination. The server snapshots selected services and prices and rechecks the quote during submission. The customer sees a request, then an explicit amount awaiting payment, then evidence review, then verified payment. Staff can return evidence with a customer-visible correction message. Internal review notes otherwise remain private. Expired promotion requests display Expired; cancelled operational Bookings do not show payment controls. Customers can cancel only their own unaccepted requests.
+
+| Capability | Canonical owner | Source of truth | Allowed variants | Verification |
+| --- | --- | --- | --- | --- |
+| Member controls | frontend/member/src/core/ui.jsx | DESIGN.md | Button / Field / Select / Notice | lint, build; Chrome/Safari runtime pending |
+| Member date/select | frontend/member/src/core/ui.jsx | this contract | native OS popup; Thai surrounding labels, date-only server format | runtime pending on both supported browsers |
+| Member API | frontend/member/src/core/api.js | backend commerce contracts | GET / explicit POST, timeout, no automatic mutation retry | backend ownership tests |
+| Member leave protection | frontend/member/src/core/LeaveGuard.jsx | this contract | app-owned dialog for links; beforeunload for browser close | runtime pending |
+| Public overlays | frontend/public-web/src/core/ui/Controls.jsx | DESIGN.md | native modal with close / Escape | runtime pending |
+| Customer/guide tables | frontend/backoffice/src/core/ui/DataTable.jsx | existing Core contract | paginated customer requests and independent guide work | backend tests, build; runtime pending |
+
+Customer session cookies and routes are separate from workspace sessions. A member 401 clears only the member cookie. Public/member proxies cannot call workspace endpoints. A customer can read only evidence whose request belongs to the exact authenticated customer identity. Customer registration never grants staff roles or matches existing records by email. Customer search is transient because it can contain personal information, consistent with Users search.
+
+Popup records start inactive; managers preview the image before activation. Draft image previews require manager authentication. Published tour/active popup references alone make website images publicly readable. Promotion rights hold duration is configured by staff for limited campaigns, with no invented default.
+
+Independent guide assignments reuse the existing Guide read/manage capabilities. Assistant guides see only assigned jobs. Staff overlap checks apply in both directions between guide-only work and boat/vehicle rosters. Instructions and travel data use the existing Guide projection, excluding booking/supplier amounts. Status changes require review; completed/cancelled assignments are retained and cannot be edited. Cancelling a Booking makes its guide assignment display cancelled and frees its scheduling interval.
+
+Member recovery uses its own customer-recovery session. Email links return to the member login route; URL tokens are removed on entry and the recovery exchange is shared across StrictMode effects. A recovery session cannot use customer requests or staff APIs. Password reset records an audit event, revokes local customer/staff sessions for the same identity and returns to login. Real email delivery and the user-entered reset flow still require runtime validation.
+
+## Member and staff authentication refinement · 15 September 2026
+Owner request: member authentication adopts the existing island-photo/form composition; staff AuthLayout becomes a quiet centered card. This supersedes the earlier team photo-panel direction. Member core/AuthLayout owns the customer composition, core/ui owns password toggles and buttons; no cross-app UI imports. Anonymous member navigation contains only Tours and Sign in, with a separate public-home link in the footer. Personal trips/profile appear only for a signed-in customer. Authentication and role provisioning behavior remain owned by the existing APIs.
+
+## Service attendance and no-show review
+
+- `/operations/check-in` is a separate employee destination. Booking permission permits lookup and arrivals; company managers confirm no-shows and close/reopen days. Finance decisions require `finance.receive` on the server.
+- Scan/enter a Booking code then review the guest, date and outbound/return leg. A keyboard scanner is supported as text input; camera decoding and customer ticket generation are separate outstanding work.
+- Arrival commands add adults/children only within the unreviewed remainder, are version checked and replay safe. Thailand service date is enforced except clearly tagged DEMO fixtures.
+- No-show confirmation requires a server-generated allocation preview and a reason. Only unserved allocations change; original amounts, recorded actual service and financial totals remain intact. Cancelled allocations remain visible with the reason.
+- Every remaining guest must be accounted for before closing the service day. A manager can reopen with a reason. This is separate from the next-day operational snapshot.
+- No-show creates a financial hold. Bills cannot newly include affected bookings until the recorded decision retains charges. Adjustment/refund decisions remain a hold requiring separate processing; they never automatically move money.
+- Keep DEMO examples for manuals. Temporary transactional verification rolls back only its own fixtures.

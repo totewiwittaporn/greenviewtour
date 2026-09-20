@@ -1,6 +1,13 @@
+import { checkInState, checkInCommand } from '../modules/operations/check-in.js'
+import {demoCheckout} from '../modules/commerce/demo-checkout.js'
+import {listGuideAssignments,guideAssignmentOptions,saveGuideAssignment} from '../modules/operations/guide-assignments.js'
+import { previewWebsiteImage, cancelCustomerRequest, saveCustomer, customerDocuments, customerDocument, quoteRequest, saveWebsiteImage, websiteImage, commandCustomerRequest, uploadCustomerProof, publicCatalog, publicPopups, customerFor, enrollCustomer, saveCustomerProfile, memberRequests, submitCustomerRequest, listCustomers } from '../modules/commerce/service.js'
+import {listReceivables,commandReceivable} from '../modules/receivables/service.js'
+import {listEvidence,saveEvidence,downloadEvidence} from '../modules/evidence/service.js'
+import { bookingPriceCommand } from '../modules/operations/booking-price.js'
 import { documentBrand, dailyBookingDocument } from '../modules/operations/documents.js'
 import {listCompanyWork,saveCompanyWork,commandCompanyWork} from '../modules/company-work/service.js'
-import {listPersonnelFinance,savePersonnelFinance,commandPersonnelFinance} from '../modules/personnel-finance/service.js'
+import {listPersonnelFinance,savePersonnelFinance,commandPersonnelFinance,exportPayroll} from '../modules/personnel-finance/service.js'
 import { canConfigureAccess, readUserAccess, saveUserAccess } from '../modules/identity-access/user-access.js'
 import { listJobs, dispatchOptions, saveRun, dispatchCommand, bookingOptions } from '../modules/operations/dispatch.js'
 import { dailySummaryState, prepareDailySummary } from '../modules/operations/notifications.js'
@@ -11,6 +18,7 @@ import { operationMessages } from '../modules/operations/messages.js'
 import { listSettings, saveSettings } from '../modules/service-catalog/settings.js'
 import { assertDeliverableInvitationEmail, canInvite, canResetPassword, listInvitations, createInvitation, changeInvitation, lookupInvitation, acceptInvitation, requestUserReset } from '../modules/identity-access/invitations.js'
 import { managementScope, canEditProfile, editProfile, editOwnProfile } from '../modules/identity-access/user-management.js'
+import { hash as commerceHash } from '../modules/operations/common.js'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { listUsers } from '../modules/identity-access/list-users.js'
 import { parseUsersQuery } from '../backoffice/settings/users/query.js'
@@ -18,7 +26,9 @@ import { AccessError, normalizeEmail, resolveMembership } from '../modules/ident
 import { profileInclude, publicProfile } from '../modules/identity-access/policy.js'
 import { SessionStore } from '../platform/auth/sessions.js'
 const digest = value => createHash('sha256').update(value).digest()
-const origins = ['http://localhost:5174', 'http://127.0.0.1:5174']
+const workspaceOrigins = ['http://localhost:5174', 'http://127.0.0.1:5174']
+const memberOrigins = ['http://localhost:5175', 'http://127.0.0.1:5175']
+const origins = [...workspaceOrigins,...memberOrigins,'http://localhost:5173','http://127.0.0.1:5173']
 async function body(req, maxBytes = 8192) {
   if (!req.headers['content-type']?.startsWith('application/json')) throw new AccessError('JSON_REQUIRED', 415)
   let text = ''
@@ -33,10 +43,11 @@ function password(value, strong = false) {
 export function createHandler({ pool, prisma, provider, token, port = 5000, users = listUsers, sessions = new SessionStore() }) {
   if (![5000, 5001].includes(port)) throw new Error('INVALID_LOCAL_API_PORT')
   if (!token || token.length < 32) throw new Error('LOCAL_API_TOKEN_REQUIRED')
+  const memberSessions = new SessionStore('gv_member_session')
   let attempts = 0, windowEnd = 0
   return async (req, res) => {
     const send = (status, data, cookie) => {
-      res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...(data.retryAfterSeconds ? { 'Retry-After': String(data.retryAfterSeconds) } : {}), ...(cookie !== undefined ? { 'Set-Cookie': sessions.cookie(cookie) } : {}) })
+      res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...(data.retryAfterSeconds ? { 'Retry-After': String(data.retryAfterSeconds) } : {}), ...(cookie !== undefined ? { 'Set-Cookie': (String(req.url || '').split('?')[0].startsWith('/api/member/') ? memberSessions : sessions).cookie(cookie) } : {}) })
       res.end(JSON.stringify(data))
     }
     try {
@@ -53,6 +64,74 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         if (++attempts > 30) return send(429, { code: 'LOCAL_RATE_LIMITED', retryAfterSeconds: Math.max(1, Math.ceil((windowEnd - Date.now()) / 1000)) })
       }
       const path = url.pathname
+      if(path.startsWith('/api/public/')) {
+        if(req.method!=='GET')return send(405,{code:'METHOD_NOT_ALLOWED'})
+        const imageMatch=path.match(/^\/api\/public\/images\/([0-9a-f-]{36})$/)
+        if(imageMatch){const file=await websiteImage(prisma,imageMatch[1]);res.writeHead(200,{'Content-Type':file.mimeType,'Content-Length':file.size,'X-Content-Type-Options':'nosniff','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; sandbox"});return res.end(Buffer.from(file.content))}
+        if(path==='/api/public/quote'){const quote=await quoteRequest(prisma,{tourId:url.searchParams.get('tourId'),serviceDate:url.searchParams.get('serviceDate'),adults:Number(url.searchParams.get('adults')),children:Number(url.searchParams.get('children')),promotionId:url.searchParams.get('promotionId')||null,optionalIds:url.searchParams.getAll('optionalId')});return send(200,{...quote,quoteKey:commerceHash(quote)})}
+        if(path==='/api/public/tours')return send(200,await publicCatalog(prisma,url.searchParams))
+        if(path==='/api/public/popups')return send(200,await publicPopups(prisma))
+        return send(404,{code:'NOT_FOUND'})
+      }
+      if(path.startsWith('/api/member/')) {
+        if(req.headers.origin&&!memberOrigins.includes(req.headers.origin))return send(403,{code:'ORIGIN_DENIED'})
+        const memberSend=(data,id)=>{res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...(id!==undefined?{'Set-Cookie':memberSessions.cookie(id)}:{})});res.end(JSON.stringify(data))}
+        if(path==='/api/member/recover'&&req.method==='POST'){const input=await body(req);await provider.recoverMember(normalizeEmail(input.email));return memberSend({ok:true})}
+        if(path==='/api/member/recovery-session'&&req.method==='POST'){
+          const input=await body(req)
+          if(typeof input.access_token!=='string'||typeof input.refresh_token!=='string')throw new AccessError('RECOVERY_INVALID',400)
+          const user=await provider.user(input.access_token)
+          await enrollCustomer(prisma,user);await customerFor(prisma,user)
+          const claims=JSON.parse(Buffer.from(input.access_token.split('.')[1],'base64url').toString())
+          memberSessions.entries.delete(memberSessions.id(req))
+          return memberSend({recovery:true},memberSessions.create({access_token:input.access_token,refresh_token:input.refresh_token,expires_at:claims.exp,user},'customer-recovery'))
+        }
+        if(path==='/api/member/register'&&req.method==='POST'){
+          const input=await body(req);await provider.registerMember(normalizeEmail(input.email),password(input.password,true))
+          return memberSend({message:'CHECK_EMAIL'})
+        }
+        if(path==='/api/member/login'&&req.method==='POST'){
+          const input=await body(req),{session,user}=await provider.login(normalizeEmail(input.email),password(input.password))
+          try {await enrollCustomer(prisma,user);const customer=await customerFor(prisma,user);memberSessions.entries.delete(memberSessions.id(req));return memberSend({customer},memberSessions.create(session,'customer'))}
+          catch(error){await provider.logout(session).catch(()=>{});throw error}
+        }
+        if(path==='/api/member/logout'&&req.method==='POST'){
+          const id=memberSessions.id(req),entry=memberSessions.entries.get(id);memberSessions.entries.delete(id);if(entry)await provider.logout(entry.session).catch(()=>{});return memberSend({ok:true},'')
+        }
+        const {user,entry}=await memberSessions.authenticated(req,provider,pool)
+        if(path==='/api/member/reset-password'&&req.method==='POST'){
+          if(entry.purpose!=='customer-recovery')throw new AccessError('RECOVERY_REQUIRED',403)
+          const customer=await customerFor(prisma,user),input=await body(req),next=password(input.password,true)
+          const event=await prisma.auditEvent.create({data:{actorId:user.id,targetId:customer.id,action:'member.password.change.requested',details:{}}})
+          const outcome=await provider.password(entry.session,next)
+          memberSessions.deleteUser(user.id);sessions.deleteUser(user.id)
+          let recorded=true
+          try{await prisma.auditEvent.update({where:{id:event.id},data:{action:'member.password.changed',details:{providerRevoked:outcome.providerRevoked}}})}catch{recorded=false;console.error('MEMBER_PASSWORD_AUDIT_FINALIZATION_PENDING')}
+          return memberSend({ok:true,warning:!outcome.providerRevoked||!recorded?'PASSWORD_CHANGED_FOLLOW_UP_REQUIRED':null},'')
+        }
+        if(path==='/api/member/profile'&&req.method==='GET'&&entry.purpose==='customer-recovery'){await customerFor(prisma,user);return memberSend({recovery:true})}
+        if(entry.purpose!=='customer')throw new AccessError('LOGIN_REQUIRED',401)
+        if(path==='/api/member/documents'&&req.method==='GET')return memberSend(await customerDocuments(prisma,user,url.searchParams.get('requestId')))
+        const docMatch=path.match(/^\/api\/member\/documents\/([0-9a-f-]{36})$/)
+        if(docMatch&&req.method==='GET'){const file=await customerDocument(prisma,user,docMatch[1]);res.writeHead(200,{'Content-Type':file.mimeType,'Content-Length':file.size,'Cache-Control':'no-store','Content-Disposition':"inline; filename*=UTF-8''"+encodeURIComponent(file.filename),'X-Content-Type-Options':'nosniff','Content-Security-Policy':file.mimeType==='application/pdf'?"script-src 'none'; base-uri 'none'":"default-src 'none'; sandbox"});return res.end(Buffer.from(file.content))}
+        if(path==='/api/member/demo-checkout'&&req.method==='POST')return memberSend(await demoCheckout(prisma,user,await body(req)))
+        if(path==='/api/member/cancel'&&req.method==='POST')return memberSend(await cancelCustomerRequest(prisma,user,await body(req)))
+        if(path==='/api/member/proof'&&req.method==='POST')return memberSend(await uploadCustomerProof(prisma,user,await body(req,7100000)))
+        if(path==='/api/member/profile')return memberSend(req.method==='GET'?{customer:await customerFor(prisma,user)}:await saveCustomerProfile(prisma,user,await body(req)))
+        if(path==='/api/member/requests')return memberSend(req.method==='GET'?await memberRequests(prisma,user,url.searchParams):await submitCustomerRequest(prisma,user,await body(req)))
+        return send(404,{code:'NOT_FOUND'})
+      }
+      if(req.headers.origin&&!workspaceOrigins.includes(req.headers.origin))return send(403,{code:'ORIGIN_DENIED'})
+      const previewImageMatch=path.match(/^\/api\/website-images\/([0-9a-f-]{36})$/)
+      if(previewImageMatch&&req.method==='GET'){const {user,entry}=await sessions.authenticated(req,provider,pool);if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401);const file=await previewWebsiteImage(prisma,user.id,previewImageMatch[1]);res.writeHead(200,{'Content-Type':file.mimeType,'Content-Length':file.size,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"});return res.end(Buffer.from(file.content))}
+      if(path==='/api/website-images'&&req.method==='POST'){const {user,entry}=await sessions.authenticated(req,provider,pool);if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401);return send(200,await saveWebsiteImage(prisma,user.id,await body(req,7100000)))}
+      if(path==='/api/guide-assignments'||path==='/api/guide-assignments/options'){const {user,entry}=await sessions.authenticated(req,provider,pool);if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401);if(path.endsWith('/options'))return send(200,await guideAssignmentOptions(prisma,user.id,url.searchParams));return send(200,req.method==='GET'?await listGuideAssignments(prisma,user.id,url.searchParams):await saveGuideAssignment(prisma,user.id,await body(req)))}
+      if(path==='/api/customer-profile'&&req.method==='POST'){const {user,entry}=await sessions.authenticated(req,provider,pool);if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401);return send(200,await saveCustomer(prisma,user.id,await body(req)))}
+      if(path==='/api/customers'){
+        const {user,entry}=await sessions.authenticated(req,provider,pool)
+        if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401)
+        return send(200,req.method==='GET'?await listCustomers(prisma,user.id,url.searchParams):await commandCustomerRequest(prisma,user.id,await body(req)))
+      }
       if (req.method === 'POST' && path.startsWith('/api/auth/')) {
         const input = await body(req)
         if (path === '/api/auth/logout') {
@@ -130,6 +209,29 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
           return send(200, { ok: true, warning: !outcome.providerRevoked || !finalized ? 'PASSWORD_CHANGED_FOLLOW_UP_REQUIRED' : null }, '')
         } finally { await provider.logout(verified.session).catch(() => {}) }
       }
+      if(path==='/api/payroll-export'&&req.method==='GET'){
+        const {user,entry}=await sessions.authenticated(req,provider,pool)
+        if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401)
+        return send(200,await exportPayroll(prisma,user.id,url.searchParams))
+      }
+      if(path==='/api/receivables'){
+        const {user,entry}=await sessions.authenticated(req,provider,pool)
+        if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401)
+        return send(200,req.method==='GET'?await listReceivables(prisma,user.id,url.searchParams):await commandReceivable(prisma,user.id,await body(req,32768)))
+      }
+      const evidenceDownload=path.match(/^\/api\/evidence\/([0-9a-f-]{36})$/)
+      if(path==='/api/evidence'||evidenceDownload){
+        const {user,entry}=await sessions.authenticated(req,provider,pool)
+        if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401)
+        if(evidenceDownload){
+          if(req.method!=='GET')return send(405,{code:'METHOD_NOT_ALLOWED'})
+          const file=await downloadEvidence(prisma,user.id,evidenceDownload[1])
+          const inlinePdf=url.searchParams.get('view')==='inline'&&file.mimeType==='application/pdf'
+          res.writeHead(200,{'Content-Type':file.mimeType,'Content-Length':file.size,'Content-Disposition':(inlinePdf?"inline; filename*=UTF-8''":"attachment; filename*=UTF-8''")+encodeURIComponent(file.filename),'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':inlinePdf?"script-src 'none'; base-uri 'none'":"default-src 'none'; sandbox allow-downloads"})
+          return res.end(Buffer.from(file.content))
+        }
+        return send(200,req.method==='GET'?await listEvidence(prisma,user.id,url.searchParams):await saveEvidence(prisma,user.id,await body(req,7100000)))
+      }
       const companyMatch=path.match(/^\/api\/(company-work|personnel-finance)(?:\/(save|command))?$/)
       if(companyMatch){
         const {user,entry}=await sessions.authenticated(req,provider,pool)
@@ -144,9 +246,9 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         const { user, entry } = await sessions.authenticated(req, provider, pool)
         if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
         const entity = operationMatch[1]
-        if (req.method === 'GET') return send(200, entity === 'document-brand' ? await documentBrand(prisma) : entity === 'booking-document' ? await dailyBookingDocument(prisma,user.id,url.searchParams.get('date')) : entity === 'daily-summary' ? await dailySummaryState(prisma,user.id,url.searchParams.get('date'),process.env,Number(url.searchParams.get('page')||1)) : entity === 'jobs' ? await listJobs(prisma,user.id,url.searchParams) : entity === 'dispatch-options' ? await dispatchOptions(prisma,user.id,url.searchParams) : entity === 'booking-options' ? await bookingOptions(prisma,user.id,url.searchParams) : entity === 'boat-preparation' ? await boatPreparation(prisma,user.id,url.searchParams) : entity === 'preparation' ? await tripPreparation(prisma,user.id,url.searchParams) : entity === 'blueprint' ? await getBlueprint(prisma,user.id,url.searchParams) : await listOperations(prisma,user.id,entity,url.searchParams))
+        if (req.method === 'GET') return send(200, entity === 'check-in' ? await checkInState(prisma,user.id,url.searchParams) : entity === 'document-brand' ? await documentBrand(prisma) : entity === 'booking-document' ? await dailyBookingDocument(prisma,user.id,url.searchParams.get('date')) : entity === 'daily-summary' ? await dailySummaryState(prisma,user.id,url.searchParams.get('date'),process.env,Number(url.searchParams.get('page')||1)) : entity === 'jobs' ? await listJobs(prisma,user.id,url.searchParams) : entity === 'dispatch-options' ? await dispatchOptions(prisma,user.id,url.searchParams) : entity === 'booking-options' ? await bookingOptions(prisma,user.id,url.searchParams) : entity === 'boat-preparation' ? await boatPreparation(prisma,user.id,url.searchParams) : entity === 'preparation' ? await tripPreparation(prisma,user.id,url.searchParams) : entity === 'blueprint' ? await getBlueprint(prisma,user.id,url.searchParams) : await listOperations(prisma,user.id,entity,url.searchParams))
         const input = await body(req,131072)
-        return send(200, entity === 'daily-summary' ? await prepareDailySummary(prisma,user.id,input) : entity === 'runs' ? await saveRun(prisma,user.id,input) : entity === 'dispatch-command' ? await dispatchCommand(prisma,user.id,input) : entity === 'stock-command' ? await stockCommand(prisma,user.id,input) : entity === 'booking-return' ? await amendBookingReturn(prisma,user.id,input) : entity === 'booking-details' ? await amendBookingDetails(prisma,user.id,input) : entity === 'booking-status' ? await bookingStatus(prisma,user.id,input) : entity === 'bookings' ? await saveBooking(prisma,user.id,input) : await saveOperationCatalog(prisma,user.id,entity,input))
+        return send(200, entity === 'check-in' ? await checkInCommand(prisma,user.id,input) : entity === 'daily-summary' ? await prepareDailySummary(prisma,user.id,input) : entity === 'runs' ? await saveRun(prisma,user.id,input) : entity === 'dispatch-command' ? await dispatchCommand(prisma,user.id,input) : entity === 'stock-command' ? await stockCommand(prisma,user.id,input) : entity === 'booking-return' ? await amendBookingReturn(prisma,user.id,input) : entity === 'booking-details' ? await amendBookingDetails(prisma,user.id,input) : entity === 'booking-price' ? await bookingPriceCommand(prisma,user.id,input) : entity === 'booking-status' ? await bookingStatus(prisma,user.id,input) : entity === 'bookings' ? await saveBooking(prisma,user.id,input) : await saveOperationCatalog(prisma,user.id,entity,input))
       }
       const settingsMatch = path.match(/^\/api\/settings\/(company|partners|tours|rates|agreements|locations|vehicles|channels)$/)
       if (settingsMatch) {

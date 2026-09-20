@@ -42,17 +42,19 @@ async function waitFor(url, name) {
 }
 try {
   if (process.env.NODE_ENV === 'production') throw new Error('This launcher is for local development only.')
-  for (const port of [apiPort, 5173, 5174]) await portAvailable(port)
+  for (const port of [apiPort, 5173, 5174, 5175]) await portAvailable(port)
   const env = { ...process.env, LOCAL_API_PORT: String(apiPort), LOCAL_API_TOKEN: randomBytes(32).toString('hex') }
   launch(['backend/src/app/server.js'], root, env)
   launch([vite, '--host', '127.0.0.1', '--port', '5173', '--strictPort'], `${root}/frontend/public-web`, env)
   launch([vite, '--host', '127.0.0.1', '--port', '5174', '--strictPort'], `${root}/frontend/backoffice`, env)
+  launch([vite, '--host', '127.0.0.1', '--port', '5175', '--strictPort'], `${root}/frontend/member`, env)
   await Promise.all([
     waitFor(`http://127.0.0.1:${apiPort}/health/live`, 'Backend'),
     waitFor('http://127.0.0.1:5173', 'Public web'),
     waitFor('http://127.0.0.1:5174', 'Backoffice'),
+    waitFor('http://127.0.0.1:5175', 'Member'),
   ])
-  console.log(`\nREADY\nPublic: http://localhost:5173\nUsers: http://localhost:5174/settings/users\nAPI: http://127.0.0.1:${apiPort}/health/live\nPress Ctrl+C to stop all three services.\n`)
+  console.log(`\nREADY\nPublic: http://localhost:5173\nUsers: http://localhost:5174/settings/users\nAPI: http://127.0.0.1:${apiPort}/health/live\nMember: http://localhost:5175\nPress Ctrl+C to stop all four services.\n`)
   if (process.argv.includes('--open') && process.platform === 'win32') {
     const opener = spawn('powershell.exe', ['-NoProfile', '-Command', "Start-Process 'http://localhost:5173'; Start-Process 'http://localhost:5174/settings/users'"], { stdio: 'ignore' })
     opener.on('error', () => console.log('Open the URLs above in your browser.'))

@@ -1,0 +1,7 @@
+# Document viewer — 15 September 2026
+
+Owner chose a separate tab instead of a modal. Shared evidence menus now provide View document ↗ via native target=_blank links. /documents/:id renders a standalone reader. Existing workspace state stays in the original tab. Read authorization stays with the private evidence endpoint; no public/external viewer links. Responses validate both supported MIME and magic bytes; object URLs are revoked on unmount. Server Content-Disposition supplies the display filename; existing download remains available. Error/retry and image fit/zoom are included.
+
+Validation: npm run check passed, 159 backend + 12 frontend tests; both production builds passed. Strict design audit zero findings. Tests reject HTML/mismatched files and denied access, and preserve authenticated reads and downloaded bytes.
+
+Chrome: opened image preview and zoomed 100% to 125%; image visibly rendered. Uploaded synthetic one-page PDF DEMO-PDF-VIEW-150926 on Booking BK-2026-000012, then opened View in a new tab. Original Booking remained at its documents list. PDF page text rendered visibly with native controls. Safari on Mac: opened the same private reader route in a separate tab, verified PDF text in accessibility tree and screenshot. The demo PDF explicitly says it is not a real booking, invoice or receipt. No download is triggered by View. Actual mobile PDF viewer behavior has not been tested on hardware.

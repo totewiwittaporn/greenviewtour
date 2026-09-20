@@ -1,3 +1,5 @@
+import {requireOpenServiceDays} from './service-day.js'
+import {checkStaffAvailability} from './staff-availability.js'
 import { randomUUID } from 'node:crypto'
 import { operationAccess } from '../../../../packages/contracts/operation-access.js'
 import { parseStamp, localStamp } from '../../../../packages/contracts/operations.js'
@@ -13,7 +15,7 @@ const fullRun = {
   assignments: { include: { bookingLine: { include: { booking: { include: { trip: true } }, resource: true } } } },
 }
 const categoryKind = category => category === 'TRANSFER' ? 'VEHICLE' : ['TOUR_BOAT', 'LONGTAIL_BOAT'].includes(category) ? 'BOAT' : null
-const liveAssignment = item => ['CONFIRMED', 'COMPLETED'].includes(item.bookingLine.booking.status)
+const liveAssignment = item => item.status !== 'CANCELLED' && ['CONFIRMED', 'COMPLETED'].includes(item.bookingLine.booking.status)
 // Missing properties support legacy projections; explicit null means this leg is not booked.
 function journeyDate(booking, direction) {
   const field = direction === 'OUTBOUND' ? 'outboundDate' : 'returnDate'
@@ -62,7 +64,7 @@ export function jobRun(row) {
   const assignments = row.assignments.filter(liveAssignment).map(item => ({
     id: item.id, bookingLineId: item.bookingLineId, adults: item.adults, children: item.children,
     pickupAt: item.pickupAt, dropoffPoint: item.dropoffPoint, notes: item.notes,
-    actualAdults: item.actualAdults, actualChildren: item.actualChildren, changeReason: item.changeReason,
+    actualAdults: item.actualAdults, actualChildren: item.actualChildren, changeReason: item.changeReason, cancellationReason: item.cancellationReason, status: item.status,
     booking: jobBooking(item.bookingLine.booking,row.kind),
   }))
   return {
@@ -76,7 +78,7 @@ export function jobRun(row) {
       vehicle: row.slot.vehicle ? { id: row.slot.vehicle.id, name: row.slot.vehicle.name, capacity: row.slot.vehicle.capacity, registration: row.slot.vehicle.registration, ownership: row.slot.vehicle.ownership } : null,
     },
     staff: row.staff.map(member => ({ userId: member.userId, role: member.role, name: member.user.displayName })),
-    assignments, passengers: assignments.reduce((sum, item) => sum + item.adults + item.children, 0),
+    cancelledAssignments: row.assignments.filter(a => a.status === 'CANCELLED').map(a => ({id:a.id,code:a.bookingLine.booking.code,reason:a.cancellationReason,status:a.status})), assignments, passengers: assignments.reduce((sum, item) => sum + item.adults + item.children, 0),
   }
 }
 
@@ -135,7 +137,7 @@ export async function dispatchOptions(prisma, actorId, params) {
     const dateField = direction === 'OUTBOUND' ? 'outboundDate' : 'returnDate'
     where.booking[dateField] = params.get('date') ? dateOnly(params.get('date')) : { not: null }
     if (direction === 'RETURN') where.booking.returnStatus = 'OUR'
-    include = { resource: true, booking: { include: { trip: true } }, dispatchAssignments: { include: { run: true } } }
+    include = { resource: true, booking: { include: { trip: true, attendance: true } }, dispatchAssignments: { include: { run: true } } }
   }
   if (q) {
     if (entity === 'staff') where.displayName = { contains: q, mode: 'insensitive' }
@@ -147,9 +149,11 @@ export async function dispatchOptions(prisma, actorId, params) {
     let rows = await tx[model].findMany({ where, select, include, skip: (page - 1) * 25, take: 25, orderBy: { id: 'asc' } })
     if (entity === 'staff') rows = rows.map(row => ({ id: row.id, name: row.displayName, roles: row.roles.filter(g => ['SELF', 'COMPANY'].includes(g.scope) && allowedRoles.includes(g.roleCode)).map(g => g.roleCode) }))
     if (entity === 'pending') rows = rows.map(row => {
-      const assignments = row.dispatchAssignments.filter(a => a.run.direction === direction)
+      const assignments = row.dispatchAssignments.filter(a => a.status !== 'CANCELLED' && a.run.direction === direction)
       const assignedAdults = assignments.reduce((n, a) => n + a.adults, 0), assignedChildren = assignments.reduce((n, a) => n + a.children, 0)
-      const remainingAdults = Math.max(0, row.booking.adults - assignedAdults), remainingChildren = Math.max(0, row.booking.children - assignedChildren)
+      const attendance=row.booking.attendance?.find(a=>a.direction===direction && a.serviceDate.toISOString().slice(0,10)===journeyDay(row.booking,direction))
+      const noShowAdults=attendance?.noShowAdults||0,noShowChildren=attendance?.noShowChildren||0
+      const remainingAdults = Math.max(0, row.booking.adults - noShowAdults - assignedAdults), remainingChildren = Math.max(0, row.booking.children - noShowChildren - assignedChildren)
       const remainingPassengers = Math.min(remainingAdults + remainingChildren, row.resource.baseUnit === 'PERSON' ? Math.max(0, row.quantity - assignedAdults - assignedChildren) : Infinity)
       return { id: row.id, name: row.booking.name+' · '+row.resource.name, code: row.booking.code, quantity: row.quantity, resource: { id: row.resource.id, name: row.resource.name }, booking: jobBooking(row.booking,runKind), assignedAdults, assignedChildren, remainingAdults, remainingChildren, remainingPassengers }
     })
@@ -173,7 +177,7 @@ async function checkRun(tx, data, existing) {
     seen.add(member.userId)
     const user = await tx.userProfile.findUnique({ where: { id: member.userId }, include: profileInclude })
     if (user?.status !== 'ACTIVE' || !user.roles.some(g => g.roleCode === member.role && ['SELF', 'COMPANY'].includes(g.scope))) fail('INVALID_RUN_STAFF', 400)
-    if (await tx.dispatchStaff.count({ where: { userId: member.userId, runId: { not: data.id }, run: { status: 'OPEN', slot: { startsAt: { lt: data.endsAt }, endsAt: { gt: data.startsAt } } } } })) fail('STAFF_TIME_CONFLICT')
+    await checkStaffAvailability(tx,member.userId,data.startsAt,data.endsAt,{runId:data.id})
   }
   if (existing?.assignments.some(liveAssignment)) {
     if (existing.kind !== data.kind || existing.direction !== data.direction || existing.slot.resourceId !== data.resourceId || +existing.slot.startsAt !== +data.startsAt || +existing.slot.endsAt !== +data.endsAt) fail('RUN_IN_USE')
@@ -226,6 +230,7 @@ export async function dispatchCommand(prisma, actorId, input) {
     if (prior) { if (prior.requestHash !== requestHash) fail('COMMAND_CONFLICT'); return prior.result }
     const run = await tx.dispatchRun.findUnique({ where: { id: input.runId }, include: fullRun })
     if (!run || run.version !== input.version || run.status !== 'OPEN') fail('SETTINGS_CONFLICT')
+    await requireOpenServiceDays(tx,[localStamp(run.slot.startsAt).slice(0,10)])
     const vehicle = await active(tx, 'fleetVehicle', run.slot.vehicleId)
     await active(tx, 'operationResource', run.slot.resourceId)
     if (run.slot.status !== 'ACTIVE' || vehicle.capacity < run.capacity || vehicle.totalCapacity && run.capacity + run.staff.length > vehicle.totalCapacity) fail('SERVICE_SLOT_UNAVAILABLE')
@@ -240,6 +245,8 @@ export async function dispatchCommand(prisma, actorId, input) {
       if (journeyDay(line.booking, run.direction) !== localStamp(run.slot.startsAt).slice(0, 10)) fail('SERVICE_SLOT_UNAVAILABLE')
       const adults = int(input.adults, 0, 9999), children = int(input.children, 0, 9999)
       if (!adults && !children) fail('INVALID_QUANTITY', 400)
+      const attendance = await tx.bookingAttendance.findUnique({where:{bookingId_serviceDate_direction:{bookingId:line.bookingId,serviceDate:dateOnly(localStamp(run.slot.startsAt).slice(0,10)),direction:run.direction}}})
+      if (attendance?.noShowAdults || attendance?.noShowChildren) fail('CHECK_IN_DISPATCH_LOCKED')
       const existing = run.assignments.find(a => a.bookingLineId === line.id)
       if (existing?.actualAdults != null) fail('ACTUAL_ALREADY_RECORDED')
       if (existing && (adults < existing.adults || children < existing.children)) await protectPreparedGroup(tx, run, existing)

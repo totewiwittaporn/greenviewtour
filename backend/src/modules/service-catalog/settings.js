@@ -12,7 +12,7 @@ async function authorize(tx, actorId) {
 const referenceSelect={id:true,name:true,code:true}
 // Summary cards describe the full company-authorized dataset, independently of list filters.
 const summaryWhere={agreements:{signedOn:{not:null}},partners:{roles:{has:'SALES_AGENT'}},tours:{ownership:'GREENVIEW'},rates:{childPrice:{not:null}},locations:{kind:'HOTEL'},vehicles:{ownership:'GREENVIEW'},channels:{kind:'DIRECT'}}
-const includes={agreements:{agent:{select:referenceSelect}},tours:{operator:{select:referenceSelect}},rates:{agent:{select:referenceSelect},tour:{select:referenceSelect},agreement:{select:{...referenceSelect,startsOn:true,endsOn:true}}},vehicles:{provider:{select:referenceSelect}}}
+const includes={seasons:{tour:{select:referenceSelect}},promotions:{tour:{select:referenceSelect}},agreements:{agent:{select:referenceSelect}},tours:{operator:{select:referenceSelect}},rates:{agent:{select:referenceSelect},tour:{select:referenceSelect},agreement:{select:{...referenceSelect,startsOn:true,endsOn:true}}},vehicles:{provider:{select:referenceSelect}}}
 export async function listSettings(prisma,actorId,entity,params){
  if(!Object.hasOwn(catalog,entity))throw new AccessError('NOT_FOUND',404)
  await authorize(prisma,actorId)
@@ -55,6 +55,11 @@ export async function saveSettings(prisma,actorId,entity,input){
    if(!data[f.key])continue
    const related=await tx[catalog[f.entity].model].findUnique({where:{id:data[f.key]}})
    if(!related||related.status!=='ACTIVE'||(f.role&&!related.roles.includes(f.role)))throw new AccessError('RELATED_RECORD_UNAVAILABLE',409)
+  }
+  if(entity==='promotions'){
+   const tour=await tx.tourProgram.findUnique({where:{id:data.tourId}})
+   for(const key of ['adultPrice','childPrice'])if(data[key]!==null&&(tour[key]===null||Number(data[key])>Number(tour[key])))throw new AccessError('PROMOTION_PRICE_INVALID',400)
+   if(existing&&await tx.customerRequest.count({where:{promotionId:existing.id}})&&Object.keys(data).some(key=>key!=='status'&&String(data[key]??'')!==String(existing[key]??'')))throw new AccessError('PROMOTION_IN_USE',409)
   }
   if(entity==='rates'){
    const agreement=data.agreementId?await tx.agentAgreement.findUnique({where:{id:data.agreementId}}):null

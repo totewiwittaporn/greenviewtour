@@ -1,3 +1,4 @@
+import {RefreshButton} from '../../core/ui/RefreshButton.jsx'
 import { DateField } from '../../core/ui/DateField.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../core/auth/api.js'
@@ -59,11 +60,11 @@ export default function DailyClosePage() {
    <form noValidate className="filterbar" onSubmit={loadDate}><DateField label="Service date (Thailand)" value={date} placeholder="YYYY-MM-DD" error={dateError} onChange={e => setDate(e.target.value)} disabled={busy} /><Button type="submit" disabled={busy}>Load date</Button></form>
    <div className="address-section"><p>Times use Thailand time on the evening before the service date. Capturing a snapshot preserves a reference; it does not stop Booking from recording later changes.</p><p>Allocated runs only. Check unassigned bookings before using or sending the summary.</p>
     <p role="status">{readiness?.schedulerEnabled ? 'Automatic preparation enabled.' : 'Automatic preparation is not enabled.'} {readiness?.missing?.length ? 'LINE connection details and a reachable job-order address must be configured before delivery.' : readiness?.note}</p>
-    <div className="dialog-actions"><Button disabled={busy || loading || !data || Boolean(error)} busy={busy} onClick={() => prepare('CLOSE')}>Capture closing snapshot</Button><Button disabled={busy || loading || !data || Boolean(error)} onClick={() => prepare('SUMMARY')}>Prepare LINE summary</Button><Button disabled={busy} onClick={() => setRefresh(n => n + 1)}>Refresh</Button></div>
+    <div className="dialog-actions"><Button disabled={busy || loading || !data || Boolean(error)} busy={busy} onClick={() => prepare('CLOSE')}>Capture closing snapshot</Button><Button disabled={busy || loading || !data || Boolean(error)} onClick={() => prepare('SUMMARY')}>Prepare LINE summary</Button><RefreshButton disabled={busy} onClick={() => setRefresh(n => n + 1)}/></div>
    </div>
    {notice && <p role="status">{notice}</p>}
    <DataTable label="Daily summary history" columns={['Snapshot', 'Revision', 'Captured (Thailand)', 'Runs', 'Actions']} busy={loading} error={error} onRetry={() => setRefresh(n => n + 1)} isEmpty={!snapshots.length} empty={<p>No snapshots for this service date. Capture the totals when the team is ready.</p>}>
-    {snapshots.map(snapshot => <tr key={snapshot.id}><td>{kindLabel(snapshot.kind)}</td><td>{snapshot.revision}</td><td>{stamp(snapshot.createdAt)}</td><td>{snapshot.runs?.length || 0}</td><td><Dropdown label={`Actions for ${snapshot.kind} revision ${snapshot.revision}`} items={[{label:'View',icon:'view',onSelect:() => setView(snapshot)}]}><span aria-hidden="true">⋯</span></Dropdown></td></tr>)}
+    {snapshots.map(snapshot => <tr key={snapshot.id}><td>{kindLabel(snapshot.kind)}</td><td>{snapshot.revision}</td><td>{stamp(snapshot.createdAt)}</td><td>{snapshot.runs?.length || 0}</td><td><Dropdown rowActions label={`Actions for ${snapshot.kind} revision ${snapshot.revision}`} items={[{label:'View',icon:'view',onSelect:() => setView(snapshot)}]}/></td></tr>)}
    </DataTable><Pagination page={data?.page || page} pageSize={data?.pageSize || 25} total={error ? undefined : data?.total ?? snapshots.length} busy={loading} onPageChange={setPage} />
   </section>{view && <SnapshotView snapshot={view} onClose={() => setView(null)} />}
  </>

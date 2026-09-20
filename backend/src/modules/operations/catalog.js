@@ -1,3 +1,4 @@
+import { priceActions } from './booking-price.js'
 import { randomUUID } from 'node:crypto'
 import { catalog, validateCatalog } from '../../../../packages/contracts/catalog.js'
 import { operationCatalog } from '../../../../packages/contracts/operations.js'
@@ -11,6 +12,7 @@ export async function listOperations(prisma,actorId,entity,params){
  if(q.length>100||!Number.isSafeInteger(requested)||requested<1||requested>100000)fail('INVALID_FILTER',400)
  if(status&&!['ACTIVE','INACTIVE','OPEN','DRAFT','CONFIRMED','COMPLETED','CANCELLED','READY','CLEANING','DAMAGED'].includes(status))fail('INVALID_FILTER',400)
  const base=definition?.kind?{kind:definition.kind}:entity==='bookings'&&!access.booking?{createdById:actorId}:{},where={...base}
+ if(entity==='bookings'&&params.get('source')){const source=params.get('source');if(!['DIRECT','AGENT'].includes(source))fail('INVALID_FILTER',400);base.agentId=source==='DIRECT'?null:{not:null};where.agentId=base.agentId}
  if(params.get('bookingId')){if(entity!=='bookings')fail('INVALID_FILTER',400);where.id=uuid(params.get('bookingId'))}
  if(entity==='resources'&&params.get('kind')){const kind=params.get('kind');if(!['SERVICE','EQUIPMENT','CONSUMABLE','MATERIAL'].includes(kind))fail('INVALID_FILTER',400);where.kind=kind==='MATERIAL'?{in:['EQUIPMENT','CONSUMABLE']}:kind}
  if(status&&!['stock','issues','movements'].includes(entity))where.status=status
@@ -23,6 +25,7 @@ export async function listOperations(prisma,actorId,entity,params){
  return prisma.$transaction(async tx=>{
   const total=await tx[model].count({where}),pages=Math.max(1,Math.ceil(total/25)),page=Math.min(requested,pages)
   let rows=await tx[model].findMany({where,include:include[entity],skip:(page-1)*25,take:25,orderBy:entity==='stock'?[{id:'asc'}]:[{createdAt:'desc'},{id:'asc'}]})
+  if(entity==='bookings')rows=rows.map(row=>({...row,priceActions:priceActions(row,actorId,access)}))
   if(entity==='components')rows=rows.map(r=>({...r,name:r.resource.name,code:r.tour.code}))
   if(entity==='issues'){
    const ids=[...new Set(rows.flatMap(r=>[r.sourceId,r.destinationId]))],stores=await tx.stockLocation.findMany({where:{id:{in:ids}}})

@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
+import { pushText, validatePush } from '../../platform/line/messaging.js'
 import { authorize, dateOnly, fail, hash, write } from './common.js'
 
-// This module prepares durable, reviewable work only. It never sends a LINE message.
+// Preparation never sends. Delivery requires runner opt-in and server configuration.
 export function bangkokSchedule(now = new Date()) {
   if (!Number.isFinite(+now)) throw new Error('INVALID_DATE')
   const local = new Date(+now + 7 * 60 * 60 * 1000)
@@ -119,15 +120,12 @@ export async function deliverPrepared(prisma, actorId, id, { enabled = false, en
     if (item.attempts >= 5) fail('LINE_ATTEMPTS_EXHAUSTED',409)
     if (item.status === 'SENDING' && +now - +item.lastAttemptAt < 120000) fail('LINE_DELIVERY_BUSY',409)
     if (item.payload.to !== env.LINE_GROUP_ID) fail('LINE_CONFIG_CHANGED',409)
+    validatePush(item.payload, item.retryKey)
     return tx.operationNotificationOutbox.update({where:{id},data:{status:'SENDING',attempts:{increment:1},firstAttemptAt:item.firstAttemptAt || now,lastAttemptAt:now}})
   })
   if (['SENT','EXPIRED','SUPERSEDED'].includes(row.status)) return {id,status:row.status}
-  let status = 'FAILED', requestId = null
-  try {
-    const response = await transport('https://api.line.me/v2/bot/message/push',{method:'POST',headers:{Authorization:`Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`,'Content-Type':'application/json','X-Line-Retry-Key':row.retryKey},body:JSON.stringify(row.payload),signal:AbortSignal.timeout(15000)})
-    requestId = response.headers.get('x-line-accepted-request-id')
-    if (response.ok || (response.status === 409 && requestId)) status = 'SENT'
-  } catch { /* Keep immutable payload/retry key for a bounded retry, including unknown network outcomes. */ }
+  const result = await pushText({ payload: row.payload, retryKey: row.retryKey, token: env.LINE_CHANNEL_ACCESS_TOKEN, mode: 'live', transport })
+  const status = result.accepted ? 'SENT' : 'FAILED'
   await write(prisma,actorId,tx => tx.operationNotificationOutbox.updateMany({where:{id,status:'SENDING',attempts:row.attempts},data:{status}}))
   return {id,status}
 }

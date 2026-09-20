@@ -168,3 +168,107 @@ html[data-core-modal-open], html[data-core-modal-open] body { overflow:hidden; o
 .access-role-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 12px; }
 .access-role-grid > label { display: flex; align-items: center; gap: 8px; }
 .access-permission { padding-block: 12px; border-bottom: 1px solid var(--line); }
+
+/* Owner-reviewed compact datasets: two lines, balanced columns, full detail via View. */
+.table-scroll table { table-layout:fixed; width:100%; }
+.table-scroll :is(th,td) { padding:12px 14px; vertical-align:middle; white-space:normal; overflow-wrap:anywhere; }
+.table-cell-copy { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; max-height:2.9em; line-height:1.45; }
+.table-cell-copy > :is(div,p,span,strong) { margin-block:0; }
+.table-cell-copy .field-help { padding-top:0; min-height:0; font-size:inherit; line-height:inherit; }
+.table-cell-controls { display:flex; align-items:center; gap:8px; min-width:0; }
+.table-cell-controls .button { min-width:0; max-width:100%; }
+.table-cell-controls .dropdown-anchor > .button { width:36px; height:36px; min-height:36px; padding:4px; font-size:20px; line-height:1; }
+.button-download { white-space:nowrap; min-height:34px; padding:7px 10px; font-size:12px; }
+.core-dialog:has(.table-scroll) { width:min(1040px,calc(100vw - 32px)); }
+.core-dialog .table-scroll { height:auto; min-height:0; max-height:none; }
+.core-dialog .table-scroll table { min-width:0; }
+.core-dialog .table-scroll[data-columns="7"] table,.core-dialog .table-scroll[data-columns="8"] table { min-width:720px; }
+.core-dialog .table-scroll .empty-state { min-height:96px; padding:20px 14px; }
+.core-dialog .table-footer { padding:14px 0; gap:12px; min-height:0; }
+.dialog-content { padding:20px 24px; }
+.dialog-content > p,.dialog-content > form > p { margin:0 0 14px; line-height:1.55; }
+.dialog-content > h2 { margin:20px 0 10px; }
+.dialog-header h2 { line-height:1.4; overflow-wrap:anywhere; }
+.evidence-section { margin-top:20px; }
+.evidence-section > h2 { margin-bottom:8px; }
+.evidence-section > p { margin:0 0 12px; max-width:76ch; line-height:1.55; }
+.evidence-section > .page-actions { margin:12px 0; gap:8px; }
+.dialog-content > .button + .button { margin-inline-start:8px; }
+@media(max-width:760px) {
+ .core-dialog,.core-dialog:has(.table-scroll),.core-dialog[data-variant=table] { width:calc(100vw - 24px); max-height:calc(100dvh - 24px); }
+ .dialog-header { padding:14px 16px; gap:12px; }
+ .dialog-header h2 { font-size:17px; }
+ .dialog-content { padding:16px; font-size:13px; }
+ .table-scroll :is(th,td) { padding:10px; font-size:12px; }
+ .core-dialog .table-scroll[data-columns="4"] table { min-width:440px; }
+ .core-dialog .table-scroll[data-columns="5"] table { min-width:540px; }
+ .table-cell-controls .dropdown-anchor > .button { width:40px; height:40px; }
+ .button-download { min-height:40px; }
+ h1 { font-size:26px; }
+ .page-heading { gap:12px; margin-bottom:20px; }
+ .metrics { gap:12px; }
+ .metric { padding:16px; }
+}
+@media(max-width:480px) {
+ .core-dialog,.core-dialog:has(.table-scroll),.core-dialog[data-variant=table] { width:calc(100vw - 16px); max-height:calc(100dvh - 16px); border-radius:12px; }
+ .dialog-content { padding:14px; }
+ .dialog-header { padding:12px 14px; }
+ .dialog-header h2 { font-size:16px; }
+ .dialog-content .field-control input,.dialog-content .core-select-trigger { min-height:42px; height:42px; font-size:16px; }
+ .dialog-actions { gap:8px; }
+}
+.core-dialog { max-width:calc(100vw - 32px); }
+@media(max-width:760px) { .core-dialog { max-width:calc(100vw - 24px); } }
+@media(max-width:480px) { .core-dialog { max-width:calc(100vw - 16px); } }
+
+/* Detect rendered controls as well as React elements, including production builds. */
+.table-cell-copy:has(:is(button,input,select,textarea,a)) {
+  display:flex; align-items:center; gap:8px; min-width:0;
+  max-height:none; overflow:visible; -webkit-line-clamp:unset; line-clamp:unset;
+}
+.table-cell-copy:has(:is(button,input,select,textarea,a)) .button { min-width:0; max-width:100%; }
+.table-cell-copy .dropdown-anchor > .button { width:36px; height:36px; min-height:36px; padding:4px; font-size:20px; line-height:1; }
+@media(max-width:760px) { .table-cell-copy .dropdown-anchor > .button { width:40px; height:40px; min-height:40px; } }
+
+/* Consistent normal-weight table content, including the Users directory. */
+.table-scroll tbody td, .table-scroll tbody td :is(strong,b) { font-weight:400; }
+
+.evidence-preview {display:block;width:100%;max-height:360px;object-fit:contain;border:1px solid var(--line);border-radius:8px;margin:12px 0;background:white;}
+.core-dialog[data-variant="signature"] {width:min(1040px,calc(100vw - 24px));}
+.signature-pad {display:block;width:100%;aspect-ratio:1000/260;border:1px solid var(--line);border-radius:8px;background:#fff;color:#172c35;}
+.signature-pad-edit {touch-action:none;cursor:crosshair;}
+.signature-pad-edit:focus-visible {outline:2px solid var(--brand);outline-offset:3px;}
+.signature-record {margin:16px 0;}
+.signature-record h3 {font-size:14px;font-weight:400;margin:0 0 8px;}
+.signature-consent {display:flex;align-items:flex-start;gap:10px;margin-top:16px;line-height:1.5;}
+.bill-signatures {margin:20px 0;}
+
+.signature-pad-edit + .page-actions {margin-top:8px;}
+
+.core-dialog[data-variant="document-viewer"] {width:min(1040px,calc(100vw - 24px));}
+.document-viewer-name {overflow-wrap:anywhere;font-weight:400;}
+.document-viewer-toolbar {display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:12px 0;min-height:36px;}
+.document-viewer-surface {height:min(62dvh,680px);min-height:200px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--canvas);}
+.document-viewer-surface > :is(p,div) {padding:16px;}
+.document-viewer-image {display:block;height:auto;margin:0 auto;}
+.document-viewer-pdf {width:100%;height:100%;display:block;border:0;background:white;}
+
+.document-viewer-page {max-width:none;padding:20px 24px;}
+.document-viewer-page h1 {font-size:24px;margin:8px 0;}
+.document-viewer-page header p {margin:6px 0;}
+.document-viewer-page .document-viewer-surface {height:calc(100dvh - 240px);min-height:240px;}
+.document-viewer-footer {font-size:12px;color:var(--muted);}
+@media(max-width:760px){.document-viewer-page {padding:14px;}.document-viewer-page h1 {font-size:20px;}.document-viewer-page .document-viewer-surface{height:calc(100dvh - 250px);}}
+
+/* Canonical table actions cannot wrap or change shape with font fallback. */
+.button-row-actions {display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;width:36px;height:36px;min-height:36px;padding:6px;white-space:nowrap;}
+.button-row-actions svg {width:20px;height:20px;flex:none;}
+.panel > .filterbar:first-child {padding-top:20px;}
+.filterbar > .button {min-height:38px;gap:8px;white-space:nowrap;}
+@media(max-width:760px){.button-row-actions {width:40px;height:40px;min-height:40px;flex-basis:40px;}.panel > .filterbar:first-child {padding-top:16px;}}
+
+/* Staff authentication: quiet single-card layout. */
+.auth-layout{display:flex;align-items:center;justify-content:center;min-height:100svh;padding:32px 20px;background:var(--canvas)}
+.auth-layout .auth-panel{width:100%;max-width:480px;padding:32px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.auth-layout .auth-back{margin-bottom:28px}.auth-layout .auth-form-wrap h2{font-weight:500}
+@media(max-width:640px){.auth-layout{padding:20px 16px}.auth-layout .auth-panel{padding:24px 20px}}

@@ -27,7 +27,7 @@ export async function programBookingPlan(tx,input,existing=null){
   adultPrice=rate?.adultPrice?.toString()??null;childPrice=rate?.childPrice?.toString()??null
   priceSource={kind:'AGENT',agentId:agent.id,rateId:rate?.id||null,rateVersion:rate?.version||null,agreementId:rate?.agreementId||null,agreementCode:rate?.agreement?.code||null}
  }
- if(preserve){adultPrice=existing.adultPrice?.toString()??null;childPrice=existing.childPrice?.toString()??null;priceSource=existing.programSnapshot.priceSource;allowedPaymentTerms=existing.programSnapshot.allowedPaymentTerms||allowedPaymentTerms;defaultPaymentTerms=existing.paymentTerms}
+ if(preserve){adultPrice=existing.programSnapshot.priceException?existing.programSnapshot.priceException.standard.adultPrice:existing.adultPrice?.toString()??null;childPrice=existing.programSnapshot.priceException?existing.programSnapshot.priceException.standard.childPrice:existing.childPrice?.toString()??null;priceSource=existing.programSnapshot.priceSource;allowedPaymentTerms=existing.programSnapshot.allowedPaymentTerms||allowedPaymentTerms;defaultPaymentTerms=existing.paymentTerms}
  const direction=journey.outboundDate?(program.journeyMode==='OUTBOUND_ONLY'||journey.returnStatus==='OTHER'?'OUTBOUND':'BOTH'):'RETURN'
  const components=preserve?existing.lines.filter(l=>l.snapshot?.componentId).map(l=>({id:l.snapshot.componentId,resourceId:l.resourceId,resource:l.resource,selection:l.snapshot.selection,basis:l.snapshot.basis,quantity:l.snapshot.basisQuantity,usagePoint:l.usagePoint,day:l.snapshot.day,notes:l.snapshot.notes,version:l.snapshot.componentVersion,removalCredit:l.snapshot.removalCredit,prior:l})):program.components
  const lines=components.map(c=>{

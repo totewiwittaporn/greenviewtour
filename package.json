@@ -7,7 +7,7 @@
     "dev": "node scripts/dev.js",
     "dev:public": "npm run dev --workspace @greenviewtour/public-web",
     "dev:backoffice": "npm run dev --workspace @greenviewtour/backoffice",
-    "build": "npm run build:public && npm run build:backoffice",
+    "build": "npm run build:public && npm run build:backoffice && npm run build:member",
     "build:public": "npm run build --workspace @greenviewtour/public-web",
     "build:backoffice": "npm run build --workspace @greenviewtour/backoffice",
     "preview": "npm run preview --workspace @greenviewtour/public-web",
@@ -19,7 +19,8 @@
     "postinstall": "npm run prisma:generate --workspace @greenviewtour/api",
     "db:migrate": "npm run db:migrate --workspace @greenviewtour/api",
     "owner:invite": "npm run owner:invite --workspace @greenviewtour/api --",
-    "test:frontend": "node --test frontend/backoffice/test/*.test.js"
+    "test:frontend": "node --test frontend/backoffice/test/*.test.js",
+    "build:member": "npm run build --workspace @greenviewtour/member"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",

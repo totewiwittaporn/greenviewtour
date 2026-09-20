@@ -33,7 +33,9 @@ export function createAuthProvider(env = process.env, factory = createClient) {
   const checked = checkAuthResult
   return {
     async login(email, password) { return checked(await client().auth.signInWithPassword({ email, password }), 'INVALID_CREDENTIALS') },
+    async registerMember(email, password) { return checked(await client().auth.signUp({ email, password, options: { emailRedirectTo: 'http://localhost:5175/login' } }), 'REGISTRATION_FAILED') },
     async register(email, password) { return checked(await client().auth.signUp({ email, password, options: { emailRedirectTo: 'http://localhost:5174/login' } }), 'REGISTRATION_FAILED') },
+    async recoverMember(email) { checked(await client().auth.resetPasswordForEmail(email, { redirectTo: 'http://localhost:5175/login' }), 'RECOVERY_FAILED') },
     async recover(email) { checked(await client().auth.resetPasswordForEmail(email, { redirectTo: 'http://localhost:5174/reset-password' }), 'RECOVERY_FAILED') },
     async verifyRecovery(email, token) { return checked(await client().auth.verifyOtp({ email, token, type: 'recovery' }), 'RECOVERY_INVALID') },
     async refresh(refresh_token) { return checked(await client().auth.refreshSession({ refresh_token }), 'SESSION_EXPIRED').session },

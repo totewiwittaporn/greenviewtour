@@ -9,7 +9,7 @@ function fixture({kind = 'VEHICLE', direction = 'OUTBOUND', capacity = 12, role 
  const line = {id:id(6),bookingId:booking.id,resourceId:resource.id,selected:true,dispatchDirection:'BOTH',resource,booking,quantity:adults+children,dispatchAssignments:assigned}
  const run = {id:id(2),version:1,kind,direction,status:'OPEN',capacity,staff:[],assignments:[],slot:{status:'ACTIVE',resourceId:resource.id,vehicleId:vehicle.id,startsAt:new Date('2026-11-10T01:00Z'),endsAt:new Date('2026-11-10T03:00Z')}}
  const events = [], creations = []
- const tx = {
+ const tx = {serviceDayClose:{count:async()=>0},bookingAttendance:{findMany:async()=>[],findUnique:async()=>null,count:async()=>0},
   $executeRaw:async()=>{events.push('lock')},
   userProfile:{findUnique:async()=>{events.push('authorize');return {status:'ACTIVE',roles:[{roleCode:role,scope:'SELF'}]}}},
   dispatchRun:{findUnique:async()=>{events.push('readRun');return run},update:async()=>{events.push('writeRun')}},
@@ -99,7 +99,7 @@ test('booking setting options permit island return intake without exposing other
  const {bookingOptions}=await import('../src/modules/operations/dispatch.js')
  let query
  const actor={status:'ACTIVE',roles:[{roleCode:'ASSISTANT_TOUR_GUIDE',scope:'SELF'}]}
- const tx={tourProgram:{count:async()=>1,findMany:async q=>{query=q;return [{id:id(30),name:'Return ticket'}]}}}
+ const tx={serviceDayClose:{count:async()=>0},bookingAttendance:{findMany:async()=>[],findUnique:async()=>null,count:async()=>0},tourProgram:{count:async()=>1,findMany:async q=>{query=q;return [{id:id(30),name:'Return ticket'}]}}}
  const prisma={userProfile:{findUnique:async()=>actor},$transaction:fn=>fn(tx)}
  const result=await bookingOptions(prisma,id(9),new URLSearchParams({entity:'tours'}))
  assert.equal(result.rows.length,1)

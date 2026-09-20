@@ -31,6 +31,7 @@ model UserProfile {
   accessVersion Int @default(1)
   permissionOverrides UserPermissionOverride[]
   dispatchStaff DispatchStaff[]
+  guideAssignments GuideAssignment[]
   @@schema("app_private")
  province String? @db.VarChar(100)
  district String? @db.VarChar(100)
@@ -139,6 +140,10 @@ model SalesChannel {
 }
 
 model CompanySettings {
+ bankName String? @db.VarChar(200)
+ bankAccountName String? @db.VarChar(200)
+ bankAccountNumber String? @db.VarChar(100)
+ paymentInstructions String? @db.VarChar(1000)
  id String @id @db.Uuid
  version Int @default(1)
  createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -200,6 +205,21 @@ model BusinessPartner {
 }
 
 model TourProgram {
+ publicStatus String @default("DRAFT") @db.VarChar(20)
+ slug String? @unique @db.VarChar(100)
+ tourType String? @db.VarChar(30)
+ description String? @db.VarChar(5000)
+ highlights String? @db.VarChar(3000)
+ imageUrls String? @db.VarChar(5000)
+ meals String? @db.VarChar(2000)
+ fees String? @db.VarChar(2000)
+ inclusions String? @db.VarChar(2000)
+ exclusions String? @db.VarChar(2000)
+ preparationNotes String? @db.VarChar(2000)
+ seasons TourSeason[]
+ promotions TourPromotion[]
+ customerRequests CustomerRequest[]
+
  journeyMode String @default("FIXED") @db.VarChar(30)
  durationDays Int? @default(1)
  id String @id @db.Uuid
@@ -418,6 +438,10 @@ model OperationTrip {
  @@schema("app_private")
 }
 model TourBooking {
+ attendance BookingAttendance[]
+ guideAssignments GuideAssignment[]
+ customerRequest CustomerRequest?
+ billLine AgentBillLine?
  outboundDate DateTime? @db.Date
  returnDate DateTime? @db.Date
  returnStatus String @default("OUR") @db.VarChar(20)
@@ -588,6 +612,8 @@ model DispatchStaff {
  @@schema("app_private")
 }
 model DispatchAssignment {
+ status String @default("ASSIGNED") @db.VarChar(30)
+ cancellationReason String? @db.VarChar(1000)
  id String @id @db.Uuid
  runId String @db.Uuid
  bookingLineId String @db.Uuid
@@ -760,5 +786,239 @@ model FinancePersonnelCommand {
  requestHash String @db.VarChar(64)
  result Json
  createdAt DateTime @default(now()) @db.Timestamptz(6)
+ @@schema("app_private")
+}
+
+model EvidenceAttachment {
+ id String @id @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ targetKind String @db.VarChar(32)
+ targetId String @db.Uuid
+ uploadedBy String @db.Uuid
+ filename String @db.VarChar(200)
+ mimeType String @db.VarChar(100)
+ size Int
+ sha256 String @db.VarChar(64)
+ content Bytes
+ note String @db.VarChar(1000)
+ documentNumber String @db.VarChar(100)
+ category String @db.VarChar(30)
+ requestHash String @db.VarChar(64)
+ @@index([targetKind, targetId, createdAt])
+ @@schema("app_private")
+}
+
+model AgentBill {
+ id String @id @db.Uuid
+ version Int @default(1)
+ title String @db.VarChar(160)
+ agentId String @db.Uuid
+ agentName String @db.VarChar(200)
+ total Decimal @db.Decimal(14,2)
+ paid Decimal @default(0) @db.Decimal(14,2)
+ status String @default("OPEN") @db.VarChar(20)
+ dueOn DateTime @db.Date
+ snapshot Json
+ createdBy String @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ lines AgentBillLine[]
+ payments AgentPayment[]
+ @@index([agentId,status])
+ @@schema("app_private")
+}
+model AgentBillLine {
+ bookingId String @id @db.Uuid
+ booking TourBooking @relation(fields:[bookingId],references:[id],onDelete:Restrict)
+ billId String @db.Uuid
+ bill AgentBill @relation(fields:[billId],references:[id],onDelete:Restrict)
+ @@index([billId])
+ @@schema("app_private")
+}
+model AgentPayment {
+ id String @id @db.Uuid
+ billId String @db.Uuid
+ amount Decimal @db.Decimal(14,2)
+ receivedOn DateTime @db.Date
+ reference String @db.VarChar(300)
+ recordedBy String @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ bill AgentBill @relation(fields:[billId],references:[id],onDelete:Restrict)
+ @@index([billId,createdAt])
+ @@schema("app_private")
+}
+
+model TourSeason {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ status String @db.VarChar(20)
+ tourId String @db.Uuid
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ startsOn DateTime @db.Date
+ endsOn DateTime @db.Date
+ onlineStartsOn DateTime @db.Date
+ onlineEndsOn DateTime @db.Date
+ bookingStartsOn DateTime @db.Date
+ bookingEndsOn DateTime @db.Date
+ cutoffDays Int @default(1)
+ closedDates String? @db.VarChar(2000)
+ @@index([tourId,status])
+ @@schema("app_private")
+}
+model TourPromotion {
+ holdHours Int?
+ requests CustomerRequest[]
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ status String @db.VarChar(20)
+ tourId String @db.Uuid
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ startsOn DateTime @db.Date
+ endsOn DateTime @db.Date
+ serviceStartsOn DateTime @db.Date
+ serviceEndsOn DateTime @db.Date
+ adultPrice Decimal? @db.Decimal(10,2)
+ childPrice Decimal? @db.Decimal(10,2)
+ quota Int?
+ quotaUnit String @db.VarChar(20)
+ terms String? @db.VarChar(2000)
+ @@index([tourId,status])
+ @@schema("app_private")
+}
+model WebsitePopup {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ status String @db.VarChar(20)
+ imageUrl String @db.VarChar(2048)
+ imageAlt String @db.VarChar(300)
+ mobileImageUrl String? @db.VarChar(2048)
+ title String? @db.VarChar(200)
+ linkUrl String? @db.VarChar(2048)
+ buttonLabel String? @db.VarChar(100)
+ startsOn DateTime @db.Date
+ endsOn DateTime @db.Date
+ frequency String @db.VarChar(20)
+ priority Int @default(0)
+ @@index([status,startsOn,endsOn])
+ @@schema("app_private")
+}
+model CustomerProfile {
+ id String @id @db.Uuid
+ version Int @default(1)
+ authUserId String? @unique @db.Uuid
+ displayName String @db.VarChar(200)
+ email String? @db.VarChar(254)
+ phone String? @db.VarChar(32)
+ status String @default("ACTIVE") @db.VarChar(20)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ requests CustomerRequest[]
+ @@index([status,displayName])
+ @@schema("app_private")
+}
+model CustomerRequest {
+ holdUntil DateTime? @db.Timestamptz(6)
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ promotion TourPromotion? @relation(fields:[promotionId],references:[id],onDelete:Restrict)
+ booking TourBooking? @relation(fields:[bookingId],references:[id],onDelete:Restrict)
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ customerId String @db.Uuid
+ customer CustomerProfile @relation(fields:[customerId],references:[id],onDelete:Restrict)
+ tourId String @db.Uuid
+ promotionId String? @db.Uuid
+ serviceDate DateTime @db.Date
+ adults Int
+ children Int
+ status String @default("REQUESTED") @db.VarChar(30)
+ requestHash String @db.VarChar(64)
+ snapshot Json
+ details Json
+ bookingId String? @unique @db.Uuid
+ staffNote String? @db.VarChar(1000)
+ @@index([customerId,createdAt])
+ @@index([promotionId,status])
+ @@index([status,createdAt])
+ @@schema("app_private")
+}
+
+model WebsiteImage {
+ id String @id @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ filename String @db.VarChar(200)
+ mimeType String @db.VarChar(100)
+ content Bytes
+ size Int
+ sha256 String @db.VarChar(64)
+ uploadedBy String @db.Uuid
+ @@schema("app_private")
+}
+
+model GuideAssignment {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ bookingId String @db.Uuid
+ guideId String @db.Uuid
+ startsAt DateTime @db.Timestamptz(6)
+ endsAt DateTime @db.Timestamptz(6)
+ status String @default("PLANNED") @db.VarChar(20)
+ notes String? @db.VarChar(2000)
+ requestHash String @db.VarChar(64)
+ booking TourBooking @relation(fields:[bookingId],references:[id],onDelete:Restrict)
+ guide UserProfile @relation(fields:[guideId],references:[id],onDelete:Restrict)
+ @@index([guideId,status,startsAt])
+ @@index([bookingId])
+ @@schema("app_private")
+}
+
+model BookingAttendance {
+ id String @id @db.Uuid
+ bookingId String @db.Uuid
+ serviceDate DateTime @db.Date
+ direction String @db.VarChar(20)
+ version Int @default(1)
+ adults Int @default(0)
+ children Int @default(0)
+ noShowAdults Int @default(0)
+ noShowChildren Int @default(0)
+ reason String? @db.VarChar(1000)
+ financeStatus String @default("NONE") @db.VarChar(30)
+ financeReason String? @db.VarChar(1000)
+ financeReviewedBy String? @db.Uuid
+ changes Json @default("[]")
+ updatedBy String @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ booking TourBooking @relation(fields:[bookingId],references:[id],onDelete:Restrict)
+ @@unique([bookingId,serviceDate,direction])
+ @@index([serviceDate,direction])
+ @@index([financeStatus])
+ @@schema("app_private")
+}
+model ServiceDayClose {
+ id String @id @db.Uuid
+ serviceDate DateTime @unique @db.Date
+ version Int @default(1)
+ status String @default("CLOSED") @db.VarChar(20)
+ snapshot Json
+ reason String? @db.VarChar(1000)
+ updatedBy String @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
  @@schema("app_private")
 }

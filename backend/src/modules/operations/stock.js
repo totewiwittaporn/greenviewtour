@@ -44,7 +44,7 @@ export async function stockCommand(prisma,actorId,input,{authorizeDelegated=null
    lot=issue.lot;resource=lot.resource;converted=units(resource,input)
    if(converted.quantity>issue.quantity-issue.settledQty)fail('RETURN_EXCEEDS_ISSUE')
    const disposition=input.disposition
-   const condition={RETURN_READY:'READY',RETURN_CLEANING:'CLEANING',RETURN_DAMAGED:'DAMAGED'}[disposition]
+   const condition={RETURN_READY:'READY',RETURN_DAMAGED:'DAMAGED'}[disposition]
    if(!condition&&!['CONSUMED','WASTED'].includes(disposition))fail('INVALID_DISPOSITION',400)
    if(resource.kind==='EQUIPMENT'&&disposition==='CONSUMED'||resource.kind==='CONSUMABLE'&&condition==='CLEANING')fail('INVALID_DISPOSITION',400)
    if(condition){destination=await active(tx,'stockLocation',input.locationId);if(condition==='READY'&&expired(lot))fail('EXPIRED_STOCK');await add(tx,lot.id,destination.id,condition,converted.quantity)}
@@ -68,7 +68,7 @@ export async function stockCommand(prisma,actorId,input,{authorizeDelegated=null
      destination=await active(tx,'stockLocation',input.destinationId);if(destination.id===source.id)fail('SAME_LOCATION',400)
      await add(tx,lot.id,destination.id,balance.condition,converted.quantity)
     }else if(input.action==='CONDITION'){
-     if(!['READY','CLEANING','DAMAGED'].includes(input.condition)||input.condition===balance.condition||resource.kind==='CONSUMABLE'&&input.condition==='CLEANING')fail('INVALID_CONDITION',400)
+     if(!['READY','DAMAGED'].includes(input.condition)||input.condition===balance.condition||resource.kind==='CONSUMABLE'&&input.condition==='CLEANING')fail('INVALID_CONDITION',400)
      if(input.condition==='READY'&&expired(lot))fail('EXPIRED_STOCK')
      destination=source;await add(tx,lot.id,source.id,input.condition,converted.quantity)
      details={...details,previousCondition:balance.condition,condition:input.condition}
