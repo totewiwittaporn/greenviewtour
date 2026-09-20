@@ -215,3 +215,7 @@ Member DemoCheckout composes Core Button/Notice in the existing quote panel. Onl
 ## Service check-in
 
 Customer check-in is a distinct Tour Operations destination. Reuse Core DateField, FormField, SummaryCards, DataTable, Dropdown, Dialog, SelectField, Button and Pagination with the existing sea palette and normal table weight. The primary task is confirming arrivals, not editing the Booking. A no-show review uses the Core table dialog to show old/new passenger allocations before confirmation. Check-in is separate from next-day dispatch snapshots.
+
+## Reference lookup spacing · 20 September 2026
+
+Core ReferenceField uses the Backoffice stylesheet as its single spacing owner: an 8px grid gap separates search, labeled selection and paging/retry controls; its outer 20px separation remains. This applies in pages and all Dialog consumers, including Booking, dispatch, stock, company work, finance, guide assignments and catalog forms. Existing field label/control spacing and responsive control heights remain unchanged.

@@ -32,7 +32,7 @@ export async function getBlueprint(prisma,actorId,params){
  const access=await intakeAccess(prisma,actorId)
  const adults=int(params.get('adults'),0,9999),children=int(params.get('children'),0,9999)
  if(adults+children<1)fail('INVALID_PASSENGER_COUNT',400)
- if(params.get('tourId')){const existing=params.get('bookingId')?await prisma.tourBooking.findUnique({where:{id:uuid(params.get('bookingId'))},include:full}):null;if(existing&&!access.booking&&existing.createdById!==actorId)fail('PERMISSION_DENIED',403);const plan=await programBookingPlan(prisma,{...Object.fromEntries(params),adults,children},existing);await requireOpenServiceDays(tx,[plan.journey?.outboundDate,plan.journey?.returnDate,input.serviceDate])
+ if(params.get('tourId')){const existing=params.get('bookingId')?await prisma.tourBooking.findUnique({where:{id:uuid(params.get('bookingId'))},include:full}):null;if(existing&&!access.booking&&existing.createdById!==actorId)fail('PERMISSION_DENIED',403);const plan=await programBookingPlan(prisma,{...Object.fromEntries(params),adults,children},existing);await requireOpenServiceDays(prisma,[plan.journey?.outboundDate,plan.journey?.returnDate,params.get('serviceDate')])
   if(!access.booking&&plan.program.journeyMode!=='RETURN_ONLY')fail('PERMISSION_DENIED',403);return intakePlanView(plan)}
  if(!access.booking)fail('PERMISSION_DENIED',403)
  return blueprint(prisma,params.get('tripId'),adults,children)

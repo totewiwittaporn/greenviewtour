@@ -128,3 +128,31 @@ test('editing an approved negotiated booking restores its standard snapshot inst
  assert.equal(plan.childPrice,'900')
  assert.equal(plan.preserve,true)
 })
+
+
+test('booking blueprint loads direct program pricing and checks the requested service dates',async()=>{
+ const {getBlueprint}=await import('../src/modules/operations/bookings.js')
+ const f=saveFixture();let checked
+ f.tx.serviceDayClose.count=async query=>{checked=query;return 0}
+ const result=await getBlueprint(f.tx,id(20),new URLSearchParams({...f.input,adults:'2',children:'1'}))
+ assert.equal(result.adultPrice,'1500')
+ assert.equal(result.lines[0].quantity,3)
+ assert.deepEqual(checked.where.serviceDate.in.map(d=>d.toISOString()),['2026-11-10T00:00:00.000Z'])
+ assert.equal(result.lines[0].resource.costPrice,undefined)
+})
+test('booking blueprint checks both overnight dates and preserves closed-day rejection',async()=>{
+ const {getBlueprint}=await import('../src/modules/operations/bookings.js')
+ const f=saveFixture();f.program.durationDays=3;let checked
+ f.tx.serviceDayClose.count=async query=>{checked=query;return 1}
+ await assert.rejects(getBlueprint(f.tx,id(20),new URLSearchParams({...f.input,adults:'2',children:'1'})),{code:'SERVICE_DAY_CLOSED'})
+ assert.deepEqual(checked.where.serviceDate.in.map(d=>d.toISOString()),['2026-11-10T00:00:00.000Z','2026-11-12T00:00:00.000Z'])
+})
+test('return-only blueprint handles the absent outbound date',async()=>{
+ const {getBlueprint}=await import('../src/modules/operations/bookings.js')
+ const f=saveFixture();f.program.journeyMode='RETURN_ONLY';let checked
+ f.tx.serviceDayClose.count=async query=>{checked=query;return 0}
+ const result=await getBlueprint(f.tx,id(20),new URLSearchParams({...f.input,adults:'2',children:'1'}))
+ assert.equal(result.journey.outboundDate,null)
+ assert.equal(result.journey.returnDate,'2026-11-10')
+ assert.equal(checked.where.serviceDate.in.length,1)
+})
