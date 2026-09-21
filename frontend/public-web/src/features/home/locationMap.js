@@ -6,3 +6,5 @@ export function locationMapEmbed(company, coordinates) {
   if (company?.mapUrl === verifiedPierMapUrl) return verifiedPierEmbed
   return coordinates ? `https://www.google.com/maps?q=${encodeURIComponent(coordinates)}&output=embed` : null
 }
+
+export const regionEmbed = 'https://www.google.com/maps/embed?pb=!1m10!1m8!1m3!1d251892.9785633716!2d98.08789245697236!3d9.436497484152381!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sth!2sth!4v1789982602648!5m2!1sth!2sth'

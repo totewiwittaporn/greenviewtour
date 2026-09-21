@@ -16,3 +16,5 @@
 .home-location-visual{min-width:0;width:100%}
 
 .home-page .home-location-map{height:390px;background:var(--soft)}@media(max-width:600px){.home-page .home-location-map{height:340px}}
+
+.home-map-options{display:flex;gap:4px;margin-bottom:8px}.home-map-options button{min-height:44px;flex:1;font:inherit;font-size:12px;border:1px solid var(--line);border-radius:6px;color:var(--deep);background:white;padding:6px 10px;cursor:pointer}.home-map-options button[aria-pressed="true"]{background:var(--deep);color:white}

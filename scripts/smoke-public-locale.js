@@ -26,7 +26,7 @@ try {
     if (url.pathname.startsWith('/api/')) {
       if (url.pathname === '/api/public/company') {
         if (companyMode === 'error') return route.fulfill({status: 503, json: {}})
-        return route.fulfill({json: {company: companyMode === 'empty' ? null : companyMode === 'unsafe' ? {...company, mapUrl: 'javascript:alert(1)'} : company}})
+        return route.fulfill({json: {company: companyMode === 'verified' ? {...company, mapUrl:'https://maps.app.goo.gl/1ErL2zJHXys3hdPX6'} : companyMode === 'empty' ? null : companyMode === 'unsafe' ? {...company, mapUrl: 'javascript:alert(1)'} : company}})
       }
       if (url.pathname === '/api/public/tours') {
         const ownership = url.searchParams.get('ownership')
@@ -218,6 +218,17 @@ try {
   await page.waitForURL(`${origin}/tours?ownership=PARTNER`)
   await page.getByRole('heading', {name: partner.name, exact:true}).waitFor()
   assert.equal(await page.evaluate(() => window.homeShell === document.querySelector('.site-header')), true)
+  companyMode = 'verified'
+  await page.goto(origin)
+  const mapOptions = page.locator('.home-map-options button')
+  await mapOptions.first().waitFor()
+  const regionSource = await page.locator('.home-location-map').getAttribute('src')
+  assert.ok(regionSource.includes('!1m10!'))
+  await mapOptions.nth(1).click()
+  assert.equal(await mapOptions.nth(1).getAttribute('aria-pressed'), 'true')
+  assert.ok((await page.locator('.home-location-map').getAttribute('src')).includes('0x8396d375139ef9df'))
+  await mapOptions.first().click()
+  assert.equal(await page.locator('.home-location-map').getAttribute('src'), regionSource)
   companyMode = 'empty'
   tourMode = 'empty'
   await page.goto(origin)

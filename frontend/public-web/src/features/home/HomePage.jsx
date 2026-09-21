@@ -3,7 +3,7 @@ import {useLocale} from '../../core/useLocale.js'
 import {Button} from '../../core/ui/Controls.jsx'
 import {safeMapUrl} from '../../../../../packages/contracts/address.js'
 import './HomePage.css'
-import {locationMapEmbed} from './locationMap.js'
+import {locationMapEmbed, regionEmbed, verifiedPierMapUrl} from './locationMap.js'
 import PublishedHighlights from '../catalog/PublishedHighlights.jsx'
 
 function Botanical({className=''}) {
@@ -34,6 +34,7 @@ function CompanyLocation() {
   const {t} = useLocale()
   const [state, setState] = useState({loading: true})
   const [attempt, setAttempt] = useState(0)
+  const [mapView, setMapView] = useState('region')
   useEffect(() => {
     const controller = new AbortController()
     const timeout = setTimeout(() => { setState({error: true}); controller.abort() }, 15000)
@@ -61,7 +62,8 @@ function CompanyLocation() {
       </>}
     </div>
     <div className="home-location-visual">
-      {embed ? <iframe className="home-location-map" title={t('แผนที่ตั้งกรีนวิว ทัวร์')} src={embed} loading="eager" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen/> : <div className="home-map-placeholder"><span>{t('ดูที่ตั้งและช่องทางติดต่อ เพื่อวางแผนการเดินทางกับเรา')}</span></div>}
+      {company?.mapUrl === verifiedPierMapUrl && <div className="home-map-options" role="group" aria-label={t('แผนที่')}>{[['region','ภาพรวมเกาะและชายฝั่ง'],['pier','ตำแหน่งท่าเรือ']].map(([value,label])=><button type="button" key={value} aria-pressed={mapView===value} onClick={()=>setMapView(value)}>{t(label)}</button>)}</div>}
+      {embed ? <iframe className="home-location-map" title={t('แผนที่ตั้งกรีนวิว ทัวร์')} src={company?.mapUrl === verifiedPierMapUrl && mapView === 'region' ? regionEmbed : embed} loading="eager" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen/> : <div className="home-map-placeholder"><span>{t('ดูที่ตั้งและช่องทางติดต่อ เพื่อวางแผนการเดินทางกับเรา')}</span></div>}
 
     </div>
   </section>

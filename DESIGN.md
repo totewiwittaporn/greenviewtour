@@ -275,3 +275,5 @@ Owner detail pass: quiet botanical corner illustrations, Sriracha handwritten he
 ## Geographic accuracy and botanical refinement
 
 The owner rejected the schematic map: replace it with the actual Google Maps Share/Embed output verified against the saved Greenview pier link on2026-09-21. The viewport includes coast/islands at real scale; do not compress sea distance or claim travel time. Bind the static verified embed only to the matching saved map URL; other companies use validated coordinates or a neutral fallback. Palm decoration uses tapered curved leaflets; footer silhouette has two sharp M-like rear peaks (right higher) and a lower foreground mountain layer. This silhouette is decorative, based on the owner's description, not cartographic data.
+
+Map has two native Google views: an unpinned regional overview for visible Surin islands/coastline and the verified pier view for exact arrival location. Google controls scale and map labels; do not overlay guessed distances.
