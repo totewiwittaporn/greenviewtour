@@ -45,9 +45,14 @@ export async function enrollCustomer(db,user) {
 }
 export async function saveCustomerProfile(db,user,input) {
  const customer=await customerFor(db,user)
- keys(input,['version','displayName','phone','lineId'])
+ keys(input,['version','displayName','nickname','phone','lineId'])
  if(input.version!==customer.version)fail('SETTINGS_CONFLICT')
- const changed=await db.customerProfile.updateMany({where:{id:customer.id,version:input.version,status:'ACTIVE'},data:{displayName:string(input.displayName,200),phone:string(input.phone??'',32,false),...(Object.hasOwn(input,'lineId')?{lineId:string(input.lineId??'',100,false)}:{}),version:{increment:1}}})
+ const nickname={}
+ if(Object.hasOwn(input,'nickname')){
+  if(input.nickname!==null&&(typeof input.nickname!=='string'||input.nickname.trim().length>50||[...input.nickname].some(char => char.charCodeAt(0) < 32 || (char.charCodeAt(0) >= 127 && char.charCodeAt(0) <= 159))))fail('INVALID_INPUT',400)
+  nickname.nickname=input.nickname?.trim()||null
+ }
+ const changed=await db.customerProfile.updateMany({where:{id:customer.id,version:input.version,status:'ACTIVE'},data:{displayName:string(input.displayName,200),...nickname,phone:string(input.phone??'',32,false),...(Object.hasOwn(input,'lineId')?{lineId:string(input.lineId??'',100,false)}:{}),version:{increment:1}}})
  if(!changed.count)fail('SETTINGS_CONFLICT')
  return {customer:await customerFor(db,user)}
 }

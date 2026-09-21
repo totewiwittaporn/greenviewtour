@@ -98,3 +98,27 @@ test('provider error categories distinguish email quotas, recipient configuratio
     ['weak_password', 422, 'PASSWORD_POLICY_REJECTED'],
   ]) assert.throws(() => checkAuthResult({ error: { code: providerCode, status, message: 'private details must not be forwarded' } }, 'REGISTRATION_FAILED'), { code, status: status === 429 ? 429 : 400 })
 })
+
+test('employee nickname is optional, bounded and never replaces the full name', () => {
+ const base={displayName:'Full Employee Name',updatedAt:new Date().toISOString()}
+ assert.deepEqual(validateProfilePatch({...base,nickname:' Tee '},{company:false}),{displayName:base.displayName,nickname:'Tee'})
+ assert.equal(Object.hasOwn(validateProfilePatch(base,{company:false}),'nickname'),false)
+ for(const nickname of [null,'','   '])assert.equal(validateProfilePatch({...base,nickname},{company:false}).nickname,null)
+ assert.equal(validateProfilePatch({...base,nickname:'x'.repeat(50)},{company:false}).nickname.length,50)
+ for(const nickname of [42,false,{},undefined,'x'.repeat(51),'bad\nname','bad\tname','bad\u0000name','bad\u007fname','bad\u0085name'])assert.throws(()=>validateProfilePatch({...base,nickname},{company:false}),{code:'INVALID_NICKNAME'})
+})
+test('own employee nickname keeps identity, account state and optimistic locking enforced',async()=>{
+ const {editOwnProfile}=await import('../src/modules/identity-access/user-management.js')
+ for(const scenario of ['success','stale','inactive','foreign']){
+  const writes=[],audits=[],date=new Date('2026-09-21T00:00:00Z')
+  const tx={$executeRaw:async()=>{},userProfile:{findUnique:async({where})=>{assert.deepEqual(where,{id:'self'});return {status:scenario==='inactive'?'SUSPENDED':'ACTIVE'}},updateMany:async input=>{writes.push(input);return {count:scenario==='stale'?0:1}}},auditEvent:{create:async input=>audits.push(input)}}
+  const run=()=>editOwnProfile({$transaction:fn=>fn(tx)},'self',{displayName:'Full Name',nickname:' Nick ',updatedAt:date.toISOString(),...(scenario==='foreign'?{id:'other'}:{})})
+  if(scenario==='success'){await run();assert.deepEqual(writes[0].where,{id:'self',updatedAt:date});assert.equal(writes[0].data.nickname,'Nick');assert.equal(writes[0].data.displayName,'Full Name');assert.equal(audits[0].data.targetId,'self')}
+  else {await assert.rejects(run,{code:scenario==='stale'?'PROFILE_CONFLICT':scenario==='inactive'?'ACCOUNT_UNAVAILABLE':'INVALID_PROFILE_FIELDS'});assert.equal(audits.length,0);assert.equal(writes.length,scenario==='stale'?1:0)}
+ }
+})
+test('authenticated employee projection includes nickname independently of full name',async()=>{
+ const {publicProfile}=await import('../src/modules/identity-access/policy.js')
+ const result=publicProfile({...profile('GUIDE','GUIDE'),displayName:'Full Name',nickname:'Nick'},'fixture@example.invalid')
+ assert.equal(result.nickname,'Nick');assert.equal(result.displayName,'Full Name')
+})

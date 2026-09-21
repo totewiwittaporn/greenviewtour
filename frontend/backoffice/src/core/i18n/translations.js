@@ -1,4 +1,6 @@
 export default {
+  "Nickname": "ชื่อเล่น",
+  "Use up to 50 characters without control characters.": "กรอกได้สูงสุด 50 ตัวอักษร โดยไม่ใช้อักขระควบคุม",
   "Skip to content": "ข้ามไปเนื้อหา",
   "COMPANY WORKSPACE": "พื้นที่ทำงานบริษัท",
   "WORKSPACE": "พื้นที่ทำงาน",

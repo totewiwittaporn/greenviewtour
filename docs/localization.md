@@ -38,3 +38,5 @@ These browser scenarios are fixtures, not real-account or live-database acceptan
 ## User Info contact fields
 
 Authenticated User Info summaries hide locked account email/status/access fields and show editable self-contact details. Employee details include name, primary/alternate phone, LINE ID and structured address; a saved map link is shown only through the existing safe URL validator. Customer details include name, phone and optional LINE ID. The companion profile change adds `CustomerProfile.lineId` (100 characters) and keeps authenticated ownership and version checks; it is separate from interface translation.
+
+Employee and customer profiles also support optional `nickname` (50 characters). User Info prefers it for compact identity display, with full display name fallback; full names remain separate in contact details. Both profile forms localize the Nickname label. Member content uses compact 26/24px headings and 14px labels/buttons while retaining 16px form values and 44px controls.

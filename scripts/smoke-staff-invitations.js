@@ -14,7 +14,7 @@ try {
   let invites = [], created, ownPatch, reset = 0, link = 'a'.repeat(64), fail = true
   const catalog = () => ({ invitations: invites, total: invites.length, page: 1, pageSize: 25, summary: {total: invites.length, awaiting: invites.filter(i=>i.status==='Pending').length, joined: invites.filter(i=>i.status==='Joined').length, inactive: invites.filter(i=>['Expired','Revoked'].includes(i.status)).length}, roles: [['BOOKING','Booking'],['ACCOUNT','Account'],['GUIDE','Guide'],['ASSISTANT_TOUR_GUIDE','Assistant tour guide'],['CAPTAIN','Captain'],['ASSISTANT_CAPTAIN','Assistant Captain'],['DRIVER','Driver'],['HEAD_BOOKING','Head Booking'],['HEAD_GUIDE','Head Guide'],['HEAD_CAPTAIN','Head Captain'],['HEAD_DRIVER','Head Driver']].map(([code,name]) => ({ code, name })), departments: ['BOOKING','GUIDE','CAPTAIN','DRIVER'] })
   await page.route('**/api/me', route => route.fulfill({ json: { user } }))
-  await page.route('**/api/me/profile', route => { ownPatch = route.request().postDataJSON(); user.displayName = ownPatch.displayName; return route.fulfill({ json: { ok: true } }) })
+  await page.route('**/api/me/profile', route => { ownPatch = route.request().postDataJSON(); user.displayName = ownPatch.displayName; user.nickname = ownPatch.nickname?.trim() || null; return route.fulfill({ json: { ok: true } }) })
   await page.route('**/api/users?*', route => route.fulfill({ json: { users: [row], total: 1, page: 1, pageSize: 25, summary: { total: 1, verified: 1, signed_in: 0 }, checkedAt: new Date().toISOString(), canChangeDepartment: true, canInvite: true } }))
   await page.route(/\/api\/invitations(?:\?.*)?$/, route => {
     if (route.request().method() === 'GET') return route.fulfill({ json: catalog() })
@@ -51,9 +51,12 @@ try {
   assert.equal(await page.getByRole('combobox').count(), 3)
   for (const label of ['Province', 'District / Amphoe', 'Subdistrict / Tambon']) assert.equal(await page.getByRole('combobox', { name: label, exact: true }).count(), 1)
   await page.getByLabel('Display name').fill('Manager Edited')
+  await page.getByLabel('Nickname',{exact:true}).fill('Mint')
   await page.getByRole('button', { name: 'Save changes' }).click()
   await page.getByText('Profile updated.', { exact: true }).waitFor()
   await page.goto(((process.env.GREENVIEW_TEST_ORIGIN || 'http://localhost:5174') + '/settings/users'))
+  assert.equal(ownPatch.nickname, 'Mint')
+  assert.equal(await page.locator('.account-name').innerText(),'Mint')
   assert.equal(ownPatch.displayName, 'Manager Edited'); assert.equal('department' in ownPatch, false)
   await page.getByRole('button', { name: '+ Add employee', exact: true }).click()
   await page.getByRole('button', { name: 'Create invitation link', exact: true }).click()

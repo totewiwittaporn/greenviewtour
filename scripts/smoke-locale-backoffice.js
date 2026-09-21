@@ -11,7 +11,7 @@ try {
  const page = await browser.newPage({viewport:{width:834,height:1000}})
  const errors=[]; page.on('pageerror',error=>errors.push(error.message))
  let signedIn=false, calls=0, loginCalls=0
- const user={id:'fixture',displayName:'Name',primaryPhone:'+66812345678',emergencyPhone:'+66890000000',lineId:'tee.fixture',houseNumber:'12/34',province:'Phang-Nga',district:'Khura Buri',subdistrict:'Khura',postalCode:'82150',email:'locale@example.invalid',status:'ACTIVE',roles:[{code:'MANAGER',name:'Manager',scope:'COMPANY'}],permissions:[],management:{company:true},operations:{booking:true},companyAccess:{'inventory.request':true}}
+ const user={id:'fixture',displayName:'Name',nickname:' Mint ',primaryPhone:'+66812345678',emergencyPhone:'+66890000000',lineId:'tee.fixture',houseNumber:'12/34',province:'Phang-Nga',district:'Khura Buri',subdistrict:'Khura',postalCode:'82150',email:'locale@example.invalid',status:'ACTIVE',roles:[{code:'MANAGER',name:'Manager',scope:'COMPANY'}],permissions:[],management:{company:true},operations:{booking:true},companyAccess:{'inventory.request':true}}
  const calendar=customerCalendar([{id:'booking',status:'CONFIRMED',outboundDate:'2026-09-21',adults:3,children:1,programSnapshot:{tourId:'tour',name:'Maintenance jobs'}}], '2026-09-21')
  await page.route('**/api/auth/login',route=>{loginCalls++; return route.fulfill({status:401,json:{code:'INVALID_CREDENTIALS'}})})
  await page.route('**/api/me',route=>route.fulfill({status:signedIn?200:401,json:signedIn?{user}:{code:'LOGIN_REQUIRED'}}))
@@ -89,7 +89,11 @@ try {
  await page.reload()
  await page.getByRole('heading',{name:'ลูกค้า · 14 วันข้างหน้า / Customers · next 14 days'}).waitFor()
  assert.equal(await page.locator('html').getAttribute('lang'),'th')
- assert.equal(await page.locator('.account-name').innerText(),'Name','Stored employee name must remain unchanged')
+ assert.equal(await page.locator('.account-name').innerText(),'Mint','Nickname is used on User Info')
+ user.nickname=null
+ await page.reload()
+ await page.getByRole('heading',{name:'ลูกค้า · 14 วันข้างหน้า / Customers · next 14 days'}).waitFor()
+ assert.equal(await page.locator('.account-name').innerText(),'Name','Missing nickname falls back to the preserved full name')
  assert.deepEqual(errors,[])
  console.log(JSON.stringify({result:'PASS',app:'Backoffice bilingual',checks:['unsaved auth fields','Thai/English labels','reload persistence','no refetch on switch','modal remains open across language event','stored names unchanged','focus restoration','1440/834/390 overflow'],liveAccounts:false}))
 } finally { await browser.close() }

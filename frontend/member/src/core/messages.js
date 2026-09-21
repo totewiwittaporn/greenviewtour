@@ -6,6 +6,7 @@ export const messages = {
   "บันทึกข้อมูลแล้ว": "Your details have been saved",
   "ข้อมูลของฉัน": "My profile",
   "ชื่อผู้ติดต่อ": "Contact name",
+  "ชื่อเล่น": "Nickname",
   "โทรศัพท์": "Phone",
   "บันทึกข้อมูล": "Save details",
   "ยอดชำระเต็มจำนวน": "Full payment amount",

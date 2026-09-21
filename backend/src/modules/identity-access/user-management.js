@@ -22,10 +22,14 @@ export function canEditProfile(actor, target) {
   return target.department === scope.department && !target.roles.some(role => ['ADMIN_MANAGER','MANAGER'].includes(role.roleCode))
 }
 export function validateProfilePatch(input, scope) {
-  if (!input || Object.keys(input).some(key => !['displayName','department','updatedAt','address','primaryPhone','emergencyPhone','lineId',...addressKeys].includes(key))) throw new AccessError('INVALID_PROFILE_FIELDS', 400)
+  if (!input || Object.keys(input).some(key => !['displayName','nickname','department','updatedAt','address','primaryPhone','emergencyPhone','lineId',...addressKeys].includes(key))) throw new AccessError('INVALID_PROFILE_FIELDS', 400)
   if (typeof input.displayName !== 'string' || !input.displayName.trim() || input.displayName.trim().length > 100) throw new AccessError('INVALID_DISPLAY_NAME',400)
   if (typeof input.updatedAt !== 'string' || !Number.isFinite(Date.parse(input.updatedAt))) throw new AccessError('PROFILE_VERSION_REQUIRED',400)
   const data = { displayName: input.displayName.trim() }
+  if (Object.hasOwn(input, 'nickname')) {
+    if (input.nickname !== null && (typeof input.nickname !== 'string' || input.nickname.trim().length > 50 || [...input.nickname].some(char => char.charCodeAt(0) < 32 || (char.charCodeAt(0) >= 127 && char.charCodeAt(0) <= 159)))) throw new AccessError('INVALID_NICKNAME', 400)
+    data.nickname = input.nickname?.trim() || null
+  }
   for (const [key, limit] of Object.entries({ address: 1000, primaryPhone: 32, emergencyPhone: 32, lineId: 100, ...Object.fromEntries(addressFields.map(f=>[f.key,f.max])) })) {
     if (!(key in input)) continue
     if (input[key] !== null && typeof input[key] !== 'string') throw new AccessError('INVALID_CONTACT_DETAILS', 400)

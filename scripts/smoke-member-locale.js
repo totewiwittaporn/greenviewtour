@@ -17,7 +17,7 @@ try {
    if (route.request().method() === 'POST') {
     profileWrites++
     if (failSave) return route.fulfill({status:409,json:{code:'SETTINGS_CONFLICT'}})
-    Object.assign(customer,route.request().postDataJSON(),{version:customer.version+1})
+    Object.assign(customer,route.request().postDataJSON(),{nickname:route.request().postDataJSON().nickname?.trim() || '',version:customer.version+1})
    }
    return route.fulfill(authenticated ? {json:{customer,recovery}} : {status:401,json:{code:'LOGIN_REQUIRED'}})
   }
@@ -90,6 +90,11 @@ try {
     await shell.setViewportSize({width,height:844})
     const account = shell.locator('.member-account-trigger'), toggle = shell.locator('.member-menu-toggle'), nav = shell.locator('#member-navigation')
     assert.equal(await nav.isVisible(), width > 1100)
+    assert.equal(await shell.locator('main h1').evaluate(el=>getComputedStyle(el).fontSize),width <= 760 ? '24px' : '26px')
+    assert.equal(await shell.locator('main .field label').first().evaluate(el=>getComputedStyle(el).fontSize),'14px')
+    assert.equal(await shell.locator('main input').first().evaluate(el=>getComputedStyle(el).fontSize),'16px')
+    assert.ok(await shell.locator('main input').first().evaluate(el=>el.getBoundingClientRect().height>=44))
+    assert.equal(await shell.locator('main button[type="submit"]').evaluate(el=>getComputedStyle(el).fontSize),'14px')
     await account.click()
     assert.equal(await shell.locator('.member-account-panel').isVisible(),true)
     assert.equal(await shell.locator('.member-signout').count(),signedIn ? 1 : 0)
@@ -100,6 +105,8 @@ try {
      assert.equal(await shell.locator('.member-edit-profile').getAttribute('href'),'/profile')
      assert.equal(await shell.locator('main').innerText().then(text=>text.includes(customer.email)),false)
      assert.equal(await shell.getByLabel('LINE ID',{exact:true}).getAttribute('maxlength'),'100')
+     assert.equal(await shell.getByLabel(locale === 'th' ? 'ชื่อเล่น / Nickname' : 'Nickname',{exact:true}).getAttribute('maxlength'),'50')
+     assert.equal(await shell.locator('.member-account-name').textContent(),customer.displayName)
     }
     assert.equal(await shell.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true)
     await shell.keyboard.press('Escape')
@@ -122,33 +129,47 @@ try {
    }
   }
  }
+ // Nickname independently participates in the dirty guard before other edits.
+ await shell.getByLabel('Nickname',{exact:true}).fill('  ที  ')
  // LINE ID participates in locale-preserving edits, failure preservation and saved identity.
  await shell.setViewportSize({width:390,height:844})
- await shell.getByLabel('LINE ID',{exact:true}).fill('new.line')
  await shell.locator('.member-menu-toggle').click()
  await shell.locator('#member-navigation a[href="/tours"]').click()
  await shell.getByRole('dialog').waitFor()
  await shell.getByRole('button',{name:'Continue editing',exact:true}).click()
- assert.equal(await shell.getByLabel('LINE ID',{exact:true}).inputValue(),'new.line')
+ assert.equal(await shell.getByLabel('Nickname',{exact:true}).inputValue(),'  ที  ')
+ await shell.getByLabel('LINE ID',{exact:true}).fill('new.line')
  await shell.locator('.member-account-trigger').click()
  await shell.getByRole('button',{name:'Thai / ภาษาไทย',exact:true}).click()
  assert.equal(await shell.getByLabel('LINE ID',{exact:true}).inputValue(),'new.line')
+ assert.equal(await shell.getByLabel('ชื่อเล่น / Nickname',{exact:true}).inputValue(),'  ที  ')
  failSave = true
  await shell.getByRole('button',{name:'บันทึกข้อมูล',exact:true}).click()
  await shell.getByText('ข้อมูลเปลี่ยนแล้ว กรุณาโหลดข้อมูลล่าสุด',{exact:true}).waitFor()
  assert.equal(await shell.getByLabel('LINE ID',{exact:true}).inputValue(),'new.line')
+ assert.equal(await shell.getByLabel('ชื่อเล่น / Nickname',{exact:true}).inputValue(),'  ที  ')
+ assert.equal(await shell.getByLabel('ชื่อเล่น / Nickname',{exact:true}).inputValue(),'  ที  ')
+ assert.equal(await shell.locator('.member-account-name').textContent(),customer.displayName)
  failSave = false
  await shell.getByRole('button',{name:'บันทึกข้อมูล',exact:true}).click()
  await shell.getByText('บันทึกข้อมูลแล้ว',{exact:true}).waitFor()
  assert.equal(profileWrites,2)
  assert.equal(customer.lineId,'new.line')
+ assert.equal(customer.nickname,'ที')
+ assert.equal(await shell.locator('.member-account-name').textContent(),'ที')
+ assert.equal(await shell.getByLabel('ชื่อเล่น / Nickname',{exact:true}).inputValue(),'ที')
  await shell.locator('.member-account-trigger').click()
  assert.match(await shell.locator('.member-contact-details').innerText(),/new.line/)
+ assert.match(await shell.locator('.member-contact-details').innerText(),/ที/)
+ assert.equal(await shell.locator('.member-identity strong').textContent(),customer.displayName)
  await shell.keyboard.press('Escape')
  await shell.getByLabel('LINE ID',{exact:true}).fill('')
+ await shell.getByLabel('ชื่อเล่น / Nickname',{exact:true}).fill('')
  await shell.getByRole('button',{name:'บันทึกข้อมูล',exact:true}).click()
  await shell.waitForFunction(()=>document.querySelector('button[type="submit"]').disabled===false)
  assert.equal(customer.lineId,'')
+ assert.equal(customer.nickname,'')
+ assert.equal(await shell.locator('.member-account-name').textContent(),customer.displayName)
  // Long contact content stays inside a short mobile viewport and scrolls to actions.
  customer.lineId = 'long-line-id-'.repeat(8)
  customer.displayName = 'ชื่อสมาชิกที่มีความยาวเพื่อทดสอบการตัดบรรทัด'.repeat(4)
@@ -167,5 +188,5 @@ try {
  assert.equal(await shell.locator('.member-edit-profile').count(),0)
  await shell.close()
  assert.deepEqual(errors,[])
- console.log('Member locale browser fixtures passed: login/reload/errors/recovery, 320/390/834/1440px authenticated and guest header menus, keyboard/outside dismissal, catalog content, quote/contact/consent preservation, LINE ID dirty/error/save/clear, hidden locked details, bounded long-contact dropdown and recovery action visibility.')
+ console.log('Member locale browser fixtures passed: login/reload/errors/recovery, 320/390/834/1440px authenticated and guest header menus, keyboard/outside dismissal, catalog content, quote/contact/consent preservation, nickname and LINE ID dirty/error/save/clear, normalized nickname trigger with full-name fallback/detail, compact typography with 16px inputs and 44px controls, hidden locked details, bounded long-contact dropdown and recovery action visibility.')
 } finally { await browser.close() }

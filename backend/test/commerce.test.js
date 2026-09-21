@@ -111,3 +111,26 @@ test('member profile preserves optimistic locking before and during updates',asy
  const concurrent=profileDb();concurrent.customerProfile.updateMany=async()=>({count:0})
  await assert.rejects(()=>saveCustomerProfile(concurrent,memberUser,{version:3,displayName:'Customer',lineId:'new'}),{message:'SETTINGS_CONFLICT'})
 })
+
+test('member nickname is owned, optional and independent from full display name',async()=>{
+ const db=profileDb();db.customer.nickname='Previous'
+ const result=await saveCustomerProfile(db,memberUser,{version:3,displayName:'Customer',nickname:' Nick '})
+ assert.equal(result.customer.nickname,'Nick');assert.equal(result.customer.displayName,'Customer')
+ const omitted=profileDb();omitted.customer.nickname='Previous'
+ assert.equal((await saveCustomerProfile(omitted,memberUser,{version:3,displayName:'Customer'})).customer.nickname,'Previous')
+ assert.equal(Object.hasOwn(omitted.writes[0].data,'nickname'),false)
+ for(const nickname of [null,'','   '])assert.equal((await saveCustomerProfile(profileDb(),memberUser,{version:3,displayName:'Customer',nickname})).customer.nickname,null)
+ assert.equal((await saveCustomerProfile(profileDb(),memberUser,{version:3,displayName:'Customer',nickname:'x'.repeat(50)})).customer.nickname.length,50)
+})
+test('member nickname rejects invalid values and preserves stale-write protection',async()=>{
+ for(const nickname of [42,false,{},undefined,'x'.repeat(51),'bad\nname','bad\tname','bad\u0000name','bad\u007fname','bad\u0085name']){
+  const db=profileDb()
+  await assert.rejects(()=>saveCustomerProfile(db,memberUser,{version:3,displayName:'Customer',nickname}),{message:'INVALID_INPUT'})
+  assert.equal(db.writes.length,0)
+ }
+ const stale=profileDb()
+ await assert.rejects(()=>saveCustomerProfile(stale,memberUser,{version:2,displayName:'Customer',nickname:'New'}),{message:'SETTINGS_CONFLICT'})
+ assert.equal(stale.writes.length,0)
+ const concurrent=profileDb();concurrent.customerProfile.updateMany=async()=>({count:0})
+ await assert.rejects(()=>saveCustomerProfile(concurrent,memberUser,{version:3,displayName:'Customer',nickname:'New'}),{message:'SETTINGS_CONFLICT'})
+})

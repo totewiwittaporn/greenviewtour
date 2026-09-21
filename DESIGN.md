@@ -235,3 +235,9 @@ Backoffice Core table tokens use 12px data, 11px column headings and 8px vertica
 Owner-approved User Info shows self-editable contact details: employee display name, primary/alternate phone, LINE ID and structured address with a validated saved map link; Member shows name, phone and LINE ID. Locked account email, status and access details are omitted from these summaries. Edit profile remains the existing full-page form. Menus are viewport-bounded with internal scrolling and visible keyboard navigation. Language radio rows share the Core menu item geometry.
 
 Public Thai mode now uses Thai-only owned headings/navigation/actions; English mode uses English. Brand names, TH/EN codes and authored CMS content remain unchanged. Member and Backoffice retain paired Thai/English labels. Customer LINE ID is an optional contact field (100 characters), editable only through the authenticated self-profile with the existing version check.
+
+## Member typography and nicknames (2026-09-21)
+
+Owner-approved Member Profile comparison sets main headings to 26px desktop / 24px mobile, section headings 20px / 18px, labels and content buttons 14px. Form values stay 16px with controls at least 44px tall. Content spacing is slightly tighter; User Info keeps its established type geometry.
+
+Employee and customer self-profile forms expose optional Nickname (50 characters). The User Info identity/trigger prefers a trimmed nickname, falling back to the existing full display name. Full names remain in the detail summary and are never overwritten by a nickname. Clearing a nickname restores that fallback. Nicknames do not influence access or account linking.

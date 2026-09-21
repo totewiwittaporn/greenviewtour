@@ -36,7 +36,7 @@ export default function MemberHeader({customer, recovery, onLogout}) {
   media.addEventListener('change', reset)
   return () => media.removeEventListener('change', reset)
  }, [])
- const identity = customer?.displayName || 'Member'
+ const identity = customer?.nickname?.trim() || customer?.displayName || 'Member'
  return <header className="member-header" ref={header}>
   <a className="brand" href="/">GREENVIEW <span>MEMBER</span></a>
   <Button ref={navigationTrigger} className="secondary member-menu-toggle" aria-label={locale === 'th' ? 'เมนู / Menu' : 'Menu'} aria-controls="member-navigation" aria-expanded={open === 'navigation'} onClick={() => setOpen(open === 'navigation' ? null : 'navigation')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg></Button>
@@ -50,7 +50,7 @@ export default function MemberHeader({customer, recovery, onLogout}) {
     {customer ? <><span className="member-avatar" aria-hidden="true">{Array.from(identity)[0]?.toUpperCase()}</span><span className="member-account-name">{identity}</span></> : <span>{locale.toUpperCase()}</span>}<span aria-hidden="true">⌄</span>
    </Button>
    {open === 'account' && <div id="member-account-panel" className="member-account-panel">
-    {customer && <div className="member-identity"><strong>{identity}</strong><dl className="member-contact-details"><div><dt>{label('โทรศัพท์')}</dt><dd>{customer.phone || '—'}</dd></div><div><dt>LINE ID</dt><dd>{customer.lineId || '—'}</dd></div></dl>{!recovery && <a className="member-edit-profile" href="/profile" onClick={() => close()}>{label('แก้ไขข้อมูลส่วนตัว')}</a>}</div>}
+    {customer && <div className="member-identity"><strong>{customer.displayName}</strong><dl className="member-contact-details"><div><dt>{label('ชื่อเล่น')}</dt><dd>{customer.nickname?.trim() || '—'}</dd></div><div><dt>{label('โทรศัพท์')}</dt><dd>{customer.phone || '—'}</dd></div><div><dt>LINE ID</dt><dd>{customer.lineId || '—'}</dd></div></dl>{!recovery && <a className="member-edit-profile" href="/profile" onClick={() => close()}>{label('แก้ไขข้อมูลส่วนตัว')}</a>}</div>}
     <LanguageOptions onSelect={() => close(true)} />
     {customer && <Button className="member-signout" onClick={() => {close(true); onLogout()}}>{label('ออกจากระบบ')}</Button>}
    </div>}

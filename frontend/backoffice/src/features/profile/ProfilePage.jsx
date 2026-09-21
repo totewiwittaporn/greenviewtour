@@ -9,7 +9,7 @@ import { addressKeys, validateAddress } from '../../../../../packages/contracts/
 import { useUnsavedChanges } from '../../core/navigation/Navigation.jsx'
 import { FormField } from '../../core/ui/FormField.jsx'
 import { api, authMessage } from '../../core/auth/api.js'
-const values = user => Object.fromEntries(['displayName', 'primaryPhone', 'emergencyPhone', 'lineId', 'address', ...addressKeys].map(key => [key, user[key] || '']))
+const values = user => Object.fromEntries(['displayName', 'nickname', 'primaryPhone', 'emergencyPhone', 'lineId', 'address', ...addressKeys].map(key => [key, user[key] || '']))
 const phoneValid = value => !value.trim() || (/^\+?[0-9 ()-]+$/.test(value.trim()) && value.replace(/\D/g, '').length >= 7 && value.replace(/\D/g, '').length <= 15)
 export default function ProfilePage({ user, onSaved }) {
  useLocale();
@@ -28,6 +28,7 @@ export default function ProfilePage({ user, onSaved }) {
     event.preventDefault(); if (lock.current) return
     const invalid = validateAddress(fields)
     if (!fields.displayName.trim()) invalid.displayName = 'Enter your name.'
+    if (fields.nickname.trim().length > 50 || [...fields.nickname].some(char => char.charCodeAt(0) < 32 || (char.charCodeAt(0) >= 127 && char.charCodeAt(0) <= 159))) invalid.nickname = 'Use up to 50 characters without control characters.'
     for (const key of ['primaryPhone', 'emergencyPhone']) if (!phoneValid(fields[key])) invalid[key] = 'Use 7–15 digits, with optional +, spaces, brackets or hyphens.'
     setErrors(invalid); setMessage(''); setError('')
     if (Object.keys(invalid).length) { return }
@@ -75,6 +76,7 @@ export default function ProfilePage({ user, onSaved }) {
     <div className="profile-layout"><aside className="panel profile-summary"><div className="profile-identity"><span className="profile-avatar">{saved.displayName?.[0]?.toUpperCase()}</span><div><h2>{saved.displayName}</h2><p>{saved.email}</p></div></div><dl className="profile-details"><dt>{bilingualLabel("Department")}</dt><dd>{t(saved.department || 'Not assigned')}</dd><dt>{bilingualLabel("Roles")}</dt><dd>{saved.roles.map(role => t(role.name)).join(' · ')}</dd><dt>{bilingualLabel("Status")}</dt><dd>{t(saved.status)}</dd><dt>{bilingualLabel("Joined")}</dt><dd>{saved.createdAt ? displayDate(new Date(saved.createdAt), { dateStyle: 'medium', timeZone: 'Asia/Bangkok' }) : t('Not available')}</dd></dl><p className="muted">{t("Contact your Manager to update your account access.")}</p></aside>
       <div className="profile-sections"><section className="panel"><div className="panel-heading"><div><h2>{bilingualLabel("Personal & contact details")}</h2><p>{t("Contact details are optional and visible to authorized team managers.")}</p></div></div><form className="profile-form" ref={form} noValidate onSubmit={save} aria-busy={busy}>
         <FormField label={bilingualLabel("Display name")} value={fields.displayName} onChange={e => update('displayName', e.target.value)} maxLength={100} autoComplete="name" error={errors.displayName} disabled={busy} />
+        <FormField label={bilingualLabel("Nickname")} value={fields.nickname} onChange={e => update('nickname', e.target.value)} maxLength={50} autoComplete="nickname" error={errors.nickname} disabled={busy} />
         <div className="profile-field-grid">{[['primaryPhone', 'Primary phone', 'tel'], ['emergencyPhone', 'Emergency phone', 'off']].map(([key, label, complete]) => <FormField key={key} label={label} type="tel" value={fields[key]} onChange={e => update(key, e.target.value)} maxLength={32} autoComplete={complete} error={errors[key]} disabled={busy} hint={key === 'emergencyPhone' ? t('An alternative number if your primary phone is unavailable.') : t('Include the country code when needed.')} />)}</div>
         <FormField label={bilingualLabel("Line ID")} value={fields.lineId} onChange={e => update('lineId', e.target.value)} maxLength={100} autoComplete="off" disabled={busy} />
         <AddressFields values={fields} onChange={update} errors={errors} disabled={busy} legacyAddress={saved.address} />
