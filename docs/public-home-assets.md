@@ -39,3 +39,5 @@ Owner requested removing the underwater swimmer photograph because permission fr
 ## Approved replacement: NIC_8148.jpg
 
 Owner selected the above/below-water coral photo from https://drive.google.com/file/d/1TV4H0SK5f6DQeGT1_LdtTlolyBwEbVgp/view. Original visually inspected: no people visible. Shipped as `images/home/surin-coral.webp`, resized to1400px wide and encoded WebP quality86 without generative alteration. It replaces the interim repeated landscape in the Surin introduction.
+
+Google Maps source: owner saved https://maps.app.goo.gl/1ErL2zJHXys3hdPX6 resolves to Greenview Tour pier at9.2246226,98.3729295. Share/Embed output was read from Google Maps with a zoomed-out viewport (center9.2243647,98.0631732) to preserve real coastline/island proportions. No hand-drawn geographic outline remains. The provider owns map labels, tiles and attribution.

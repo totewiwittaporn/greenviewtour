@@ -3,10 +3,26 @@ import {useLocale} from '../../core/useLocale.js'
 import {Button} from '../../core/ui/Controls.jsx'
 import {safeMapUrl} from '../../../../../packages/contracts/address.js'
 import './HomePage.css'
+import {locationMapEmbed} from './locationMap.js'
 import PublishedHighlights from '../catalog/PublishedHighlights.jsx'
 
 function Botanical({className=''}) {
-  return <svg className={`home-botanical ${className}`} viewBox="0 0 220 220" aria-hidden="true"><path d="M15 210Q80 100 203 20" fill="none" stroke="currentColor" strokeWidth="3"/>{[0,1,2,3,4].map(i=><g key={i} transform={`translate(${i*32} ${-i*31})`}><path d="M35 183Q-7 165 5 117Q49 136 35 183ZM40 177Q62 119 109 132Q91 173 40 177Z" fill="currentColor"/></g>)}</svg>
+  const leaflets=[
+    'M39 174C17 159 4 137 2 112C15 140 29 154 39 174Z',
+    'M53 150C28 130 20 105 23 76C30 108 43 130 53 150Z',
+    'M71 127C45 105 44 73 53 47C51 81 62 106 71 127Z',
+    'M94 102C73 77 81 48 92 25C82 58 88 82 94 102Z',
+    'M119 78C106 54 120 28 137 10C119 37 118 59 119 78Z',
+    'M144 56C143 36 161 15 179 5C157 23 150 41 144 56Z',
+    'M40 172C68 154 103 153 135 161C99 161 66 165 40 172Z',
+    'M54 148C87 125 126 123 160 132C121 130 84 140 54 148Z',
+    'M74 123C108 98 151 99 181 109C141 104 102 113 74 123Z',
+    'M97 98C131 76 170 77 199 89C163 83 126 88 97 98Z',
+    'M121 76C153 58 185 58 211 71C180 65 149 67 121 76Z',
+    'M147 54C173 39 196 41 219 51C193 46 169 49 147 54Z',
+    'M166 40C182 23 202 17 218 17C195 23 180 31 166 40Z',
+  ]
+  return <svg className={`home-botanical ${className}`} viewBox="0 0 220 220" aria-hidden="true"><path d="M16 218C43 144 102 85 211 17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>{leaflets.map(d=><path key={d} d={d} fill="currentColor"/>)}</svg>
 }
 function mapCoordinates(company) {
   if (!company) return null
@@ -32,6 +48,7 @@ function CompanyLocation() {
   const company = state.company
   const coordinates = mapCoordinates(company)
   const map = safeMapUrl(company?.mapUrl) || (coordinates ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coordinates)}` : null)
+  const embed = locationMapEmbed(company, coordinates)
   return <section id="company" className="home-location home-container" aria-labelledby="company-title">
     <Botanical className="botanical-location"/><div className="home-location-intro" aria-busy={!!state.loading}><p className="section-eyebrow">{t('เริ่มต้นการเดินทาง')}</p><h2 id="company-title">{t('เริ่มต้นการเดินทางที่นี่')}</h2>
       {state.loading ? <p role="status">{t('กำลังโหลดข้อมูลบริษัท…')}</p> : state.error ? <div><p role="alert">{t('ยังโหลดข้อมูลบริษัทไม่ได้')}</p><Button onClick={() => setAttempt(value => value + 1)}>{t('ลองอีกครั้ง')}</Button></div> : !company ? <p>{t('ยังไม่มีข้อมูลบริษัทสำหรับแสดง')}</p> : <>
@@ -44,10 +61,8 @@ function CompanyLocation() {
       </>}
     </div>
     <div className="home-location-visual">
-      <div className="home-route-art" role="img" aria-label={t('ภาพประกอบเส้นทางจากคุระบุรีสู่หมู่เกาะสุรินทร์ ไม่ใช่แผนที่นำทาง')}>
-        <svg viewBox="0 0 600 330" aria-hidden="true"><defs><linearGradient id="route-sea" x2="1" y2="1"><stop stopColor="#91d5e3"/><stop offset="1" stopColor="#48a8c3"/></linearGradient></defs><rect width="600" height="330" fill="url(#route-sea)"/><path d="M420 0 399 42 413 76 384 113 400 150 372 183 394 218 368 256 380 290 360 330H600V0Z" fill="#d5dfc3"/><path d="m472 0-18 57 11 42-27 44 5 48-23 51 11 39-20 49" fill="none" stroke="#f8faf1" strokeWidth="5"/><path d="m115 104 22-21 26 14 6 30-18 21-29-13ZM138 166l20-11 21 19-5 26-24 7-17-21Z" fill="#608f70" stroke="#c8e1bd" strokeWidth="4"/><path d="M170 153Q286 245 404 145" stroke="white" strokeWidth="2.5" strokeDasharray="7 7" fill="none"/><circle cx="404" cy="145" r="11" fill="#ee842f" stroke="white" strokeWidth="4"/><path d="m277 191 27 0-6 7h-17zM289 174v17m0-14 12 10h-12" fill="white" stroke="white" strokeWidth="2"/></svg>
-        <strong className="route-islands">{t('หมู่เกาะสุรินทร์')}</strong><strong className="route-mainland">{t('คุระบุรี')}<small>GREENVIEW TOUR</small></strong><span className="route-note">{t('ภาพประกอบเส้นทาง · เปิดแผนที่เพื่อดูตำแหน่งจริง')}</span>
-      </div>
+      {embed ? <iframe className="home-location-map" title={t('แผนที่ตั้งกรีนวิว ทัวร์')} src={embed} loading="eager" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen/> : <div className="home-map-placeholder"><span>{t('ดูที่ตั้งและช่องทางติดต่อ เพื่อวางแผนการเดินทางกับเรา')}</span></div>}
+
     </div>
   </section>
 }

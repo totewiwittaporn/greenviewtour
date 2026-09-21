@@ -271,3 +271,7 @@ The owner supplied the teal/orange reference screen and approved a compact edito
 Final map treatment: use a clearly labeled schematic sea/island route illustration matching the visual reference, not an embedded address search or precise map. The real saved Maps link remains the directions action; no guessed coordinate is persisted.
 
 Owner detail pass: quiet botanical corner illustrations, Sriracha handwritten hero/footer notes with curved underline, island silhouette under footer brand, explicit Staff login label, and44px back-to-top control fixed at the viewport bottom-right with safe-area offsets. Decorative SVGs are hidden from accessibility and pointer input.
+
+## Geographic accuracy and botanical refinement
+
+The owner rejected the schematic map: replace it with the actual Google Maps Share/Embed output verified against the saved Greenview pier link on2026-09-21. The viewport includes coast/islands at real scale; do not compress sea distance or claim travel time. Bind the static verified embed only to the matching saved map URL; other companies use validated coordinates or a neutral fallback. Palm decoration uses tapered curved leaflets; footer silhouette has two sharp M-like rear peaks (right higher) and a lower foreground mountain layer. This silhouette is decorative, based on the owner's description, not cartographic data.
