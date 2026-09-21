@@ -8,7 +8,7 @@ const staffLogin=local?'http://localhost:5174/login':import.meta.env.VITE_STAFF_
 const links=[['/','หน้าแรก'],['/#company','รู้จักเรา'],['/#surin','รู้จักเกาะสุรินทร์'],['/tours','โปรแกรมทัวร์']]
 function Brand(){
   const {t}=useLocale()
-  return <a className="public-brand" href="/" aria-label={t('Greenview Tour หน้าแรก')}><img src="/images/brand/greenview-mark.png" alt="" width="140" height="100"/></a>
+  return <a className="public-brand" href="/" aria-label={t('Greenview Tour หน้าแรก')}><img src="/images/brand/greenview-logo.png" alt="" width="1508" height="994"/></a>
 }
 function isCurrent(href){
   const target=new URL(href,location.origin)

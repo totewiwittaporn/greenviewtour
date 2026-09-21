@@ -257,3 +257,5 @@ Real company contact/map data comes from a server allowlist; no invented map coo
 ## Public shared brand chrome (2026-09-21)
 
 Navbar and Footer use the owner's full original boat logo, including GREENVIEW TOUR lettering to match Facebook, on a pale plate against dark teal. No separate duplicate wordmark. Orange highlights retain the approved Home palette. Desktop navigation and TH/EN, Login and Register share one row; tablet/mobile keep account/language actions visible below the brand and hamburger, with primary navigation in a disclosure. Footer groups only supported destinations and stacks on small screens. Register opens the Member registration form directly through `/login?mode=register`.
+
+Owner refinement: Public chrome now uses the supplied transparent full-lettering PNG without a plate. Desktop Navbar is 64px; mobile retains visible account actions and 44px controls in a compact two-row shell. Favicon uses the previous white-background original.

@@ -31,3 +31,5 @@ This is a Home selection, not an exhaustive full-resolution review of every file
 ## Original brand logo
 
 The owner supplied `484293511_1146584594144725_4598489206089200479_n.jpg` and explicitly requested retaining the GREENVIEW TOUR lettering for consistency with Facebook. `frontend/public-web/public/images/brand/greenview-mark.png` is a 480×480 PNG resized from that original, retaining its white background, colors and lettering. Generated alternatives were not used. Shared Navbar/Footer reuse this asset without a duplicate wordmark.
+
+Latest owner-supplied `codex-clipboard-c9617f78-5800-43f3-8334-693c397fc827.png` is copied unchanged to `images/brand/greenview-logo.png` for shared Public chrome. The prior white-background `greenview-mark.png` remains the Public favicon. No generative image processing was used for this replacement.
