@@ -60,3 +60,9 @@ Links go to existing domain pages. Booking drafts preserve the supported status 
 - Final review includes a separate self-review and an independent read-only Milk agent audit. Milk found a return-only draft today/overdue gap; its return-date fallback and regression test are included. No additional permission leakage or invalid destination was found within the reviewed scope.
 
 CI initially stopped at clean install because the baseline lockfile omitted the already-declared Member workspace. A minimal 39-line lockfile addition restores the existing declared versions; no package manifest or dependency version was upgraded. Clean-install dry-run passed.
+
+## 21 September 2026 visual refinement
+
+Replaced attention cards with one scoped, filterable Core DataTable. The two-row calendar retains all14arrival dates, day selection and program summary. Today and weekend treatments are visual only; no count definitions or server authorization changed. Head/staff headings derive from the aggregate scope. The approved mockup's individual task/assignee rows and universal team totals are not fabricated: current endpoint exposes authorized queue counts only, so record work remains at its existing deep link. Scope and status filters affect only received rows, including a distinct no-results/reset state.
+
+Shared Navbar/Sidebar use the original Public logo and the approved dark-teal/white design. A help dialog is available before UserInfo; comprehensive screenshot documentation is still pending. Browser fixtures cover manager/head/staff payloads, permission-safe absent calendar, null measures, filters, keyboard scroll, TH/EN and retained auth/modal/loading behavior. Real profile grants and business data were not modified for validation.
