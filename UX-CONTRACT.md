@@ -278,3 +278,9 @@ Dashboard uses one authenticated aggregate read. Server-owned permissions and sc
 ## Persistent shell navigation
 
 Owner instruction (2026-09-21): Public/Member retain Navbar/Footer; Backoffice retains Sidebar/Navbar during internal menu changes. Public core useNavigation owns same-origin known-route links, history and post-mount anchors; App owns header/footer. Member core MemberNavigation owns route state and LeaveGuard registrations, with app-owned discard confirmation for internal links/history and native unload protection for external exits. Backoffice core NavigationProvider remains its canonical owner. Shell identity, no extra document/session reload, history, cancelled dirty navigation and native link exceptions require browser evidence. Route-specific forms/datasets reset only when their content route changes; shell/session ownership remains stable.
+
+## Dashboard overview refinement
+
+Business authority: docs/dashboard.md and the approved21September2026 mockup. Dashboard remains one authenticated aggregate request with existing permissions, cancellation, timeout and refresh behavior. Calendar summaries use Core Dialog; attention uses Core DataTable(content layout) and Core SelectField. The finite server-defined queue set is displayed without pagination. Scope/status filters are transient overview presentation state and reset on explicit refresh, avoiding stored links to scopes that may disappear with permission changes. Null metrics are distinct from zero; overlapping queue categories are not summed. The real work-area destination owns record-level filters/CRUD.
+
+Shell chrome is shared across routes, while feature restyling is limited to Dashboard. The question-mark help uses Core Dialog focus/escape semantics. Complete illustrated User Guide remains a separate future delivery.

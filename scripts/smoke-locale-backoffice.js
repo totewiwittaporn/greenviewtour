@@ -43,7 +43,7 @@ try {
  const originalCalls=calls
  await switchLanguage('th')
  await page.getByRole('heading',{name:'ลูกค้า · 14 วันข้างหน้า / Customers · next 14 days'}).waitFor()
- await page.getByRole('heading',{name:'งานซ่อมบำรุง / Maintenance jobs',exact:true}).waitFor()
+ await page.getByRole('link',{name:'งานซ่อมบำรุง / Maintenance jobs',exact:true}).waitFor()
  assert.equal(await page.title(),'ภาพรวมงาน · Greenview Tour')
  assert.equal(calls,originalCalls,'Language switch must not refetch permission-bound dashboard data')
  await page.locator('.dashboard-day').first().click()

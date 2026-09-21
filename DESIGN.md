@@ -289,3 +289,9 @@ Provider/duration filters use URL query state and reset pagination. Backend appl
 Owner correction: replace the rejected SVG leaflets with a natural transparent palm-frond illustration, shared through Core Botanical. Use muted sage at low opacity, full curved tapering leaflets, and corner placement clear of headings/controls. Asset provenance and generation prompt are recorded in docs/public-home-assets.md.
 
 Staff login is separate from navigation lists, centered in the bottom footer bar. Desktop copyright sits at left; phone copyright stacks above the centered44px staff link. Fixed back-to-top stays at bottom-right.
+
+## Approved Backoffice Dashboard redesign (21 September 2026)
+
+Shared Core Shell now uses a216px deep-teal sidebar and56px white header,60px on phone, with the same original boat logo as Public. Existing navigation permission filtering, UserInfo, language controls and leave protection remain canonical. The question-mark before UserInfo opens a Core Dialog with Dashboard help; it does not claim to be the planned comprehensive illustrated manual. Shell.css owns only shared chrome, leaving other feature layouts unchanged.
+
+Dashboard uses the existing authenticated aggregate. A14-day arrival calendar has7weekday columns and2rows, today outlined teal, weekends tinted, and Core Dialog program summaries. It remains a rolling window starting today, not a Monday-aligned month calendar. No unsupported previous/next-period controls. Core DataTable replaces attention cards; rows show work area, actual scope, today, pending, overdue and awaiting acceptance with existing deep links. Core SelectField filters available scope and positive today/overdue/review measures. Null measures remain em dashes. Never sum overlapping queues into a fabricated total. Head/staff titles use the authorized response scope, not client role guesses; no invented assignee/task data. Narrow tables/calendar own horizontal scrolling; page itself does not overflow.
