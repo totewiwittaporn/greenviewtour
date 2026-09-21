@@ -55,6 +55,12 @@ export default function AuthPage({ mode = 'login' }) {
     recovery.promise.then(() => { if (active) setReady(true) }).catch(error => { if (active) setFailure(authMessage(error)) })
     return () => { active = false }
   }, [mode, title])
+  useEffect(() => {
+    if (mode !== 'login') return
+    const controller = new AbortController()
+    api('/api/me', undefined, { signal: controller.signal }).then(() => { if (!controller.signal.aborted) window.location.replace('/dashboard') }).catch(() => {})
+    return () => controller.abort()
+  }, [mode])
   const change = name => event => { setValues(old => ({ ...old, [name]: event.target.value })); setErrors(old => ({ ...old, [name]: '' })) }
   async function submit(event) {
     event.preventDefault()
@@ -70,7 +76,7 @@ export default function AuthPage({ mode = 'login' }) {
     if (Object.keys(next).length) { requestAnimationFrame(() => form.current?.querySelector('[aria-invalid="true"]')?.focus()); return }
     lock.current = true; setBusy(true); setFailure('')
     try {
-      if (mode === 'login') { await api('/api/auth/login', { email: values.email, password: values.password }); window.location.assign('/'); return }
+      if (mode === 'login') { await api('/api/auth/login', { email: values.email, password: values.password }); window.location.replace('/dashboard'); return }
       if (mode === 'register') { const result = await api('/api/auth/accept-invitation', { password: values.password, invitationCode: invitation?.code }); setMessage(result.message === 'READY_TO_SIGN_IN' ? 'Your password is set. Return to sign in.' : 'Check your inbox to confirm your email, then sign in. If you already have an account, sign in with your existing password or use Forgot password.') }
       if (mode === 'forgot') { await api('/api/auth/recover', { email: values.email }); setMessage('If your email can receive a reset message, a link will arrive shortly. Check your inbox and spam folder.') }
       if (mode === 'reset') { const result = await api('/api/auth/reset-password', { password: values.password }); setMessage(result.warning ? 'Your password has been updated and you have been signed out of this workspace. Contact your administrator to check remaining session cleanup.' : 'Your password has been updated. Sign in with your new password.') }

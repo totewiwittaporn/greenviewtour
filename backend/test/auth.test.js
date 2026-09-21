@@ -7,12 +7,12 @@ import { checkInvitation, hashToken } from '../src/modules/identity-access/membe
 import { SessionStore } from '../src/platform/auth/sessions.js'
 const token = 'a'.repeat(64)
 const active = { id: 'user', displayName: 'Test', status: 'ACTIVE', roles: [{ roleCode: 'MANAGER', scope: 'COMPANY', role: { name: 'Manager', permissions: [{ permissionCode: 'users.read' }] } }] }
-async function request({ headers = {}, method = 'GET', url = '/api/users', input = {}, profile = active, session = true, users = async () => ({ users: [], total: 0 }), provider = {} } = {}) {
+async function request({ headers = {}, method = 'GET', url = '/api/users', input = {}, profile = active, session = true, purpose = 'workspace', users = async () => ({ users: [], total: 0 }), provider = {} } = {}) {
   let status, data, responseHeaders
   const req = Readable.from([JSON.stringify(input)])
   Object.assign(req, { method, url, headers: { host: '127.0.0.1:5000', 'x-greenview-local-token': token, ...(method === 'POST' ? { origin: 'http://localhost:5174', 'content-type': 'application/json' } : {}), ...headers } })
   const sessions = new SessionStore()
-  sessions.authenticated = async () => { if (!session) sessions.get(req); return { user: { id: 'user', email: 'qa@example.invalid' }, entry: { purpose: 'workspace' } } }
+  sessions.authenticated = async () => { if (!session) sessions.get(req); return { user: { id: 'user', email: 'qa@example.invalid' }, entry: { purpose } } }
   await createHandler({ pool: {}, prisma: { userProfile: { findUnique: async () => profile } }, token, users, sessions, provider })(req, {
     writeHead(code, headers) { status = code; responseHeaders = headers }, end(body) { data = JSON.parse(body) },
   })
@@ -82,4 +82,12 @@ test('unexpected service failure logs a category without SQL, credentials or sea
   const result = await request({ url: '/api/users?q=private-search', users: async () => { throw Object.assign(Error('secret SQL and password'), { code: 'P2028' }) } })
   assert.equal(result.status, 503)
   assert.deepEqual(logs, [{ event: 'API_REQUEST_FAILED', method: 'GET', path: '/api/users', errorType: 'Error', errorCode: 'P2028' }])
+})
+
+test('dashboard route requires a real workspace session and active profile', async () => {
+ assert.equal((await request({ url: '/api/dashboard', session: false })).status, 401)
+ assert.equal((await request({ url: '/api/dashboard', purpose: 'recovery' })).status, 401)
+ assert.equal((await request({ url: '/api/dashboard', purpose: 'customer' })).status, 401)
+ assert.equal((await request({ url: '/api/dashboard', profile: { ...active, status: 'SUSPENDED' } })).status, 403)
+ assert.equal((await request({ url: '/api/dashboard', method: 'POST' })).status, 405)
 })

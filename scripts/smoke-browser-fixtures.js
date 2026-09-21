@@ -15,7 +15,7 @@ try {
   process.env.GREENVIEW_TEST_ORIGIN = 'http://localhost:5274'
   vite = await createViteServer({ root, server:{port:5274}, configFile: `${root}vite.config.js` })
   await vite.listen()
-  for (const name of ['smoke-auth.js', 'smoke-staff-invitations.js', 'smoke-user-access.js']) {
+  for (const name of ['smoke-auth.js', 'smoke-staff-invitations.js', 'smoke-user-access.js', 'smoke-dashboard.js']) {
     await new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [fileURLToPath(new URL(name, import.meta.url))], { stdio: 'inherit' })
       child.once('error', reject)

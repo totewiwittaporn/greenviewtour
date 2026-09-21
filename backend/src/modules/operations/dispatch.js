@@ -111,6 +111,16 @@ export async function listJobs(prisma, actorId, params) {
   }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
 }
 
+export function pendingPassengers(row, direction) {
+  const assignments = row.dispatchAssignments.filter(a => a.status !== 'CANCELLED' && a.run.direction === direction)
+  const assignedAdults = assignments.reduce((n, a) => n + a.adults, 0), assignedChildren = assignments.reduce((n, a) => n + a.children, 0)
+  const attendance=row.booking.attendance?.find(a=>a.direction===direction && a.serviceDate.toISOString().slice(0,10)===journeyDay(row.booking,direction))
+  const noShowAdults=attendance?.noShowAdults||0,noShowChildren=attendance?.noShowChildren||0
+  const remainingAdults = Math.max(0, row.booking.adults - noShowAdults - assignedAdults), remainingChildren = Math.max(0, row.booking.children - noShowChildren - assignedChildren)
+  const remainingPassengers = Math.min(remainingAdults + remainingChildren, row.resource.baseUnit === 'PERSON' ? Math.max(0, row.quantity - assignedAdults - assignedChildren) : Infinity)
+  return { assignedAdults, assignedChildren, remainingAdults, remainingChildren, remainingPassengers }
+}
+
 export async function dispatchOptions(prisma, actorId, params) {
   const runKind = kind(params.get('kind') || 'BOAT')
   await authorize(prisma, actorId, duty(runKind, true))
@@ -149,12 +159,7 @@ export async function dispatchOptions(prisma, actorId, params) {
     let rows = await tx[model].findMany({ where, select, include, skip: (page - 1) * 25, take: 25, orderBy: { id: 'asc' } })
     if (entity === 'staff') rows = rows.map(row => ({ id: row.id, name: row.displayName, roles: row.roles.filter(g => ['SELF', 'COMPANY'].includes(g.scope) && allowedRoles.includes(g.roleCode)).map(g => g.roleCode) }))
     if (entity === 'pending') rows = rows.map(row => {
-      const assignments = row.dispatchAssignments.filter(a => a.status !== 'CANCELLED' && a.run.direction === direction)
-      const assignedAdults = assignments.reduce((n, a) => n + a.adults, 0), assignedChildren = assignments.reduce((n, a) => n + a.children, 0)
-      const attendance=row.booking.attendance?.find(a=>a.direction===direction && a.serviceDate.toISOString().slice(0,10)===journeyDay(row.booking,direction))
-      const noShowAdults=attendance?.noShowAdults||0,noShowChildren=attendance?.noShowChildren||0
-      const remainingAdults = Math.max(0, row.booking.adults - noShowAdults - assignedAdults), remainingChildren = Math.max(0, row.booking.children - noShowChildren - assignedChildren)
-      const remainingPassengers = Math.min(remainingAdults + remainingChildren, row.resource.baseUnit === 'PERSON' ? Math.max(0, row.quantity - assignedAdults - assignedChildren) : Infinity)
+      const { assignedAdults, assignedChildren, remainingAdults, remainingChildren, remainingPassengers } = pendingPassengers(row, direction)
       return { id: row.id, name: row.booking.name+' · '+row.resource.name, code: row.booking.code, quantity: row.quantity, resource: { id: row.resource.id, name: row.resource.name }, booking: jobBooking(row.booking,runKind), assignedAdults, assignedChildren, remainingAdults, remainingChildren, remainingPassengers }
     })
     return pageResult(rows, total, page)

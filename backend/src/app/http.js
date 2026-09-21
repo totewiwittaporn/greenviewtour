@@ -24,6 +24,7 @@ import { listUsers } from '../modules/identity-access/list-users.js'
 import { parseUsersQuery } from '../backoffice/settings/users/query.js'
 import { AccessError, normalizeEmail, resolveMembership } from '../modules/identity-access/membership.js'
 import { profileInclude, publicProfile } from '../modules/identity-access/policy.js'
+import { dashboardOverview } from '../backoffice/dashboard/overview/service.js'
 import { SessionStore } from '../platform/auth/sessions.js'
 const digest = value => createHash('sha256').update(value).digest()
 const workspaceOrigins = ['http://localhost:5174', 'http://127.0.0.1:5174']
@@ -289,11 +290,12 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         if (entry.purpose !== 'recovery') throw new AccessError('RECOVERY_REQUIRED')
         return send(200, { ok: true })
       }
-      if (!['/api/me', '/api/users'].includes(path)) return send(404, { code: 'NOT_FOUND' })
+      if (!['/api/me', '/api/users', '/api/dashboard'].includes(path)) return send(404, { code: 'NOT_FOUND' })
       const { user, entry } = await sessions.authenticated(req, provider, pool)
       if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
       const profile = await prisma.userProfile.findUnique({ where: { id: user.id }, include: profileInclude })
       if (profile?.status !== 'ACTIVE') throw new AccessError('ACCOUNT_UNAVAILABLE')
+      if (path === '/api/dashboard') return send(200, await dashboardOverview(prisma, user.id))
       if (path === '/api/me') return send(200, { user: publicProfile(profile, user.email) })
       const scope = managementScope(profile)
       if (!scope) throw new AccessError('PERMISSION_DENIED')

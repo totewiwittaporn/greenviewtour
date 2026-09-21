@@ -19,7 +19,7 @@ export function WorkspaceNavigation({user,canReadUsers,pageTitle}) {
  const navigation=useNavigation(),route=workspaceRoute(navigation.location.pathname)
  const active=(kind,group)=>route?.kind===kind&&group.entities.includes(route.entity)
  const link=(kind,group)=><a key={`${kind}-${group.id}`} href={navigation.hrefFor(`/${kind}/${group.entities[0]}`)} aria-current={active(kind,group)?'page':undefined} className={`nav-item ${active(kind,group)?'selected':''}`}><Icon name={group.icon||'briefcase'}/>{group.label}</a>
- return <nav aria-label="Main navigation">{user?.management?.company&&<a className={`nav-item ${route?.kind==='customers'?'selected':''}`} href="/customers"><Icon name="users"/>Customers</a>}{sections.map(section=>{
+ return <nav aria-label="Main navigation"><a className={`nav-item ${route?.kind==='dashboard'?'selected':''}`} aria-current={route?.kind==='dashboard'?'page':undefined} href="/dashboard"><Icon name="grid"/>Dashboard</a>{user?.management?.company&&<a className={`nav-item ${route?.kind==='customers'?'selected':''}`} href="/customers"><Icon name="users"/>Customers</a>}{sections.map(section=>{
   const operations=operationGroups.filter(group=>section.operations.includes(group.id)&&canUseOperation(user,group)&&(group.id!=='daily-summary'||user?.management?.company))
   const settings=user?.management?.company?settingsGroups.filter(group=>section.settings.includes(group.id)):[]
   const company=Object.entries(companyRoutes).filter(([,r])=>r.section===section.label&&canUseCompany(user,r))
