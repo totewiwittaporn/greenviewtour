@@ -1,3 +1,4 @@
+import { formatAddress, safeMapUrl, validateAddress } from '../../../../packages/contracts/address.js'
 import {demoTourEnabled} from './demo-checkout.js'
 import { programBookingPlan } from '../operations/booking-plan.js'
 import { saveBooking, bookingStatus, amendBookingDetails } from '../operations/bookings.js'
@@ -12,9 +13,11 @@ export const publicTourSelect={id:true,name:true,slug:true,tourType:true,descrip
 const liveTour={status:'ACTIVE',publicStatus:'PUBLISHED'}
 export async function publicCatalog(db,params,now=new Date()) {
  const page=int(params.get('page')||1,1,100000),q=string(params.get('q')||'',100,false)||'',slug=params.get('slug')
+ const ownership=params.get('ownership')
+ if(ownership!==null&&!['GREENVIEW','PARTNER'].includes(ownership))fail('INVALID_INPUT',400)
  const today=new Date(thailandDay(now)+'T00:00:00Z')
  const promotionWindow={status:'ACTIVE',startsOn:{lte:today},endsOn:{gte:today}}
- const where={...liveTour,...(params.get('promotionsOnly')==='true'?{promotions:{some:promotionWindow}}:{}),...(slug?{slug}:{}),...(q?{name:{contains:q,mode:'insensitive'}}:{})}
+ const where={...liveTour,...(ownership?{ownership}:{}),...(params.get('promotionsOnly')==='true'?{promotions:{some:promotionWindow}}:{}),...(slug?{slug}:{}),...(q?{name:{contains:q,mode:'insensitive'}}:{})}
  const total=await db.tourProgram.count({where}),actual=Math.min(page,Math.max(1,Math.ceil(total/12)))
  const rows=await db.tourProgram.findMany({where,select:publicTourSelect,orderBy:[{name:'asc'},{id:'asc'}],skip:(actual-1)*12,take:12})
  if(rows.length){
@@ -27,6 +30,13 @@ export async function publicCatalog(db,params,now=new Date()) {
   for(const row of rows){row.demoCheckoutEnabled=demoTourEnabled(row.id);row.seasons=seasons.filter(s=>s.tourId===row.id);row.promotions=promotions.filter(p=>p.tourId===row.id)}
  }
  return {rows,total,page:actual,pageSize:12}
+}
+// Explicit publication boundary: company banking, tax and internal metadata stay private.
+export async function publicCompany(db) {
+ const row=await db.companySettings.findFirst({select:{name:true,address:true,phone:true,email:true,houseNumber:true,moo:true,villageName:true,subdistrict:true,district:true,province:true,postalCode:true,mapUrl:true,latitude:true,longitude:true}})
+ if(!row)return {company:null}
+ const invalid=validateAddress(row),coordinates=row.latitude&&row.longitude&&!invalid.latitude&&!invalid.longitude
+ return {company:{name:row.name,address:formatAddress(row),phone:row.phone??null,email:row.email??null,mapUrl:safeMapUrl(row.mapUrl),latitude:coordinates?row.latitude:null,longitude:coordinates?row.longitude:null}}
 }
 export async function publicPopups(db,now=new Date()) {
  const day=new Date(thailandDay(now)+'T00:00:00Z')

@@ -1,7 +1,7 @@
 import { checkInState, checkInCommand } from '../modules/operations/check-in.js'
 import {demoCheckout} from '../modules/commerce/demo-checkout.js'
 import {listGuideAssignments,guideAssignmentOptions,saveGuideAssignment} from '../modules/operations/guide-assignments.js'
-import { previewWebsiteImage, cancelCustomerRequest, saveCustomer, customerDocuments, customerDocument, quoteRequest, saveWebsiteImage, websiteImage, commandCustomerRequest, uploadCustomerProof, publicCatalog, publicPopups, customerFor, enrollCustomer, saveCustomerProfile, memberRequests, submitCustomerRequest, listCustomers } from '../modules/commerce/service.js'
+import { previewWebsiteImage, cancelCustomerRequest, saveCustomer, customerDocuments, customerDocument, quoteRequest, saveWebsiteImage, websiteImage, commandCustomerRequest, uploadCustomerProof, publicCatalog, publicCompany, publicPopups, customerFor, enrollCustomer, saveCustomerProfile, memberRequests, submitCustomerRequest, listCustomers } from '../modules/commerce/service.js'
 import {listReceivables,commandReceivable} from '../modules/receivables/service.js'
 import {listEvidence,saveEvidence,downloadEvidence} from '../modules/evidence/service.js'
 import { bookingPriceCommand } from '../modules/operations/booking-price.js'
@@ -70,6 +70,7 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         const imageMatch=path.match(/^\/api\/public\/images\/([0-9a-f-]{36})$/)
         if(imageMatch){const file=await websiteImage(prisma,imageMatch[1]);res.writeHead(200,{'Content-Type':file.mimeType,'Content-Length':file.size,'X-Content-Type-Options':'nosniff','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; sandbox"});return res.end(Buffer.from(file.content))}
         if(path==='/api/public/quote'){const quote=await quoteRequest(prisma,{tourId:url.searchParams.get('tourId'),serviceDate:url.searchParams.get('serviceDate'),adults:Number(url.searchParams.get('adults')),children:Number(url.searchParams.get('children')),promotionId:url.searchParams.get('promotionId')||null,optionalIds:url.searchParams.getAll('optionalId')});return send(200,{...quote,quoteKey:commerceHash(quote)})}
+        if(path==='/api/public/company')return send(200,await publicCompany(prisma))
         if(path==='/api/public/tours')return send(200,await publicCatalog(prisma,url.searchParams))
         if(path==='/api/public/popups')return send(200,await publicPopups(prisma))
         return send(404,{code:'NOT_FOUND'})

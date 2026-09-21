@@ -24,7 +24,7 @@ export function SiteHeader(){
     <header className="site-header" ref={container}>
       <a href="/" aria-label={t("Greenview Tour หน้าแรก")}><img className="logo" src={`${base}/wp-content/uploads/2024/12/greenview-tour-logo-1.png`} alt="Greenview Tour"/></a>
       <button ref={trigger} type="button" className="public-menu-toggle" aria-expanded={open} aria-controls={id} aria-label={t("เมนูหลัก")} onClick={()=>setOpen(!open)}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d={open?'M6 6l12 12M18 6L6 18':'M4 6h16M4 12h16M4 18h16'}/></svg></button>
-      <nav id={id} className={open?'public-main-nav is-open':'public-main-nav'} aria-label={t("เมนูหลัก")} onClick={event=>{if(event.target.closest('a'))setOpen(false)}}><a href="/tours">{label("โปรแกรมทัวร์")}</a><a href="/promotions">{label("โปรโมชั่น")}</a><a href="/#surin">{label("รู้จักเกาะสุรินทร์")}</a><a href="/#contact">{label("ติดต่อเรา")}</a></nav>
+      <nav id={id} className={open?'public-main-nav is-open':'public-main-nav'} aria-label={t("เมนูหลัก")} onClick={event=>{if(event.target.closest('a'))setOpen(false)}}><a href="/">{label("หน้าแรก")}</a><a href="/#company">{label("รู้จักเรา")}</a><a href="/#surin">{label("รู้จักเกาะสุรินทร์")}</a><a href="/tours">{label("โปรแกรมทัวร์")}</a></nav>
     </header>
   </>
 }

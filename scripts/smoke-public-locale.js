@@ -9,6 +9,11 @@ const tour = {
   durationDays: 1, ownership: 'GREENVIEW', adultPrice: 2500, childPrice: null,
   promotions: [], seasons: [{ onlineStartsOn: '2026-09-21', onlineEndsOn: '2026-10-21', cutoffDays: 2 }],
 }
+const partner = {...tour, id: 'partner-fixture', slug: 'partner-fixture', name: 'Partner CMS tour', ownership: 'PARTNER'}
+let companyMode = 'ready'
+let tourMode = 'ready'
+const tourQueries = []
+const company = {name: 'Greenview fixture company', address: 'Fixture address', phone: '+66 123 4567', email: 'fixture@example.com', mapUrl: 'https://maps.google.com/?q=Surin'}
 const browser = await chromium.launch({ headless: true })
 try {
   const context = await browser.newContext({ serviceWorkers: 'block' })
@@ -19,7 +24,17 @@ try {
   await context.route('**/*', async route => {
     const url = new URL(route.request().url())
     if (url.pathname.startsWith('/api/')) {
-      if (url.pathname === '/api/public/tours') return route.fulfill({ json: { rows: [tour], page: 1, total: 1 } })
+      if (url.pathname === '/api/public/company') {
+        if (companyMode === 'error') return route.fulfill({status: 503, json: {}})
+        return route.fulfill({json: {company: companyMode === 'empty' ? null : companyMode === 'unsafe' ? {...company, mapUrl: 'javascript:alert(1)'} : company}})
+      }
+      if (url.pathname === '/api/public/tours') {
+        const ownership = url.searchParams.get('ownership')
+        tourQueries.push(url.search)
+        if (tourMode === 'error' && ownership) return route.fulfill({status: 503, json: {}})
+        const rows = tourMode === 'empty' && ownership ? [] : ownership === 'PARTNER' ? [partner] : [tour]
+        return route.fulfill({json: {rows, page: 1, total: rows.length}})
+      }
       if (url.pathname === '/api/public/popups') return route.fulfill({ json: { rows: [] } })
       unexpectedApi.push(url.pathname)
       return route.fulfill({ status: 404, json: { code: 'UNEXPECTED_FIXTURE_REQUEST' } })
@@ -54,13 +69,13 @@ try {
     assert.equal(await page.evaluate(() => Boolean(window.shellFixture && window.shellFixture.header === document.querySelector('.site-header') && window.shellFixture.footer === document.querySelector('.public-footer') && window.shellFixture.language === document.querySelector('.language-selector'))), true)
     assert.equal(await page.locator('html').getAttribute('lang'), 'en')
   }
-  await page.locator('.public-main-nav a[href="/promotions"]').click()
+  await page.evaluate(() => {const link=document.createElement('a');link.href='/promotions';document.body.append(link);link.click();link.remove()})
   await page.getByRole('heading', {name: 'Tour promotions', exact: true}).waitFor()
   await assertShell()
-  await page.locator('.public-main-nav a[href="/#contact"]').click()
-  await page.waitForURL(`${origin}/#contact`)
-  await page.waitForFunction(() => document.activeElement?.id === 'contact')
-  await page.waitForFunction(() => document.querySelector('#contact').getBoundingClientRect().top < innerHeight)
+  await page.locator('.public-main-nav a[href="/#company"]').click()
+  await page.waitForURL(`${origin}/#company`)
+  await page.waitForFunction(() => document.activeElement?.id === 'company')
+  await page.waitForFunction(() => document.querySelector('#company').getBoundingClientRect().top < innerHeight)
   await assertShell()
   await page.locator('.public-main-nav a[href="/#surin"]').click()
   await page.waitForURL(`${origin}/#surin`)
@@ -117,6 +132,7 @@ try {
       await page.setViewportSize({width,height:900})
       for (const path of ['/', '/tours', '/promotions']) {
         await page.goto(`${origin}${path}`)
+        if (path === '/') await page.locator('#company h3').waitFor()
         const language = page.locator('.language-selector > button')
         await language.waitFor()
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false,`${locale} ${width} ${path} overflow`)
@@ -146,7 +162,7 @@ try {
           await hamburger.focus()
           await page.keyboard.press('Enter')
           await page.evaluate(() => { window.mobileShell = document.querySelector('.site-header') })
-          await page.locator('.public-main-nav a').first().click()
+          await page.locator('.public-main-nav a[href="/tours"]').click()
           await page.waitForURL(`${origin}/tours`)
           assert.equal(await page.evaluate(() => window.mobileShell === document.querySelector('.site-header')),true)
           assert.equal(await page.locator('.public-main-nav').isVisible(),false)
@@ -158,9 +174,61 @@ try {
       }
     }
   }
+  // Home consumes public company data and ownership-filtered published tours.
+  await page.setViewportSize({width: 1440, height: 1000})
+  await page.goto(origin)
+  await page.locator('#company h3').waitFor()
+  assert.equal(await page.locator('#company h3').innerText(), company.name)
+  assert.deepEqual(await page.locator('main > section').evaluateAll(nodes => nodes.map(n => n.id || n.className)), ['hero', 'home-welcome home-container', 'company', 'surin', 'tours'])
+  for (const image of await page.locator('img[src^="/images/home/"]').all()) {
+    await image.scrollIntoViewIfNeeded()
+    await image.evaluate(el => el.decode())
+    assert.ok(await image.evaluate(el => el.naturalWidth > 0))
+  }
+  assert.equal(await page.locator('img[src^="/images/home/"]').count(), 2)
+  const own = page.locator('.home-tour-group').filter({has: page.locator('#tours-GREENVIEW')})
+  const other = page.locator('.home-tour-group').filter({has: page.locator('#tours-PARTNER')})
+  await other.getByRole('heading', {name: partner.name}).waitFor()
+  assert.ok((await own.innerText()).includes(tour.name))
+  assert.ok(!(await own.innerText()).includes(partner.name))
+  assert.ok(!(await other.innerText()).includes(tour.name))
+  assert.ok(tourQueries.some(q => new URLSearchParams(q).get('ownership') === 'GREENVIEW'))
+  assert.ok(tourQueries.some(q => new URLSearchParams(q).get('ownership') === 'PARTNER'))
+  await page.evaluate(() => {window.homeShell = document.querySelector('.site-header')})
+  await other.locator('a[href="/tours?ownership=PARTNER"]').click()
+  await page.waitForURL(`${origin}/tours?ownership=PARTNER`)
+  await page.getByRole('heading', {name: partner.name, exact:true}).waitFor()
+  assert.equal(await page.evaluate(() => window.homeShell === document.querySelector('.site-header')), true)
+  companyMode = 'empty'
+  tourMode = 'empty'
+  await page.goto(origin)
+  await page.getByText('Company information is not available yet.', {exact:true}).waitFor()
+  assert.equal(await page.locator('#company a').count(), 0)
+  await page.locator('.home-empty').first().waitFor()
+  assert.equal(await page.locator('.home-empty').count(), 2)
+  companyMode = 'unsafe'
+  tourMode = 'ready'
+  await page.reload()
+  await page.locator('#company h3').waitFor()
+  assert.equal(await page.locator('#company a[target="_blank"]').count(), 0)
+  companyMode = 'error'
+  tourMode = 'error'
+  await page.reload()
+  await page.locator('#company [role="alert"]').waitFor()
+  await page.locator('.home-tour-group [role="alert"]').first().waitFor()
+  companyMode = 'ready'
+  tourMode = 'ready'
+  await page.locator('#company button').click()
+  await page.locator('#company h3').waitFor()
+  assert.equal(await page.locator('#company a[target="_blank"]').getAttribute('href'), company.mapUrl)
+  for (const group of await page.locator('.home-tour-group').all()) {
+    await group.getByRole('button').click()
+    await group.locator('.tour-card').waitFor()
+  }
+  assert.equal(await page.locator('[role="alert"]').count(), 0)
   assert.deepEqual(unexpectedApi, [])
   assert.deepEqual(errors, [])
-  console.log('Public locale fixtures passed: titles, language, persistence, custom event, dates/currency, mobile layout, original CMS content, persistent shell nodes, history, anchors and native link behavior.')
+  console.log('Public locale fixtures passed: titles, language, persistence, custom event, dates/currency, mobile layout, original CMS content, persistent shell nodes, history, anchors, native link behavior, Home section order, real photos, ownership queries, company safety and empty/error/retry states.')
 } finally {
   await browser.close()
 }
