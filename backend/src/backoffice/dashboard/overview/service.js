@@ -7,6 +7,7 @@ import { pendingPassengers } from '../../../modules/operations/dispatch.js'
 import { thailandDay } from '../../../modules/operations/check-in.js'
 
 const dayKey = value => value ? new Date(value).toISOString().slice(0, 10) : null
+const arrivalWhere = filter => ({ OR: [{ outboundDate: filter }, { outboundDate: null, returnStatus: 'OUR', returnDate: filter }] })
 const addDays = (day, n) => new Date(+dateOnly(day) + n * 86400000).toISOString().slice(0, 10)
 // Match Reception: arrivals once per booking, or our return leg for return-only bookings.
 export function customerCalendar(rows, start) {
@@ -61,7 +62,7 @@ export async function dashboardOverview(prisma, actorId, now = new Date()) {
    where: { status: { in: ['CONFIRMED', 'COMPLETED'] }, OR: [{ outboundDate: { gte: date, lt: dateOnly(end) } }, { outboundDate: null, returnStatus: 'OUR', returnDate: { gte: date, lt: dateOnly(end) } }] },
    select: { id: true, status: true, outboundDate: true, returnDate: true, returnStatus: true, adults: true, children: true, programSnapshot: true, trip: { select: { tourId: true, name: true } } },
   }).then(rows => customerCalendar(rows, today)) : Promise.resolve(null)
-  if (allowed('operations.islandBooking')) tasks.push(countWidget({ id: 'bookings', title: 'Bookings awaiting confirmation', href: '/operations/bookings?status=DRAFT', model: 'tourBooking', base: allowed('operations.booking') ? owned('createdById') : { createdById: actorId }, pending: { status: 'DRAFT' }, overdue: { outboundDate: { lt: date } }, todayWhere: { outboundDate: date }, detail: 'Draft bookings; overdue means the arrival date has passed.', visibility: allowed('operations.booking') ? scopeLabel : 'My bookings' }))
+  if (allowed('operations.islandBooking')) tasks.push(countWidget({ id: 'bookings', title: 'Bookings awaiting confirmation', href: '/operations/bookings?status=DRAFT', model: 'tourBooking', base: allowed('operations.booking') ? owned('createdById') : { createdById: actorId }, pending: { status: 'DRAFT' }, overdue: arrivalWhere({ lt: date }), todayWhere: arrivalWhere(date), detail: 'Draft bookings; overdue means the arrival date has passed.', visibility: allowed('operations.booking') ? scopeLabel : 'My bookings' }))
   for (const [kind, read, manage, route, title] of [['BOAT', 'guide', 'manageGuide', 'guide', 'Boat jobs'], ['VEHICLE', 'driver', 'manageDriver', 'driver', 'Vehicle jobs']]) {
    if (!allowed('operations.' + read)) continue
    // Department expansion must also be permitted by the existing job reader.

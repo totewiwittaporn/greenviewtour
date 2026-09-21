@@ -107,3 +107,25 @@ test('standalone bookings share an honest service label instead of the first tri
  const days = customerCalendar([booking('one', { programSnapshot: {}, trip: { name: 'First transfer' } }), booking('two', { programSnapshot: {}, trip: { name: 'Second transfer' } })], '2026-09-21')
  assert.equal(days[0].programs[0].name, 'Standalone services'); assert.equal(days[0].programs[0].pax, 10)
 })
+
+test('return-only drafts use our return date for today/overdue, without double-counting an outbound booking', async () => {
+ const { db } = database(actor('ASSISTANT_TOUR_GUIDE', 'SELF'))
+ const rows = [
+  { outboundDate: null, returnDate: new Date('2026-09-21'), returnStatus: 'OUR' },
+  { outboundDate: null, returnDate: new Date('2026-09-20'), returnStatus: 'OUR' },
+  { outboundDate: null, returnDate: new Date('2026-09-21'), returnStatus: 'OTHER' },
+  { outboundDate: new Date('2026-09-21'), returnDate: new Date('2026-09-21'), returnStatus: 'OUR' },
+  { outboundDate: new Date('2026-09-22'), returnDate: new Date('2026-09-20'), returnStatus: 'OUR' },
+ ].map(row => ({ ...row, status: 'DRAFT', createdById: 'actor' }))
+ const matches = (row, where) => Object.entries(where).every(([key, value]) => {
+  if (key === 'AND') return value.every(part => matches(row, part))
+  if (key === 'OR') return value.some(part => matches(row, part))
+  if (value instanceof Date) return +row[key] === +value
+  if (value && typeof value === 'object' && 'lt' in value) return row[key] !== null && +row[key] < +value.lt
+  return row[key] === value
+ })
+ db.tourBooking = { count: async ({ where }) => rows.filter(row => matches(row, where)).length }
+ const data = await dashboardOverview(db, 'actor', now)
+ const drafts = data.widgets.find(widget => widget.id === 'bookings')
+ assert.equal(drafts.pending, 5); assert.equal(drafts.today, 2); assert.equal(drafts.overdue, 1)
+})

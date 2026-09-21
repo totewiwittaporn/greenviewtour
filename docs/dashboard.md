@@ -57,4 +57,6 @@ Links go to existing domain pages. Booking drafts preserve the supported status 
 - `backend/test/auth.test.js` and frontend dashboard route test: protected GET route and canonical landing route regression.
 - Read-only transactions against the repository-verified Preview connection passed for existing Admin Manager, Manager, Assistant Tour Guide, Captain and Driver profiles. No data was changed.
 - Strict frontend premium static audit: zero findings. Rendered screenshots are in ignored `screenshots.local/dashboard-*.png`.
-- Final review is a separate self-review pass, not an independent agent audit.
+- Final review includes a separate self-review and an independent read-only Milk agent audit. Milk found a return-only draft today/overdue gap; its return-date fallback and regression test are included. No additional permission leakage or invalid destination was found within the reviewed scope.
+
+CI initially stopped at clean install because the baseline lockfile omitted the already-declared Member workspace. A minimal 39-line lockfile addition restores the existing declared versions; no package manifest or dependency version was upgraded. Clean-install dry-run passed.
