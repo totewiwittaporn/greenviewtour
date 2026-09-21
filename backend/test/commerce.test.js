@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {saleDateAllowed,promotionAllowed,commerceErrors,cents,safeImageUrl} from '../../packages/contracts/commerce.js'
-import {customerFor,quoteRequest,publicTourSelect,submitCustomerRequest,publicCatalog,requestDisplayStatus,customerDocument,cancelCustomerRequest} from '../src/modules/commerce/service.js'
+import {saveCustomerProfile,customerFor,quoteRequest,publicTourSelect,submitCustomerRequest,publicCatalog,requestDisplayStatus,customerDocument,cancelCustomerRequest} from '../src/modules/commerce/service.js'
 import {SessionStore} from '../src/platform/auth/sessions.js'
 const tourId='11111111-1111-4111-8111-111111111111'
 const now=new Date('2026-10-31T18:00:00Z')
@@ -71,4 +71,66 @@ test('document retrieval rejects another customer and non-customer evidence',asy
 test('customer cancellation cannot cancel an accepted operational booking',async()=>{
  const tx={$executeRaw:async()=>{},customerProfile:{findUnique:async()=>({id:'mine',status:'ACTIVE'})},customerRequest:{findUnique:async()=>({customerId:'mine',status:'AWAITING_PAYMENT',bookingId:tourId,version:1})}}
  await assert.rejects(()=>cancelCustomerRequest({$transaction:fn=>fn(tx)},{id:tourId,email_confirmed_at:'yes'},{requestId:tourId,version:1}),{message:'BOOKING_LOCKED'})
+})
+
+function profileDb() {
+ const customer={id:'mine',authUserId:tourId,status:'ACTIVE',version:3,displayName:'Customer',phone:null,lineId:'previous.line'}
+ const queries=[],writes=[]
+ return {customer,queries,writes,customerProfile:{findUnique:async({where})=>{queries.push(where);assert.deepEqual(where,{authUserId:tourId});return {...customer}},updateMany:async({where,data})=>{writes.push({where,data});assert.deepEqual(where,{id:'mine',version:3,status:'ACTIVE'});Object.assign(customer,data,{version:4});return {count:1}}}}
+}
+const memberUser={id:tourId,email_confirmed_at:'yes'}
+test('member profile saves optional LINE ID on the authenticated customer only',async()=>{
+ const db=profileDb()
+ const result=await saveCustomerProfile(db,memberUser,{version:3,displayName:' Customer ',phone:' 123 ',lineId:' my.line '})
+ assert.equal(result.customer.lineId,'my.line')
+ assert.deepEqual(db.writes[0].data,{displayName:'Customer',phone:'123',lineId:'my.line',version:{increment:1}})
+ assert.equal(db.queries.length,2)
+})
+test('member LINE ID can be cleared while omitted values preserve existing contact data',async()=>{
+ for(const lineId of ['',null,'   ']){
+  const db=profileDb()
+  assert.equal((await saveCustomerProfile(db,memberUser,{version:3,displayName:'Customer',lineId})).customer.lineId,null)
+ }
+ const db=profileDb()
+ assert.equal((await saveCustomerProfile(db,memberUser,{version:3,displayName:'Customer'})).customer.lineId,'previous.line')
+ assert.equal(Object.hasOwn(db.writes[0].data,'lineId'),false)
+})
+test('member profile rejects invalid LINE ID and locked or foreign profile fields before writing',async()=>{
+ for(const extra of [{lineId:'x'.repeat(101)},{lineId:42},{lineId:false},{lineId:{}},{lineId:'bad\u0000id'},{id:'other'},{authUserId:'other'},{email:'changed@example.test'},{status:'ACTIVE'}]){
+  const db=profileDb()
+  await assert.rejects(()=>saveCustomerProfile(db,memberUser,{version:3,displayName:'Customer',...extra}),{message:'INVALID_INPUT'})
+  assert.equal(db.writes.length,0)
+ }
+ const db=profileDb()
+ assert.equal((await saveCustomerProfile(db,memberUser,{version:3,displayName:'Customer',lineId:'x'.repeat(100)})).customer.lineId.length,100)
+})
+test('member profile preserves optimistic locking before and during updates',async()=>{
+ const stale=profileDb()
+ await assert.rejects(()=>saveCustomerProfile(stale,memberUser,{version:2,displayName:'Customer',lineId:'new'}),{message:'SETTINGS_CONFLICT'})
+ assert.equal(stale.writes.length,0)
+ const concurrent=profileDb();concurrent.customerProfile.updateMany=async()=>({count:0})
+ await assert.rejects(()=>saveCustomerProfile(concurrent,memberUser,{version:3,displayName:'Customer',lineId:'new'}),{message:'SETTINGS_CONFLICT'})
+})
+
+test('member nickname is owned, optional and independent from full display name',async()=>{
+ const db=profileDb();db.customer.nickname='Previous'
+ const result=await saveCustomerProfile(db,memberUser,{version:3,displayName:'Customer',nickname:' Nick '})
+ assert.equal(result.customer.nickname,'Nick');assert.equal(result.customer.displayName,'Customer')
+ const omitted=profileDb();omitted.customer.nickname='Previous'
+ assert.equal((await saveCustomerProfile(omitted,memberUser,{version:3,displayName:'Customer'})).customer.nickname,'Previous')
+ assert.equal(Object.hasOwn(omitted.writes[0].data,'nickname'),false)
+ for(const nickname of [null,'','   '])assert.equal((await saveCustomerProfile(profileDb(),memberUser,{version:3,displayName:'Customer',nickname})).customer.nickname,null)
+ assert.equal((await saveCustomerProfile(profileDb(),memberUser,{version:3,displayName:'Customer',nickname:'x'.repeat(50)})).customer.nickname.length,50)
+})
+test('member nickname rejects invalid values and preserves stale-write protection',async()=>{
+ for(const nickname of [42,false,{},undefined,'x'.repeat(51),'bad\nname','bad\tname','bad\u0000name','bad\u007fname','bad\u0085name']){
+  const db=profileDb()
+  await assert.rejects(()=>saveCustomerProfile(db,memberUser,{version:3,displayName:'Customer',nickname}),{message:'INVALID_INPUT'})
+  assert.equal(db.writes.length,0)
+ }
+ const stale=profileDb()
+ await assert.rejects(()=>saveCustomerProfile(stale,memberUser,{version:2,displayName:'Customer',nickname:'New'}),{message:'SETTINGS_CONFLICT'})
+ assert.equal(stale.writes.length,0)
+ const concurrent=profileDb();concurrent.customerProfile.updateMany=async()=>({count:0})
+ await assert.rejects(()=>saveCustomerProfile(concurrent,memberUser,{version:3,displayName:'Customer',nickname:'New'}),{message:'SETTINGS_CONFLICT'})
 })

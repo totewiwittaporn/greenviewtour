@@ -223,3 +223,27 @@ Core ReferenceField uses the Backoffice stylesheet as its single spacing owner: 
 ## Role-aware Dashboard · 21 September 2026
 
 Dashboard is the authenticated landing workspace. Keep the Backoffice sea-green tokens, typography and natural document scrolling. Its signature is a 14-day arrival calendar (seven columns on desktop, four on tablet, two on phone) with semantic day buttons and the existing Core summary Dialog. Reusable attention widgets link to domain work rather than duplicate editors. Core Shell/Navigation, Button, RefreshButton and DataTable retain ownership; feature CSS controls only calendar/widget layout. See docs/dashboard.md for count definitions and access boundaries.
+
+## Approved navigation and compact tables (2026-09-21)
+
+Owner-approved preview: Public places the TH/EN dropdown followed by Login / Register in the shared top bar, leaving the primary navigation on one row at wide widths. Member keeps Tours, My trips and Profile separate from User Info. Authenticated Member and Backoffice User Info own language selection and sign out; unauthenticated screens retain a language dropdown. Mobile primary navigation uses a hamburger; dropdowns remain bounded by the viewport and support keyboard dismissal. Thai labels continue pairing Thai / English.
+
+Backoffice Core table tokens use 12px data, 11px column headings and 8px vertical / 10px horizontal cell padding across page and dialog tables. Row action buttons are 28px on desktop with 16px icons; touch/narrow screens retain 40px targets. Existing table overflow and dialog scroll ownership are preserved.
+
+## Contact details and public Thai copy (2026-09-21)
+
+Owner-approved User Info shows self-editable contact details: employee display name, primary/alternate phone, LINE ID and structured address with a validated saved map link; Member shows name, phone and LINE ID. Locked account email, status and access details are omitted from these summaries. Edit profile remains the existing full-page form. Menus are viewport-bounded with internal scrolling and visible keyboard navigation. Language radio rows share the Core menu item geometry.
+
+Public Thai mode now uses Thai-only owned headings/navigation/actions; English mode uses English. Brand names, TH/EN codes and authored CMS content remain unchanged. Member and Backoffice retain paired Thai/English labels. Customer LINE ID is an optional contact field (100 characters), editable only through the authenticated self-profile with the existing version check.
+
+## Member typography and nicknames (2026-09-21)
+
+Owner-approved Member Profile comparison sets main headings to 26px desktop / 24px mobile, section headings 20px / 18px, labels and content buttons 14px. Form values stay 16px with controls at least 44px tall. Content spacing is slightly tighter; User Info keeps its established type geometry.
+
+Employee and customer self-profile forms expose optional Nickname (50 characters). The User Info identity/trigger prefers a trimmed nickname, falling back to the existing full display name. Full names remain in the detail summary and are never overwritten by a nickname. Clearing a nickname restores that fallback. Nicknames do not influence access or account linking.
+
+## Persistent navigation shells (2026-09-21)
+
+Owner requirement: internal menu changes replace page content while preserving Public and Member Navbar/Footer DOM, and Backoffice Sidebar/Navbar DOM. This does not introduce sticky/fixed positioning. Public App owns SiteHeader/SiteFooter once, outside route content. Member owns its header/footer/session outside route-keyed forms and datasets. Each app owns its navigation implementation; do not import UI/providers across applications.
+
+Internal navigation and browser history preserve shell identity and locale without full-document reload. Native modified clicks, external destinations, downloads and unowned URLs retain browser behavior. Public home anchors scroll after their content mounts. Member draft guards protect internal links and back/forward, retaining fields and the original URL when navigation is cancelled. Explicit sign-out/recovery session termination may still reset the document at the authentication boundary. Backoffice reuses its existing guarded NavigationProvider; persistent shell/history checks are part of the browser suite.

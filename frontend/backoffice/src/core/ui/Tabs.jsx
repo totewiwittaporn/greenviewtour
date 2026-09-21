@@ -1,7 +1,10 @@
+import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
+import {useLocale} from '../i18n/locale.jsx'
 import { useLayoutEffect, useRef } from 'react'
 
 // Manual keyboard activation avoids discarding a draft while exploring tab labels.
 export function Tabs({ items, value, onChange, label, idPrefix }) {
+  const {t} = useLocale()
   const refs = useRef(new Map()), root = useRef(null)
   useLayoutEffect(() => {
     const element = root.current
@@ -25,8 +28,8 @@ export function Tabs({ items, value, onChange, label, idPrefix }) {
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + items.length) % items.length
     refs.current.get(items[next].id)?.focus()
   }
-  return <div ref={root} className="core-tabs" role="tablist" aria-label={label}>
-    {items.map((item, index) => <button key={item.id} ref={node => { if (node) refs.current.set(item.id, node); else refs.current.delete(item.id) }} id={`${idPrefix}-tab-${item.id}`} type="button" role="tab" aria-selected={value === item.id} aria-controls={`${idPrefix}-panel-${item.id}`} tabIndex={value === item.id ? 0 : -1} onKeyDown={event => move(event, index)} onClick={() => onChange(item.id)}>{item.label}</button>)}
+  return <div ref={root} className="core-tabs" role="tablist" aria-label={t(label)}>
+    {items.map((item, index) => <button key={item.id} ref={node => { if (node) refs.current.set(item.id, node); else refs.current.delete(item.id) }} id={`${idPrefix}-tab-${item.id}`} type="button" role="tab" aria-selected={value === item.id} aria-controls={`${idPrefix}-panel-${item.id}`} tabIndex={value === item.id ? 0 : -1} onKeyDown={event => move(event, index)} onClick={() => onChange(item.id)}>{bilingualLabel(item.label)}</button>)}
     <span className="core-tab-indicator" aria-hidden="true" />
   </div>
 }

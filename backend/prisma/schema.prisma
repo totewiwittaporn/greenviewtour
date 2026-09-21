@@ -19,6 +19,7 @@ enum AccessScope {
 model UserProfile {
   id String @id @db.Uuid
   displayName String @db.VarChar(100)
+  nickname String? @db.VarChar(50)
   department String? @db.VarChar(30)
   address String? @db.VarChar(1000)
   primaryPhone String? @db.VarChar(32)
@@ -918,8 +919,10 @@ model CustomerProfile {
  version Int @default(1)
  authUserId String? @unique @db.Uuid
  displayName String @db.VarChar(200)
+ nickname String? @db.VarChar(50)
  email String? @db.VarChar(254)
  phone String? @db.VarChar(32)
+ lineId String? @db.VarChar(100)
  status String @default("ACTIVE") @db.VarChar(20)
  createdAt DateTime @default(now()) @db.Timestamptz(6)
  updatedAt DateTime @updatedAt @db.Timestamptz(6)

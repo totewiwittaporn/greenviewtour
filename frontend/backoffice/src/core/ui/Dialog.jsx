@@ -1,3 +1,4 @@
+import {useLocale} from '../i18n/locale.jsx'
 import { useId, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -8,6 +9,7 @@ function syncScrollOwner() {
   for (const dialog of dialogs) dialog.toggleAttribute('data-core-modal-top', dialog === dialogs.at(-1))
 }
 export function Dialog({ title, children, onClose, busy = false, variant = 'default' }) {
+  const {t} = useLocale()
   const ref = useRef(null), titleId = useId()
   useLayoutEffect(() => {
     const dialog = ref.current, previous = document.activeElement
@@ -25,7 +27,7 @@ export function Dialog({ title, children, onClose, busy = false, variant = 'defa
     }
   }, [])
   return createPortal(<dialog ref={ref} className="core-dialog" data-variant={variant} aria-labelledby={titleId} onCancel={event => { event.preventDefault(); if (!busy && dialogs.at(-1) === ref.current) onClose() }}>
-    <header className="dialog-header"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" aria-label="Close dialog" disabled={busy} onClick={onClose}>×</button></header>
+    <header className="dialog-header"><h2 id={titleId}>{title}</h2><button type="button" className="icon-button" aria-label={t("Close dialog")} disabled={busy} onClick={onClose}>×</button></header>
     <div className="dialog-content">{children}</div>
   </dialog>, document.body)
 }

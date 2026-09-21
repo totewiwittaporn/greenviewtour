@@ -1,3 +1,6 @@
+import {translateLabel as bilingualLabel} from '../../core/i18n/runtime.js'
+import { formatDate as displayDate } from '../../core/i18n/runtime.js'
+import { translate as t, useLocale } from '../../core/i18n/locale.jsx'
 import {RefreshButton} from '../../core/ui/RefreshButton.jsx'
 import { DateField } from '../../core/ui/DateField.jsx'
 import { useEffect, useRef, useState } from 'react'
@@ -13,19 +16,21 @@ import { SummaryCards } from '../../core/ui/SummaryCards.jsx'
 const tomorrow = () => new Date(Date.now() + 31 * 3600000).toISOString().slice(0, 10)
 const validDate = value => /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(+new Date(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value
 const message = error => error.detail || 'Unable to load or prepare this summary. Please retry.'
-const stamp = value => new Date(value).toLocaleString('en-GB', { timeZone: 'Asia/Bangkok' })
+const stamp = value => displayDate(new Date(value), {dateStyle:'short', timeStyle:'medium', ...{ timeZone: 'Asia/Bangkok' }})
 const kindLabel = kind => kind === 'CLOSE' ? 'Closing snapshot' : 'LINE summary'
 function SnapshotView({ snapshot, onClose }) {
+ useLocale();
  const [page, setPage] = useState(1), rows = snapshot.runs || []
- return <Dialog title={`${kindLabel(snapshot.kind)} · revision ${snapshot.revision}`} variant="table" onClose={onClose}>
-  <p>Service date: {String(snapshot.serviceDate).slice(0, 10)} · Captured: {stamp(snapshot.createdAt)} (Thailand)</p>
-  <p>This saved snapshot preserves the totals at capture time. Open the live job orders for subsequent changes.</p>
-  <DataTable label="Snapshot runs" columns={['Run', 'Type / direction', 'Adults', 'Children', 'Passengers']} isEmpty={!rows.length} empty={<p>No assigned runs in this snapshot.</p>}>
-   {rows.slice((page - 1) * 25, page * 25).map(run => <tr key={run.id}><td>{run.name}</td><td>{run.kind === 'BOAT' ? 'Boat' : 'Vehicle'} · {run.direction || 'Not recorded'}</td><td>{run.adults}</td><td>{run.children}</td><td>{run.passengers}</td></tr>)}
+ return <Dialog title={bilingualLabel("{value0} · revision {value1}", {value0: kindLabel(snapshot.kind), value1: snapshot.revision})} variant="table" onClose={onClose}>
+  <p>{t("Service date:")}{' '}{String(snapshot.serviceDate).slice(0, 10)}{' '}{t("· Captured:")}{' '}{stamp(snapshot.createdAt)}{' '}{t("(Thailand)")}</p>
+  <p>{t("This saved snapshot preserves the totals at capture time. Open the live job orders for subsequent changes.")}</p>
+  <DataTable label={bilingualLabel("Snapshot runs")} columns={['Run', 'Type / direction', 'Adults', 'Children', 'Passengers']} isEmpty={!rows.length} empty={<p>{t("No assigned runs in this snapshot.")}</p>}>
+   {rows.slice((page - 1) * 25, page * 25).map(run => <tr key={run.id}><td>{run.name}</td><td>{run.kind === 'BOAT' ? t('Boat') : t('Vehicle')} · {run.direction || t("Not recorded")}</td><td>{run.adults}</td><td>{run.children}</td><td>{run.passengers}</td></tr>)}
   </DataTable><Pagination page={page} pageSize={25} total={rows.length} onPageChange={setPage} />
  </Dialog>
 }
 export default function DailyClosePage() {
+ useLocale();
  const [date, setDate] = useState(tomorrow), [serviceDate, setServiceDate] = useState(tomorrow), [page, setPage] = useState(1)
  const [data, setData] = useState(null), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false), [error, setError] = useState(''), [dateError, setDateError] = useState(''), [notice, setNotice] = useState(''), [refresh, setRefresh] = useState(0), [view, setView] = useState(null)
  const lock = useRef(false)
@@ -54,17 +59,17 @@ export default function DailyClosePage() {
  }
  const snapshots = data?.snapshots || [], readiness = data?.readiness
  return <>
-  <div className="page-heading"><div><h1 tabIndex="-1">Daily summaries</h1><p>Capture the closing totals and review the next day's boat and transfer summaries.</p></div></div>
+  <div className="page-heading"><div><h1 tabIndex="-1">{bilingualLabel("Daily summaries")}</h1><p>{t("Capture the closing totals and review the next day's boat and transfer summaries.")}</p></div></div>
   <SummaryCards items={[{ label: 'Service date', value: serviceDate }, { label: 'Closing reference', value: '22:00' }, { label: 'Summary time', value: '22:30' }, { label: 'LINE delivery', value: readiness?.deliveryEnabled ? 'Enabled' : 'Not enabled' }]} />
   <section className="panel table-panel">
-   <form noValidate className="filterbar" onSubmit={loadDate}><DateField label="Service date (Thailand)" value={date} placeholder="YYYY-MM-DD" error={dateError} onChange={e => setDate(e.target.value)} disabled={busy} /><Button type="submit" disabled={busy}>Load date</Button></form>
-   <div className="address-section"><p>Times use Thailand time on the evening before the service date. Capturing a snapshot preserves a reference; it does not stop Booking from recording later changes.</p><p>Allocated runs only. Check unassigned bookings before using or sending the summary.</p>
-    <p role="status">{readiness?.schedulerEnabled ? 'Automatic preparation enabled.' : 'Automatic preparation is not enabled.'} {readiness?.missing?.length ? 'LINE connection details and a reachable job-order address must be configured before delivery.' : readiness?.note}</p>
-    <div className="dialog-actions"><Button disabled={busy || loading || !data || Boolean(error)} busy={busy} onClick={() => prepare('CLOSE')}>Capture closing snapshot</Button><Button disabled={busy || loading || !data || Boolean(error)} onClick={() => prepare('SUMMARY')}>Prepare LINE summary</Button><RefreshButton disabled={busy} onClick={() => setRefresh(n => n + 1)}/></div>
+   <form noValidate className="filterbar" onSubmit={loadDate}><DateField label={bilingualLabel("Service date (Thailand)")} value={date} placeholder="YYYY-MM-DD" error={t(dateError)} onChange={e => setDate(e.target.value)} disabled={busy} /><Button type="submit" disabled={busy}>{t("Load date")}</Button></form>
+   <div className="address-section"><p>{t("Times use Thailand time on the evening before the service date. Capturing a snapshot preserves a reference; it does not stop Booking from recording later changes.")}</p><p>{t("Allocated runs only. Check unassigned bookings before using or sending the summary.")}</p>
+    <p role="status">{readiness?.schedulerEnabled ? t('Automatic preparation enabled.') : t('Automatic preparation is not enabled.')} {readiness?.missing?.length ? t('LINE connection details and a reachable job-order address must be configured before delivery.') : readiness?.note}</p>
+    <div className="dialog-actions"><Button disabled={busy || loading || !data || Boolean(error)} busy={busy} onClick={() => prepare('CLOSE')}>{t("Capture closing snapshot")}</Button><Button disabled={busy || loading || !data || Boolean(error)} onClick={() => prepare('SUMMARY')}>{t("Prepare LINE summary")}</Button><RefreshButton disabled={busy} onClick={() => setRefresh(n => n + 1)}/></div>
    </div>
-   {notice && <p role="status">{notice}</p>}
-   <DataTable label="Daily summary history" columns={['Snapshot', 'Revision', 'Captured (Thailand)', 'Runs', 'Actions']} busy={loading} error={error} onRetry={() => setRefresh(n => n + 1)} isEmpty={!snapshots.length} empty={<p>No snapshots for this service date. Capture the totals when the team is ready.</p>}>
-    {snapshots.map(snapshot => <tr key={snapshot.id}><td>{kindLabel(snapshot.kind)}</td><td>{snapshot.revision}</td><td>{stamp(snapshot.createdAt)}</td><td>{snapshot.runs?.length || 0}</td><td><Dropdown rowActions label={`Actions for ${snapshot.kind} revision ${snapshot.revision}`} items={[{label:'View',icon:'view',onSelect:() => setView(snapshot)}]}/></td></tr>)}
+   {notice && <p role="status">{t(notice)}</p>}
+   <DataTable label={bilingualLabel("Daily summary history")} columns={['Snapshot', 'Revision', 'Captured (Thailand)', 'Runs', 'Actions']} busy={loading} error={t(error)} onRetry={() => setRefresh(n => n + 1)} isEmpty={!snapshots.length} empty={<p>{t("No snapshots for this service date. Capture the totals when the team is ready.")}</p>}>
+    {snapshots.map(snapshot => <tr key={snapshot.id}><td>{kindLabel(snapshot.kind)}</td><td>{snapshot.revision}</td><td>{stamp(snapshot.createdAt)}</td><td>{snapshot.runs?.length || 0}</td><td><Dropdown rowActions label={bilingualLabel("Actions for {value0} revision {value1}", {value0: snapshot.kind, value1: snapshot.revision})} items={[{label:'View',icon:'view',onSelect:() => setView(snapshot)}]}/></td></tr>)}
    </DataTable><Pagination page={data?.page || page} pageSize={data?.pageSize || 25} total={error ? undefined : data?.total ?? snapshots.length} busy={loading} onPageChange={setPage} />
   </section>{view && <SnapshotView snapshot={view} onClose={() => setView(null)} />}
  </>

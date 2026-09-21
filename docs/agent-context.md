@@ -20,3 +20,5 @@ Choose only rows touched by the task. Read matching sections and implementation/
 | Hosting or Preview rollout | [Deployment](deployment.md) | actual host settings and branch triggers |
 
 Current code has public-web, backoffice, and member applications. Some older documents describe the initial two-app scaffold. Dated sections are evidence of their original change, not proof of current completeness. Preserve approved domain constraints and consult later explicit owner decisions for supersession. For example, the latest QR-payment requirement is not fulfilled merely because manual payment review or local demo checkout exists.
+
+For Thai/English interface changes, read [localization](localization.md) for locale ownership, persisted-value boundaries, validation and bilingual-content gaps.

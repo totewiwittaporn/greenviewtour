@@ -1,3 +1,5 @@
+import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
+import {useLocale} from '../i18n/locale.jsx'
 import { workspaceRoute, canUseOperation } from '../navigation/workspaceRoutes.js'
 import { useNavigation } from '../navigation/Navigation.jsx'
 import { operationGroups } from '../../features/operations/operationGroups.js'
@@ -16,17 +18,18 @@ const sections=[
  {label:'Settings',operations:[],settings:['tour-services','transport-pickup']},
 ]
 export function WorkspaceNavigation({user,canReadUsers,pageTitle}) {
+ useLocale()
  const navigation=useNavigation(),route=workspaceRoute(navigation.location.pathname)
  const active=(kind,group)=>route?.kind===kind&&group.entities.includes(route.entity)
- const link=(kind,group)=><a key={`${kind}-${group.id}`} href={navigation.hrefFor(`/${kind}/${group.entities[0]}`)} aria-current={active(kind,group)?'page':undefined} className={`nav-item ${active(kind,group)?'selected':''}`}><Icon name={group.icon||'briefcase'}/>{group.label}</a>
- return <nav aria-label="Main navigation"><a className={`nav-item ${route?.kind==='dashboard'?'selected':''}`} aria-current={route?.kind==='dashboard'?'page':undefined} href="/dashboard"><Icon name="grid"/>Dashboard</a>{user?.management?.company&&<a className={`nav-item ${route?.kind==='customers'?'selected':''}`} href="/customers"><Icon name="users"/>Customers</a>}{sections.map(section=>{
+ const link=(kind,group)=><a key={`${kind}-${group.id}`} href={navigation.hrefFor(`/${kind}/${group.entities[0]}`)} aria-current={active(kind,group)?'page':undefined} className={`nav-item ${active(kind,group)?'selected':''}`}><Icon name={group.icon||'briefcase'}/>{bilingualLabel(group.label)}</a>
+ return <nav aria-label={bilingualLabel("Main navigation")}><a className={`nav-item ${route?.kind==='dashboard'?'selected':''}`} aria-current={route?.kind==='dashboard'?'page':undefined} href="/dashboard"><Icon name="grid"/>{bilingualLabel("Dashboard")}</a>{user?.management?.company&&<a className={`nav-item ${route?.kind==='customers'?'selected':''}`} href="/customers"><Icon name="users"/>{bilingualLabel("Customers")}</a>}{sections.map(section=>{
   const operations=operationGroups.filter(group=>section.operations.includes(group.id)&&canUseOperation(user,group)&&(group.id!=='daily-summary'||user?.management?.company))
   const settings=user?.management?.company?settingsGroups.filter(group=>section.settings.includes(group.id)):[]
   const company=Object.entries(companyRoutes).filter(([,r])=>r.section===section.label&&canUseCompany(user,r))
   if(!operations.length&&!settings.length&&!company.length&&!(section.users&&canReadUsers))return null
-  return <div key={section.label}><div className="nav-section-label">{section.label}</div>{operations.map(group=>link('operations',group))}{settings.map(group=>link('settings',group))}
-   {section.users&&canReadUsers&&<a href="/settings/users" aria-current={pageTitle==='Users'?'page':undefined} className={`nav-item ${pageTitle==='Users'?'selected':''}`}><Icon name="users"/>Users</a>}
-   {company.map(([key,r])=><a key={key} href={navigation.hrefFor('/company/'+key)} aria-current={route?.kind==='company'&&route.entity===key?'page':undefined} className={`nav-item ${route?.kind==='company'&&route.entity===key?'selected':''}`}><Icon name="briefcase"/>{r.title}</a>)}
+  return <div key={section.label}><div className="nav-section-label">{bilingualLabel(section.label)}</div>{operations.map(group=>link('operations',group))}{settings.map(group=>link('settings',group))}
+   {section.users&&canReadUsers&&<a href="/settings/users" aria-current={pageTitle==='Users'?'page':undefined} className={`nav-item ${pageTitle==='Users'?'selected':''}`}><Icon name="users"/>{bilingualLabel("Users")}</a>}
+   {company.map(([key,r])=><a key={key} href={navigation.hrefFor('/company/'+key)} aria-current={route?.kind==='company'&&route.entity===key?'page':undefined} className={`nav-item ${route?.kind==='company'&&route.entity===key?'selected':''}`}><Icon name="briefcase"/>{bilingualLabel(r.title)}</a>)}
   </div>
  })}</nav>
 }
