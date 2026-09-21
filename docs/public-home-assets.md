@@ -27,3 +27,7 @@ This is a Home selection, not an exhaustive full-resolution review of every file
 - Current company has a saved Maps link but no coordinate pair; Home displays the real external map action and embeds only when valid coordinates are configured. No geocoding guess is persisted.
 - Current local catalog exposes the existing labeled DEMO tour and no partner offers. No seed, publication status or production data was modified. Missing offers remain explicit empty states.
 - New Home API is running locally. No hosted Preview deployment or Production deployment was performed this round.
+
+## Original brand logo
+
+The owner supplied `484293511_1146584594144725_4598489206089200479_n.jpg` and explicitly requested retaining the GREENVIEW TOUR lettering for consistency with Facebook. `frontend/public-web/public/images/brand/greenview-mark.png` is a 480×480 PNG resized from that original, retaining its white background, colors and lettering. Generated alternatives were not used. Shared Navbar/Footer reuse this asset without a duplicate wordmark.
