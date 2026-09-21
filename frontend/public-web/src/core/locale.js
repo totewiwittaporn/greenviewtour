@@ -1,4 +1,16 @@
 export const messages = {
+  "เลือกทริปสุรินทร์ในแบบของคุณ": "Find your kind of Surin escape",
+  "ทะเลใส ธรรมชาติ และช่วงเวลาที่คุณเลือกได้": "Clear seas, island nature, and time on your terms",
+  "สุรินทร์… มากกว่าการเดินทาง": "Surin… more than a journey",
+  "ผู้ให้บริการทัวร์": "Tour operator",
+  "ระยะเวลาทริป": "Trip duration",
+  "ทั้งหมด": "All trips",
+  "วันเดียว": "Day trips",
+  "ค้างคืน": "Overnight trips",
+  "ภาพโปรแกรมทัวร์": "Tour image",
+  "ยังไม่แน่ใจว่าจะเลือกทริปไหน?": "Not sure which trip to choose?",
+  "ให้เราช่วยแนะนำทริปที่เหมาะกับคุณ": "Let us help you find the right trip.",
+
   "เข้าสู่ระบบ": "Login",
   "สมัครสมาชิก": "Register",
   "เมนูส่วนท้าย": "Footer navigation",

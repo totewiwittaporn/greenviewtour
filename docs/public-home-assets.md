@@ -41,3 +41,11 @@ Owner requested removing the underwater swimmer photograph because permission fr
 Owner selected the above/below-water coral photo from https://drive.google.com/file/d/1TV4H0SK5f6DQeGT1_LdtTlolyBwEbVgp/view. Original visually inspected: no people visible. Shipped as `images/home/surin-coral.webp`, resized to1400px wide and encoded WebP quality86 without generative alteration. It replaces the interim repeated landscape in the Surin introduction.
 
 Google Maps source: owner saved https://maps.app.goo.gl/1ErL2zJHXys3hdPX6 resolves to Greenview Tour pier at9.2246226,98.3729295. Share/Embed output was read from Google Maps with a zoomed-out viewport (center9.2243647,98.0631732) to preserve real coastline/island proportions. No hand-drawn geographic outline remains. The provider owns map labels, tiles and attribution.
+
+## Replacement palm artwork (owner correction)
+
+`images/decoration/palm-frond.webp` replaces the rejected hand-drawn SVG leaflets in the shared Botanical component used by Home and Tour Programs. Created with built-in ImageGen, saved with transparent alpha and resized to640px WebP quality86. It is decorative botanical artwork, not destination photography. Original generated PNG remains outside the repository.
+
+Prompt: "Production website decorative botanical asset, not a webpage mockup. One elegant natural coconut palm frond on a genuinely transparent background, isolated clean alpha cutout. Fine curved central rachis from upper left down toward lower right; many long narrow pointed leaflets sweep gracefully in flowing parallel curves, natural irregular lengths and spacing. Muted sage gray-green ink, subtle watercolor texture, full uncropped tips. No broad oval leaves, fern, stiff fish skeleton, crossed branches, text, frame or shadows."
+
+Core Botanical owns this single asset. Page styles position it at quiet corners at reduced opacity; never behind functional controls. Original logo unchanged.

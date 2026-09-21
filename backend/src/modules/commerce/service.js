@@ -15,9 +15,11 @@ export async function publicCatalog(db,params,now=new Date()) {
  const page=int(params.get('page')||1,1,100000),q=string(params.get('q')||'',100,false)||'',slug=params.get('slug')
  const ownership=params.get('ownership')
  if(ownership!==null&&!['GREENVIEW','PARTNER'].includes(ownership))fail('INVALID_INPUT',400)
+ const duration=params.get('duration')
+ if(duration!==null&&!['day','overnight'].includes(duration))fail('INVALID_INPUT',400)
  const today=new Date(thailandDay(now)+'T00:00:00Z')
  const promotionWindow={status:'ACTIVE',startsOn:{lte:today},endsOn:{gte:today}}
- const where={...liveTour,...(ownership?{ownership}:{}),...(params.get('promotionsOnly')==='true'?{promotions:{some:promotionWindow}}:{}),...(slug?{slug}:{}),...(q?{name:{contains:q,mode:'insensitive'}}:{})}
+ const where={...liveTour,...(ownership?{ownership}:{}),...(duration?{durationDays:duration==='day'?1:{gt:1}}:{}),...(params.get('promotionsOnly')==='true'?{promotions:{some:promotionWindow}}:{}),...(slug?{slug}:{}),...(q?{name:{contains:q,mode:'insensitive'}}:{})}
  const total=await db.tourProgram.count({where}),actual=Math.min(page,Math.max(1,Math.ceil(total/12)))
  const rows=await db.tourProgram.findMany({where,select:publicTourSelect,orderBy:[{name:'asc'},{id:'asc'}],skip:(actual-1)*12,take:12})
  if(rows.length){

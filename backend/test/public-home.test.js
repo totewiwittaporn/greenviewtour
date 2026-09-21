@@ -35,3 +35,17 @@ test('tour ownership cannot silently fall back to another category',async()=>{
  await publicCatalog({tourProgram:{count:async args=>{where=args.where;return 0},findMany:async()=>[]}},new URLSearchParams())
  assert.deepEqual(where,{status:'ACTIVE',publicStatus:'PUBLISHED'})
 })
+
+test('duration combines with ownership before totals and page clamping',async()=>{
+ for(const [duration,durationDays] of [['day',1],['overnight',{gt:1}]]){
+  let countWhere,listArgs
+  const db={tourProgram:{count:async({where})=>{countWhere=where;return 13},findMany:async args=>{listArgs=args;return []}}}
+  const result=await publicCatalog(db,new URLSearchParams({duration,ownership:'GREENVIEW',page:'999'}))
+  assert.deepEqual(countWhere,{status:'ACTIVE',publicStatus:'PUBLISHED',ownership:'GREENVIEW',durationDays})
+  assert.deepEqual(listArgs.where,countWhere)
+  assert.equal(result.total,13);assert.equal(result.page,2);assert.equal(listArgs.skip,12)
+ }
+})
+test('invalid duration is rejected rather than silently broadening the result',async()=>{
+ for(const duration of ['', 'all','DAY','0','day,overnight'])await assert.rejects(()=>publicCatalog({},new URLSearchParams({duration})),{message:'INVALID_INPUT',status:400})
+})

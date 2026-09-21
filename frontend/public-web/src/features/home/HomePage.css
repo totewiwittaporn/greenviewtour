@@ -18,3 +18,7 @@
 .home-page .home-location-map{height:390px;background:var(--soft)}@media(max-width:600px){.home-page .home-location-map{height:340px}}
 
 .home-map-options{display:flex;gap:4px;margin-bottom:8px}.home-map-options button{min-height:44px;flex:1;font:inherit;font-size:12px;border:1px solid var(--line);border-radius:6px;color:var(--deep);background:white;padding:6px 10px;cursor:pointer}.home-map-options button[aria-pressed="true"]{background:var(--deep);color:white}
+
+/* Shared natural palm artwork, positioned as quiet corner decoration. */
+.home-page .home-botanical{object-fit:contain;opacity:.12;transform:none;width:180px;height:auto}.home-page .home-welcome>.home-botanical{left:-45px;top:0;bottom:auto}.home-page .botanical-location{left:-55px;bottom:0;transform:rotate(-25deg)}.home-page .home-surin>.botanical-surin{left:auto;right:-20px;top:0;transform:scaleX(-1);width:200px}.home-page .home-surin{overflow:clip}
+@media(max-width:600px){.home-page .home-botanical{width:105px;opacity:.09}.home-page .home-surin>.botanical-surin{width:110px;right:0}}

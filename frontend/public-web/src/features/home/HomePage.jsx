@@ -1,3 +1,4 @@
+import Botanical from '../../core/ui/Botanical.jsx'
 import {useEffect, useState} from 'react'
 import {useLocale} from '../../core/useLocale.js'
 import {Button} from '../../core/ui/Controls.jsx'
@@ -6,24 +7,6 @@ import './HomePage.css'
 import {locationMapEmbed, regionEmbed, verifiedPierMapUrl} from './locationMap.js'
 import PublishedHighlights from '../catalog/PublishedHighlights.jsx'
 
-function Botanical({className=''}) {
-  const leaflets=[
-    'M39 174C17 159 4 137 2 112C15 140 29 154 39 174Z',
-    'M53 150C28 130 20 105 23 76C30 108 43 130 53 150Z',
-    'M71 127C45 105 44 73 53 47C51 81 62 106 71 127Z',
-    'M94 102C73 77 81 48 92 25C82 58 88 82 94 102Z',
-    'M119 78C106 54 120 28 137 10C119 37 118 59 119 78Z',
-    'M144 56C143 36 161 15 179 5C157 23 150 41 144 56Z',
-    'M40 172C68 154 103 153 135 161C99 161 66 165 40 172Z',
-    'M54 148C87 125 126 123 160 132C121 130 84 140 54 148Z',
-    'M74 123C108 98 151 99 181 109C141 104 102 113 74 123Z',
-    'M97 98C131 76 170 77 199 89C163 83 126 88 97 98Z',
-    'M121 76C153 58 185 58 211 71C180 65 149 67 121 76Z',
-    'M147 54C173 39 196 41 219 51C193 46 169 49 147 54Z',
-    'M166 40C182 23 202 17 218 17C195 23 180 31 166 40Z',
-  ]
-  return <svg className={`home-botanical ${className}`} viewBox="0 0 220 220" aria-hidden="true"><path d="M16 218C43 144 102 85 211 17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>{leaflets.map(d=><path key={d} d={d} fill="currentColor"/>)}</svg>
-}
 function mapCoordinates(company) {
   if (!company) return null
   const {latitude, longitude} = company
