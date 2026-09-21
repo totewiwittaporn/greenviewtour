@@ -13,6 +13,13 @@ export function t(value, locale = activeLocale) {
  const source = englishSources.get(value) || value
  return locale === 'en' ? messages[source] ?? value : source
 }
+// Apply bilingual copy only to semantic headings and control labels.
+// Free text, errors and stored business content keep their own language policy.
+export function label(value, locale = activeLocale) {
+ if (typeof value !== 'string') return value
+ const thai = t(value, 'th'), english = t(value, 'en')
+ return locale === 'th' && thai !== english ? `${thai} / ${english}` : english
+}
 export const formatNumber = value => new Intl.NumberFormat(activeLocale === 'th' ? 'th-TH' : 'en-GB').format(Number(value))
 export const formatMoney = value => value == null ? t('ติดต่อสอบถาม') : new Intl.NumberFormat(activeLocale === 'th' ? 'th-TH' : 'en-GB', {style: 'currency', currency: 'THB'}).format(Number(value))
 export function formatDate(value, withTime = false) {

@@ -107,3 +107,10 @@ export function pageTitle(locale, pathname) {
   }
   return (titles[pathname] || titles['/'])[locale === 'en' ? 1 : 0]
 }
+
+// Headings and navigation retain an English reference in Thai mode.
+export function bilingualLabel(locale, value) {
+  const english = messages[value] ?? value
+  const thai = thaiMessages[value] ?? value
+  return locale === 'en' ? english : thai === english ? thai : thai + ' / ' + english
+}

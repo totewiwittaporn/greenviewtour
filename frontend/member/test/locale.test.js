@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {t, activateLocale, storedLocale, formatDate, formatMoney, bookingStatus} from '../src/core/locale.js'
+import {t, label, activateLocale, storedLocale, formatDate, formatMoney, bookingStatus} from '../src/core/locale.js'
 
 test('Member locale defaults to Thai when storage is missing, invalid or blocked', () => {
  const previous = globalThis.localStorage
@@ -33,4 +33,12 @@ test('Member formats money and booking statuses without confusing missing prices
  assert.equal(bookingStatus('CONFIRMED'), 'Confirmed')
  activateLocale('th')
  assert.equal(bookingStatus('CONFIRMED'), 'ยืนยันแล้ว')
+})
+
+test('Member Thai headings and labels retain English without changing body copy or unknown content', () => {
+ assert.equal(label('เข้าสู่ระบบสมาชิก','th'), 'เข้าสู่ระบบสมาชิก / Member sign in')
+ assert.equal(label('Member sign in','th'), 'เข้าสู่ระบบสมาชิก / Member sign in')
+ assert.equal(label('เข้าสู่ระบบสมาชิก','en'), 'Member sign in')
+ assert.equal(label('ชื่อทัวร์ต้นฉบับ','th'), 'ชื่อทัวร์ต้นฉบับ')
+ assert.equal(t('กรุณากรอกชื่อ','th'), 'กรุณากรอกชื่อ')
 })

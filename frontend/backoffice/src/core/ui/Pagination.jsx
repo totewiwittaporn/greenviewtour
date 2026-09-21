@@ -1,3 +1,4 @@
+import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
 import {useLocale} from '../i18n/locale.jsx'
 import { Button } from './Button.jsx'
 
@@ -12,7 +13,7 @@ export function Pagination({ page = 1, pageSize = 25, total, busy = false, onPag
     <span aria-live="polite">{known ? t('Showing {first}–{last} of {total} records', {first,last,total}) : busy ? t('Loading records…') : t('Records unavailable')}<span className="page-size"> · {t('{count} per page',{count:pageSize})}</span></span>
     <nav className="pagination" aria-label={t(label)}>
       <Button disabled={busy || !known || current <= 1} onClick={() => onPageChange(current - 1)}>Previous</Button>
-      <span aria-live="polite">{t('Page {page} of {pages}',{page:known?current:'—',pages:pages??'—'})}</span>
+      <span aria-live="polite">{bilingualLabel('Page {page} of {pages}',{page:known?current:'—',pages:pages??'—'})}</span>
       <Button disabled={busy || !known || current >= pages} onClick={() => onPageChange(current + 1)}>Next</Button>
     </nav>
   </div>

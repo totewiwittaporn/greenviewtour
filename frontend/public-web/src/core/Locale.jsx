@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { messages, thaiMessages } from './locale.js'
+import { messages, thaiMessages, bilingualLabel } from './locale.js'
 import { LocaleContext, useLocale } from './useLocale.js'
 const normalize = value => value === 'en' ? 'en' : 'th'
 export function LocaleProvider({children}) {
@@ -20,12 +20,13 @@ export function LocaleProvider({children}) {
   }
   const language = locale === 'th' ? 'th-TH' : 'en-GB'
   const t = value => locale === 'en' ? messages[value] ?? value : thaiMessages[value] ?? value
+  const label = value => bilingualLabel(locale, value)
   const number = value => new Intl.NumberFormat(language).format(value)
   const money = value => value == null ? t('สอบถามราคา') : new Intl.NumberFormat(language, {style:'currency',currency:'THB'}).format(Number(value))
   const date = value => { if (!value) return '—'; const parsed = new Date(String(value).slice(0,10)+'T12:00:00+07:00'); return Number.isNaN(parsed.getTime()) ? '—' : new Intl.DateTimeFormat(language, {day:'numeric',month:'short',year:'numeric',calendar:'gregory',timeZone:'Asia/Bangkok'}).format(parsed) }
-  return <LocaleContext.Provider value={{locale,setLocale,t,number,money,date}}>{children}</LocaleContext.Provider>
+  return <LocaleContext.Provider value={{locale,setLocale,t,label,number,money,date}}>{children}</LocaleContext.Provider>
 }
 export function LanguageSelector() {
   const {locale,setLocale} = useLocale()
-  return <div className="language-selector" role="group" aria-label={locale === 'th' ? 'ภาษา' : 'Language'}>{[['th','ไทย'],['en','English']].map(([value,label]) => <button key={value} type="button" lang={value} aria-pressed={locale===value} onClick={() => setLocale(value)}>{label}</button>)}</div>
+  return <div className="language-selector" role="group" aria-label={locale === 'th' ? 'ภาษา' : 'Language'}>{[['th','TH','Thai / ภาษาไทย'],['en','EN','English']].map(([value,code,name]) => <button key={value} type="button" lang={value} aria-label={name} aria-pressed={locale===value} onClick={() => setLocale(value)}>{code}</button>)}</div>
 }

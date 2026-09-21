@@ -1,3 +1,4 @@
+import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
 import {useLocale} from '../i18n/locale.jsx'
 import { operationHref } from './operationContext.js'
 import { workspaceRoute } from './workspaceRoutes.js'
@@ -57,7 +58,7 @@ export function NavigationProvider({children}){
  },[navigate])
  useEffect(()=>{document.querySelector('#main h1')?.focus({preventScroll:true})},[location])
  const register=useCallback((id,dirty)=>{guards.current.set(id,dirty);return()=>guards.current.delete(id)},[])
- return <Context.Provider value={{location,navigate,runAction,register,hrefFor}}>{children}{pending&&<Dialog title={t("Unsaved changes")} onClose={()=>setPending(null)}><p>{t('Leave this page and discard your unsaved changes?')}</p><div className="dialog-actions"><Button autoFocus onClick={()=>setPending(null)}>Keep editing</Button><Button onClick={()=>{const target=pending;setPending(null);commit(target)}}>Discard and leave</Button></div></Dialog>}</Context.Provider>
+ return <Context.Provider value={{location,navigate,runAction,register,hrefFor}}>{children}{pending&&<Dialog title={bilingualLabel("Unsaved changes")} onClose={()=>setPending(null)}><p>{t('Leave this page and discard your unsaved changes?')}</p><div className="dialog-actions"><Button autoFocus onClick={()=>setPending(null)}>Keep editing</Button><Button onClick={()=>{const target=pending;setPending(null);commit(target)}}>Discard and leave</Button></div></Dialog>}</Context.Provider>
 }
 // Non-component hooks share the provider in this module intentionally.
 // eslint-disable-next-line react-refresh/only-export-components

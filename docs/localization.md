@@ -1,6 +1,10 @@
 # Thai and English interfaces
 
-The Backoffice, public website and Member applications expose Thai / English controls in their existing header or authentication layout. Each application owns its React locale provider and dictionaries; applications do not import another application's UI. No API, permission, scope, record transition or persisted business value changes are part of this interface localization.
+The Backoffice, public website and Member applications expose TH / EN controls in their existing header or authentication layout. Each application owns its React locale provider and dictionaries; applications do not import another application's UI. No API, permission, scope, record transition or persisted business value changes are part of this interface localization.
+
+## Thai interface terminology
+
+Thai mode pairs English with Thai for navigation, headings, tabs, field labels and table headings (for example `ภาพรวมงาน / Dashboard`). English mode remains English. Long descriptions, validation and status feedback continue to use the selected language; English is not appended to every sentence. The selector visibly uses `TH` and `EN` with accessible full-language names. User-authored content and persisted codes remain unchanged. Semantic label helpers own this pairing rather than changing the general text translator.
 
 ## Preference and rendering
 

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-import {messages,thaiMessages,pageTitle} from '../src/core/locale.js'
+import {messages,thaiMessages,pageTitle,bilingualLabel} from '../src/core/locale.js'
 
 test('public titles follow locale and route with a Thai fallback',()=>{
   assert.equal(pageTitle('en','/tours'),'Tours | Greenview Tour')
@@ -14,10 +14,18 @@ test('public titles follow locale and route with a Thai fallback',()=>{
 test('every static translation reference has both language variants',()=>{
   for(const file of ['features/home/HomePage.jsx','features/catalog/Catalog.jsx','features/catalog/PublishedHighlights.jsx','features/catalog/Popup.jsx','core/ui/Controls.jsx','core/ui/SiteNavigation.jsx']) {
     const source=readFileSync(new URL('../src/'+file,import.meta.url),'utf8')
-    for(const match of source.matchAll(/\bt\(["']([^"']+)["']\)/g)) {
+    for(const match of source.matchAll(/\b(?:t|label)\(["']([^"']+)["']\)/g)) {
       const key=match[1]
       assert.ok(messages[key],file+': missing English '+key)
       assert.ok(/[\u0e00-\u0e7f]/.test(key)||thaiMessages[key],file+': missing Thai '+key)
     }
   }
+})
+
+test('semantic labels retain both languages only in Thai mode',()=>{
+  const thai=Object.keys(messages).find(key=>messages[key]==='Tours')
+  assert.equal(bilingualLabel('th',thai),thai+' / Tours')
+  assert.equal(bilingualLabel('en',thai),'Tours')
+  assert.equal(bilingualLabel('th','Greenview Tour'),'Greenview Tour')
+  assert.equal(bilingualLabel('th','Your island escape'),thaiMessages['Your island escape']+' / Your island escape')
 })

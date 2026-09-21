@@ -1,3 +1,4 @@
+import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
 import {useLocale} from '../i18n/locale.jsx'
 import { useLayoutEffect, useRef } from 'react'
 
@@ -28,7 +29,7 @@ export function Tabs({ items, value, onChange, label, idPrefix }) {
     refs.current.get(items[next].id)?.focus()
   }
   return <div ref={root} className="core-tabs" role="tablist" aria-label={t(label)}>
-    {items.map((item, index) => <button key={item.id} ref={node => { if (node) refs.current.set(item.id, node); else refs.current.delete(item.id) }} id={`${idPrefix}-tab-${item.id}`} type="button" role="tab" aria-selected={value === item.id} aria-controls={`${idPrefix}-panel-${item.id}`} tabIndex={value === item.id ? 0 : -1} onKeyDown={event => move(event, index)} onClick={() => onChange(item.id)}>{t(item.label)}</button>)}
+    {items.map((item, index) => <button key={item.id} ref={node => { if (node) refs.current.set(item.id, node); else refs.current.delete(item.id) }} id={`${idPrefix}-tab-${item.id}`} type="button" role="tab" aria-selected={value === item.id} aria-controls={`${idPrefix}-panel-${item.id}`} tabIndex={value === item.id ? 0 : -1} onKeyDown={event => move(event, index)} onClick={() => onChange(item.id)}>{bilingualLabel(item.label)}</button>)}
     <span className="core-tab-indicator" aria-hidden="true" />
   </div>
 }

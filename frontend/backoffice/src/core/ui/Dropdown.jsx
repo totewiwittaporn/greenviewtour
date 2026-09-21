@@ -1,3 +1,4 @@
+import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
 import {useLocale} from '../i18n/locale.jsx'
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -45,6 +46,6 @@ export function Dropdown({ label, children, items, heading, disabled = false, ro
     if (['ArrowDown','ArrowUp'].includes(event.key)) { event.preventDefault(); setKeyboard(true); initial.current = event.key === 'ArrowUp' ? -1 : 0; setOpen(true) }
   }}>{rowActions?<Icon name="more"/>:children}</Button></span>{open && createPortal(<div id={id} ref={popup} role="menu" aria-label={t(label)} className="core-dropdown" data-keyboard={keyboard || undefined} style={position} onKeyDown={keydown} onPointerMove={() => setKeyboard(false)}>
     {heading && <div className="dropdown-heading" role="presentation">{heading}</div>}
-    {items.map(item => item.href ? <a key={item.label} role="menuitem" tabIndex={-1} href={item.href} target={item.target} rel={item.target ? 'noreferrer' : undefined} onClick={() => close(true)}>{item.icon && <Icon name={item.icon} className="menu-icon" />}<span>{t(item.label)}</span></a> : <button key={item.label} type="button" role="menuitem" tabIndex={-1} className={item.danger ? 'menu-danger' : ''} disabled={item.disabled} onClick={() => { close(true); item.onSelect() }}>{item.icon && <Icon name={item.icon} className="menu-icon" />}<span>{t(item.label)}</span></button>)}
+    {items.map(item => item.href ? <a key={item.label} role="menuitem" tabIndex={-1} href={item.href} target={item.target} rel={item.target ? 'noreferrer' : undefined} onClick={() => close(true)}>{item.icon && <Icon name={item.icon} className="menu-icon" />}<span>{bilingualLabel(item.label)}</span></a> : <button key={item.label} type="button" role="menuitem" tabIndex={-1} className={item.danger ? 'menu-danger' : ''} disabled={item.disabled} onClick={() => { close(true); item.onSelect() }}>{item.icon && <Icon name={item.icon} className="menu-icon" />}<span>{bilingualLabel(item.label)}</span></button>)}
   </div>, host || document.body)}</>
 }

@@ -30,6 +30,12 @@ export function translate(source, params = {}, locale = activeLocale) {
   const message = locale === 'th' ? thaiMessage(source) : source
   return message.replace(/\{(\w+)\}/g, (match, name) => Object.hasOwn(params, name) ? String(params[name]) : match)
 }
+// Semantic UI labels retain the English term in Thai mode. Body copy stays localized.
+export function translateLabel(source, params = {}, locale = activeLocale) {
+  const english = translate(source, params, 'en')
+  const thai = translate(source, params, 'th')
+  return locale === 'th' && typeof source === 'string' && thai !== english ? `${thai} / ${english}` : english
+}
 export function formatDate(date, options = {}, locale = activeLocale) {
   if (!date) return '—'
   const dateOnly = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)

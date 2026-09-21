@@ -1,3 +1,4 @@
+import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
 import {useLocale} from '../i18n/locale.jsx'
 import { Children, isValidElement, useCallback, useId, useState } from 'react'
 import * as SelectPrimitive from '@radix-ui/react-select'
@@ -8,7 +9,7 @@ export function SelectField({ label, error, hint, children, value, onChange, dis
   const id = useId(), [host, setHost] = useState(null), [keyboard, setKeyboard] = useState(false)
   const mount = useCallback(node => { if (node) setHost(node.closest('dialog') || document.body) }, [])
   const options = Children.toArray(children).filter(isValidElement).map(child => ({ value: String(child.props.value ?? child.props.children), label: child.props.children, disabled: child.props.disabled }))
-  return <div className="form-field" ref={mount}><label htmlFor={id}>{t(label)}</label><div className="field-control">
+  return <div className="form-field" ref={mount}><label htmlFor={id}>{bilingualLabel(label)}</label><div className="field-control">
     <SelectPrimitive.Root value={value === '' ? emptyValue : value} onValueChange={next => onChange({ target: { value: next === emptyValue ? '' : next } })} disabled={disabled} name={name} required={required}>
       <SelectPrimitive.Trigger id={id} className="core-select-trigger" aria-invalid={Boolean(error)} aria-describedby={`${id}-help`} onPointerDown={() => setKeyboard(false)} onKeyDown={() => setKeyboard(true)}>
         <SelectPrimitive.Value /><SelectPrimitive.Icon aria-hidden="true">⌄</SelectPrimitive.Icon>

@@ -1,3 +1,4 @@
+import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
 import {useLocale} from '../i18n/locale.jsx'
 import { useEffect, useState } from 'react'
 import { SearchField } from './SearchField.jsx'
@@ -17,7 +18,7 @@ export function ReferenceField({ label, value, selectedLabel, onChange, error, l
   return()=>{clearTimeout(timer);controller.abort()}
  },[query,page,attempt,composing,load])
  const options=state.rows.some(row=>row.id===value)||!value?state.rows:[{id:value,name:selectedLabel||t('Selected record')},...state.rows]
- return <div className="reference-field"><SearchField label={t('Search {label}',{label:t(label)})} placeholder="Search by name or code…" value={query} onChange={q=>{setQuery(q);setPage(1)}} onCompositionChange={setComposing}/>
+ return <div className="reference-field"><SearchField label={bilingualLabel('Search {label}',{label:bilingualLabel(label)})} placeholder="Search by name or code…" value={query} onChange={q=>{setQuery(q);setPage(1)}} onCompositionChange={setComposing}/>
  <SelectField label={label} value={value} onChange={event=>onChange(event,options.find(row=>row.id===event.target.value))} error={error} disabled={disabled||state.loading} hint={state.loading?'Loading options…':state.error?'Unable to load options. Retry below.':t('{count} available records',{count:state.total||0})}><option value="">{t("Select a record")}</option>{options.map(row=><option key={row.id} value={row.id}>{row.code?`${row.code} · `:''}{row.name}</option>)}</SelectField>
  {state.error?<Button onClick={()=>setAttempt(n=>n+1)}>{t("Retry options")}</Button>:<div className="catalog-paging"><Button aria-label={t('Previous {label} options',{label:t(label)})} disabled={disabled||state.loading||page===1} onClick={()=>setPage(p=>p-1)}>{t("Previous")}</Button><span>{t('Page {page} of {pages}',{page:state.page||1,pages:state.pages||1})}</span><Button aria-label={t('Next {label} options',{label:t(label)})} disabled={disabled||state.loading||page>=(state.pages||1)} onClick={()=>setPage(p=>p+1)}>{t("Next")}</Button></div>}</div>
 }

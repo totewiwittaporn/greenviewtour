@@ -1,3 +1,4 @@
+import {translateLabel as bilingualLabel} from '../../core/i18n/runtime.js'
 import {LanguageSwitcher} from '../../core/ui/LanguageSwitcher.jsx'
 import { translate as t, useLocale } from '../../core/i18n/locale.jsx'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
@@ -15,5 +16,5 @@ export function DocumentPreview({children}){
 export function DocumentHeader({title,code,date,revision}){
  useLocale();
  const brand=useContext(Brand)
- return <header className="document-masthead"><img src={brand?.logo} alt="Greenview Tour" width="212" height="55"/><div><h2>{t(title)}</h2><p>{code} · {date} {revision?`· Rev. ${revision}`:''}</p></div></header>
+ return <header className="document-masthead"><img src={brand?.logo} alt="Greenview Tour" width="212" height="55"/><div><h2>{bilingualLabel(title)}</h2><p>{code} · {date} {revision?`· Rev. ${revision}`:''}</p></div></header>
 }

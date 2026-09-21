@@ -23,5 +23,5 @@ export function LocaleProvider({children}) {
 }
 export function LanguageSelector() {
  const {locale, changeLocale} = useLocale()
- return <div className="language-selector" role="group" aria-label={locale === 'th' ? 'ภาษา' : 'Language'}><button type="button" lang="th" aria-pressed={locale === 'th'} onClick={() => changeLocale('th')}>ไทย</button><button type="button" lang="en" aria-pressed={locale === 'en'} onClick={() => changeLocale('en')}>English</button></div>
+ return <div className="language-selector" role="group" aria-label={locale === 'th' ? 'ภาษา' : 'Language'}><button type="button" lang="th" aria-label="Thai / ภาษาไทย" aria-pressed={locale === 'th'} onClick={() => changeLocale('th')}>TH</button><button type="button" lang="en" aria-label="English" aria-pressed={locale === 'en'} onClick={() => changeLocale('en')}>EN</button></div>
 }

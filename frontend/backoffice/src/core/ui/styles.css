@@ -283,3 +283,10 @@ html[data-core-modal-open], html[data-core-modal-open] body { overflow:hidden; o
 .topbar > .language-switcher { margin-inline: auto 12px; }
 html[lang="th"] body { font-family: 'Noto Sans Thai', Inter, 'Segoe UI', sans-serif; }
 @media(max-width:760px) { .topbar { flex-wrap: wrap; gap: 8px; } .topbar > .language-switcher { margin-inline: auto 0; } .breadcrumbs { min-width:0; } }
+
+/* Thai labels retain the shared English term at compact widths. */
+.nav-item, .metric-label, .breadcrumbs strong, .core-tabs button { overflow-wrap: anywhere; }
+.nav-item { white-space: normal; }
+.breadcrumbs { flex-wrap: wrap; }
+
+@media(max-width:760px) { .topbar { height: auto; min-height: 76px; padding-block: 12px; } }

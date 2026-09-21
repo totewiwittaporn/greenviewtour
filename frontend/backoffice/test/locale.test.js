@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {activateLocale, translate, readLocale, formatDate, formatNumber} from '../src/core/i18n/runtime.js'
+import {activateLocale, translate, translateLabel, readLocale, formatDate, formatNumber} from '../src/core/i18n/runtime.js'
 import {catalog, labelFor} from '../../../packages/contracts/catalog.js'
 import {workDefinitions, workStatusNames} from '../../../packages/contracts/company-work.js'
 import {personnelFinanceKinds} from '../../../packages/contracts/personnel-finance.js'
@@ -49,4 +49,13 @@ test('catalog field names, status choices and company navigation have Thai trans
     if (!label || label === 'Greenview Tour') continue
     assert.notEqual(translate(label, {}, 'th'), label, `Missing Thai UI translation: ${label}`)
   }
+})
+
+test('Thai headings retain English terms without expanding body copy or business values', () => {
+ assert.equal(translateLabel('Dashboard', {}, 'th'), 'ภาพรวมงาน / Dashboard')
+ assert.equal(translateLabel('Dashboard', {}, 'en'), 'Dashboard')
+ assert.equal(translate('Dashboard', {}, 'th'), 'ภาพรวมงาน')
+ assert.equal(translateLabel('Greenview Tour', {}, 'th'), 'Greenview Tour')
+ assert.equal(translateLabel('ชื่อทัวร์จากพนักงาน', {}, 'th'), 'ชื่อทัวร์จากพนักงาน')
+ assert.equal(translateLabel('ภาพรวมงาน / Dashboard', {}, 'th'), 'ภาพรวมงาน / Dashboard')
 })
