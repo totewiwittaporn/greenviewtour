@@ -219,3 +219,7 @@ Customer check-in is a distinct Tour Operations destination. Reuse Core DateFiel
 ## Reference lookup spacing · 20 September 2026
 
 Core ReferenceField uses the Backoffice stylesheet as its single spacing owner: an 8px grid gap separates search, labeled selection and paging/retry controls; its outer 20px separation remains. This applies in pages and all Dialog consumers, including Booking, dispatch, stock, company work, finance, guide assignments and catalog forms. Existing field label/control spacing and responsive control heights remain unchanged.
+
+## Role-aware Dashboard · 21 September 2026
+
+Dashboard is the authenticated landing workspace. Keep the Backoffice sea-green tokens, typography and natural document scrolling. Its signature is a 14-day arrival calendar (seven columns on desktop, four on tablet, two on phone) with semantic day buttons and the existing Core summary Dialog. Reusable attention widgets link to domain work rather than duplicate editors. Core Shell/Navigation, Button, RefreshButton and DataTable retain ownership; feature CSS controls only calendar/widget layout. See docs/dashboard.md for count definitions and access boundaries.

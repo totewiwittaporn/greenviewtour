@@ -268,3 +268,9 @@ Owner request: member authentication adopts the existing island-photo/form compo
 - Every remaining guest must be accounted for before closing the service day. A manager can reopen with a reason. This is separate from the next-day operational snapshot.
 - No-show creates a financial hold. Bills cannot newly include affected bookings until the recorded decision retains charges. Adjustment/refund decisions remain a hold requiring separate processing; they never automatically move money.
 - Keep DEMO examples for manuals. Temporary transactional verification rolls back only its own fixtures.
+
+## Dashboard landing and summaries · 21 September 2026
+
+Successful staff login goes to `/dashboard`. Root canonicalizes to Dashboard; an already authenticated user visiting `/login` returns there. Invitation and password recovery routes preserve their existing independent flows. Workspace Navigation remains the canonical in-app/history owner; Dashboard is a working menu destination for every active account.
+
+Dashboard uses one authenticated aggregate read. Server-owned permissions and scope determine each widget, including sensitive finance gating. Loading and failed refresh remove prior data; errors offer Retry and zero is reserved for successful empty counts. Core Dialog owns focus trap/restoration, Escape and scroll locking for day summaries. Core DataTable owns the program summary; navigation links open supported domain destinations. English copy and Thailand service dates follow Backoffice conventions. No domain writes or duplicate CRUD are added. Definitions, limitations and validation coverage are maintained in docs/dashboard.md.

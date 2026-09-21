@@ -77,6 +77,7 @@ try {
   assert.equal(Math.round((await page.getByLabel('Full name').boundingBox()).height), 36)
   await page.screenshot({ path: fileURLToPath(new URL('compact-select-desktop.png', output)), fullPage: false })
   await page.keyboard.press('End')
+  await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'option' && document.activeElement.textContent.trim() === 'Head Driver')
   assert.equal(await page.getByRole('option', { name: 'Head Driver', exact: true }).evaluate(el => el === document.activeElement), true)
   await page.keyboard.press('Escape')
   assert.equal(await page.getByRole('dialog', { name: 'Add employee' }).count(), 1)
