@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { Button, Field, Notice } from '../core/ui.jsx';
 import { api, errorText } from '../core/api.js';
 export default function Auth({ onLogin }) {useLocale();
-  const [recover, setRecover] = useState(false),[register, setRegister] = useState(false),[email, setEmail] = useState(''),[password, setPassword] = useState(''),[confirmation, setConfirmation] = useState(''),[busy, setBusy] = useState(false),[notice, setNotice] = useState(''),[errors, setErrors] = useState({}),lock = useRef(false),form = useRef(null);
+  const [recover, setRecover] = useState(false),[register, setRegister] = useState(() => new URLSearchParams(location.search).get('mode') === 'register'),[email, setEmail] = useState(''),[password, setPassword] = useState(''),[confirmation, setConfirmation] = useState(''),[busy, setBusy] = useState(false),[notice, setNotice] = useState(''),[errors, setErrors] = useState({}),lock = useRef(false),form = useRef(null);
   async function submit(e) {
     e.preventDefault();if (lock.current) return;
     const invalid = {};

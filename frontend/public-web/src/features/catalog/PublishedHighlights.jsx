@@ -1,11 +1,39 @@
 import {useLocale} from '../../core/useLocale.js'
 import {useEffect,useState} from 'react'
 import {Button} from '../../core/ui/Controls.jsx'
-export default function PublishedHighlights(){const {t,label,number}=useLocale();
- const [state,setState]=useState({loading:true}),[attempt,setAttempt]=useState(0)
- useEffect(()=>{const c=new AbortController();setState({loading:true});fetch('/api/public/tours?page=1',{signal:c.signal}).then(async r=>{if(!r.ok)throw Error();return r.json()}).then(r=>{if(!c.signal.aborted)setState(r)}).catch(()=>{if(!c.signal.aborted)setState({error:true})});return()=>c.abort()},[attempt])
- if(state.loading)return <p role="status">{t("กำลังโหลดโปรแกรมทัวร์…")}</p>
- if(state.error)return <><p role="alert">{t("ยังโหลดโปรแกรมทัวร์ไม่ได้")}</p><Button onClick={()=>setAttempt(n=>n+1)}>{t("ลองอีกครั้ง")}</Button></>
- if(!state.rows.length)return <p>{t("กำลังเตรียมโปรแกรมทัวร์สำหรับฤดูกาลถัดไป ติดต่อทีมงานเพื่อสอบถามวันเดินทางได้เลย")}</p>
- return <><div className="tour-grid">{state.rows.slice(0,3).map(tour=><article className="tour-card" key={tour.id}><a className="tour-image-link" href={'/tours?tour='+encodeURIComponent(tour.slug)} aria-label={t("ดูรายละเอียด")+' '+tour.name}>{tour.imageUrls&&<img src={tour.imageUrls.split('\n')[0]} alt={tour.name} loading="lazy"/>}<span className="duration">{number(tour.durationDays)} {label("วัน")}</span></a><div className="tour-content"><h3>{tour.name}</h3><p>{tour.description}</p><a href={'/tours?tour='+encodeURIComponent(tour.slug)}>{label("ดูรายละเอียดและวันเดินทาง →")}</a></div></article>)}</div><a className="public-button" href="/tours">{label("ดูโปรแกรมทั้งหมด")}</a></>
+import './PublishedHighlights.css'
+function HighlightGroup({ownership, title}) {
+  const {t,number}=useLocale()
+  const [state,setState]=useState({loading:true}),[attempt,setAttempt]=useState(0)
+  useEffect(()=>{
+    const controller=new AbortController()
+    const timeout=setTimeout(()=>{setState({error:true});controller.abort()},15000)
+    setState({loading:true})
+    fetch(`/api/public/tours?page=1&ownership=${ownership}`,{signal:controller.signal}).then(async response=>{
+      if(!response.ok)throw Error()
+      return response.json()
+    }).then(data=>{if(!controller.signal.aborted)setState(data)}).catch(()=>{if(!controller.signal.aborted)setState({error:true})}).finally(()=>clearTimeout(timeout))
+    return()=>{clearTimeout(timeout);controller.abort()}
+  },[ownership,attempt])
+  return <section className="home-tour-group published-highlight-group" aria-labelledby={`tours-${ownership}`} aria-busy={!!state.loading}>
+    <h3 id={`tours-${ownership}`} className="home-tour-group-title">{t(title)}</h3>
+    {state.loading?<p role="status">{t('กำลังโหลดโปรแกรมทัวร์…')}</p>:state.error?<div><p role="alert">{t('ยังโหลดโปรแกรมทัวร์ไม่ได้')}</p><Button onClick={()=>setAttempt(value=>value+1)}>{t('ลองอีกครั้ง')}</Button></div>:!state.rows?.length?<p className="home-empty">{t('ยังไม่มีโปรแกรมเผยแพร่ในหมวดนี้')}</p>:<div className="tour-grid">{state.rows.slice(0,2).map(tour=><article className="tour-card" key={tour.id}>
+      <a className="tour-image-link" href={'/tours?tour='+encodeURIComponent(tour.slug)} aria-label={t('ดูรายละเอียด')+' '+tour.name}>
+        {tour.imageUrls?<img src={tour.imageUrls.split('\n')[0]} alt={tour.name} loading="lazy" width="600" height="400"/>:<div className="home-tour-no-image">Greenview Tour</div>}
+        {tour.durationDays!=null&&<span className="duration">{number(tour.durationDays)} {t('วัน')}</span>}
+      </a><div className="tour-content"><h4>{tour.name}</h4>{tour.description&&<p>{tour.description}</p>}<a href={'/tours?tour='+encodeURIComponent(tour.slug)}>{t('ดูรายละเอียด')} <span aria-hidden="true">→</span></a></div>
+    </article>)}</div>}
+    <a className="home-text-link" href={`/tours?ownership=${ownership}`}>{t('ดูโปรแกรมในหมวดนี้')} <span aria-hidden="true">→</span></a>
+  </section>
+}
+export default function PublishedHighlights() {
+  const {t}=useLocale()
+  const [ownership,setOwnership]=useState('GREENVIEW')
+  const categories=[['GREENVIEW','ทัวร์ของกรีนวิว'],['PARTNER','ทัวร์จากพันธมิตร']]
+  return <>
+    <div className="published-highlight-options" role="group" aria-label={t('โปรแกรมทัวร์')}>
+      {categories.map(([value,title])=><button key={value} type="button" aria-pressed={ownership===value} onClick={()=>setOwnership(value)}>{t(title)}</button>)}
+    </div>
+    <HighlightGroup key={ownership} ownership={ownership} title={categories.find(([value])=>value===ownership)[1]}/>
+  </>
 }

@@ -207,7 +207,7 @@ Public master-data catalog and promotion pages extend the existing Public card f
 Owner request: member authentication adopts the existing island-photo/form composition; staff AuthLayout becomes a quiet centered card. This supersedes the earlier team photo-panel direction. Member core/AuthLayout owns the customer composition, core/ui owns password toggles and buttons; no cross-app UI imports. Anonymous member navigation contains only Tours and Sign in, with a separate public-home link in the footer. Personal trips/profile appear only for a signed-in customer. Authentication and role provisioning behavior remain owned by the existing APIs.
 
 ## Public login entry points
-Owner prefers separate entry points: customer sign-in is the visible header action; staff access is a quiet, readable footer link, never a role picker. Public Core SiteNavigation owns the shared header/footer across home, catalog and promotions. Local links target member 5175 and staff 5174. Deployed staff destination requires VITE_STAFF_LOGIN_URL; no unapproved staff subdomain is invented. Placement does not replace server authorization. Customer sign-in stays visible on mobile.
+Owner prefers separate entry points: customer sign-in is the visible header action; staff access is a quiet, readable footer link, never a role picker. Public Core SiteNavigation owns the shared header/footer across home, catalog and promotions. Local links target member 5175 and staff 5174. Deployed staff destination requires VITE_STAFF_LOGIN_URL; no unapproved staff subdomain is invented. Placement does not replace server authorization. Mobile customer sign-in is available through the account disclosure.
 
 ## Local demo checkout
 Member DemoCheckout composes Core Button/Notice in the existing quote panel. Only the server-allowlisted retained tour exposes the simulator. Copy explicitly says no money, no scannable QR, and LINE preview only. Success shows the created DEMO Booking and persisted customer-scoped message. Backoffice Review repeats the simulation label. No new visual theme or role-switch UI.
@@ -247,3 +247,45 @@ Employee and customer self-profile forms expose optional Nickname (50 characters
 Owner requirement: internal menu changes replace page content while preserving Public and Member Navbar/Footer DOM, and Backoffice Sidebar/Navbar DOM. This does not introduce sticky/fixed positioning. Public App owns SiteHeader/SiteFooter once, outside route content. Member owns its header/footer/session outside route-keyed forms and datasets. Each app owns its navigation implementation; do not import UI/providers across applications.
 
 Internal navigation and browser history preserve shell identity and locale without full-document reload. Native modified clicks, external destinations, downloads and unowned URLs retain browser behavior. Public home anchors scroll after their content mounts. Member draft guards protect internal links and back/forward, retaining fields and the original URL when navigation is cancelled. Explicit sign-out/recovery session termination may still reset the document at the authentication boundary. Backoffice reuses its existing guarded NavigationProvider; persistent shell/history checks are part of the browser suite.
+
+## Public Home and orange brand accents (2026-09-21)
+
+Owner approved the teal/orange Home mockup. Public retains the sea palette and introduces restrained orange accents through `frontend/public-web/src/core/ui/styles.css`: `--accent:#f28b36`, `--accent-hover:#ffad64`, `--accent-ink:#843800`. Orange filled actions use dark teal text for contrast. Backoffice/Member tokens are unchanged. Home owns its hero, short welcome, real company location, Surin introduction and separately labeled Greenview/partner published tours; shared Public navigation/footer remain mounted.
+
+Real company contact/map data comes from a server allowlist; no invented map coordinates or financial/company-private data. Tour ownership filtering occurs before server pagination. Home uses two locally hosted photo derivatives from the owner's shared Drive collections, with original source IDs and processing notes in `docs/public-home-assets.md`. Archived photography is illustrative of the destination, not proof of current vessel availability or operating conditions. Detailed Company/Surin article migration remains a later content phase; Home links use supported routes/anchors.
+
+## Public shared brand chrome (2026-09-21)
+
+Navbar and Footer use the owner's full original boat logo, including GREENVIEW TOUR lettering to match Facebook, on a pale plate against dark teal. No separate duplicate wordmark. Orange highlights retain the approved Home palette. Desktop navigation and TH/EN, Login and Register share one row; tablet/mobile use a one-row header with a hamburger; phone account actions are in an accessible account disclosure. Footer groups only supported destinations and stacks on small screens. Register opens the Member registration form directly through `/login?mode=register`.
+
+Owner refinement: Public chrome now uses the supplied transparent full-lettering PNG without a plate. Desktop Navbar is 64px; mobile uses a compact one-row shell with 44px header controls. Favicon uses the previous white-background original.
+
+Navbar logo is 67×44px desktop/tablet and 61×40px mobile, keeping breathing room within the compact header; Footer logo dimensions are unchanged.
+
+Owner photo policy: avoid people in decorative Public photography when consent is uncertain. The swimmer image is removed; Surin introduction reuses the distant island/sea image for now.
+
+## Approved Home reference refinement
+
+The owner supplied the teal/orange reference screen and approved a compact editorial layout: 390px desktop hero with continuous headline, centered welcome, company text left/map right, split-level coral photograph left/three icon-led topics right, and two-column live tour cards with category toggle aligned beside the section heading. Mobile stacks sections and keeps hamburger and 44px controls. Feature layout lives in HomePage.css and PublishedHighlights.css; Core owns shell, palette, locale and controls. Keep the supplied original brand logo. No fabricated tour offers or unsupported article links. Map embeds use validated coordinates when present, otherwise the saved public address as a Google Maps search; the verified saved map link remains the explicit directions action.
+
+Final map treatment: use a clearly labeled schematic sea/island route illustration matching the visual reference, not an embedded address search or precise map. The real saved Maps link remains the directions action; no guessed coordinate is persisted.
+
+Owner detail pass: quiet botanical corner illustrations, Sriracha handwritten hero/footer notes with curved underline, island silhouette under footer brand, explicit Staff login label, and44px back-to-top control fixed at the viewport bottom-right with safe-area offsets. Decorative SVGs are hidden from accessibility and pointer input.
+
+## Geographic accuracy and botanical refinement
+
+The owner rejected the schematic map: replace it with the actual Google Maps Share/Embed output verified against the saved Greenview pier link on2026-09-21. The viewport includes coast/islands at real scale; do not compress sea distance or claim travel time. Bind the static verified embed only to the matching saved map URL; other companies use validated coordinates or a neutral fallback. Palm decoration uses tapered curved leaflets; footer silhouette has two sharp M-like rear peaks (right higher) and a lower foreground mountain layer. This silhouette is decorative, based on the owner's description, not cartographic data.
+
+Map has two native Google views: an unpinned regional overview for visible Surin islands/coastline and the verified pier view for exact arrival location. Google controls scale and map labels; do not overlay guessed distances.
+
+## Approved Tour Programs redesign (2026-09-21)
+
+The owner approved replacing the shared Navbar/Footer and catalog listing with the new teal/orange responsive concept, retaining only the original logo. Use a compact scenic banner, Thai headline, provider segmented links, day/overnight filter pills, two large cards per row on desktop/tablet and stacked cards on phones. Existing owner-approved photography decorates the banner; individual offer images and prices come only from published TourProgram records. Missing images have a neutral placeholder. Decorative palms share Core Botanical with Home. Footer retains only supported links, staff login, handwritten accent and layered M-shaped mountain artwork; back-to-top is fixed bottom-right.
+
+Header remains64px tall. At600px and below account icon reveals Login/Register with keyboard/Escape/outside dismissal; tablet retains visible account links and hamburger navigation. Desktop navigation is inline above1100px. All public routes share the same mounted shell.
+
+Provider/duration filters use URL query state and reset pagination. Backend applies durationDays=1 or>1 before count and pagination, preserving ACTIVE/PUBLISHED selection. New catalog requests abort on navigation and time out after15seconds with retry. Detail/promotions retain their existing commercial content and booking flow. Actual catalog volume/content may differ from the illustrative two-card mockup; do not invent offers or destinations to fill it.
+
+Owner correction: replace the rejected SVG leaflets with a natural transparent palm-frond illustration, shared through Core Botanical. Use muted sage at low opacity, full curved tapering leaflets, and corner placement clear of headings/controls. Asset provenance and generation prompt are recorded in docs/public-home-assets.md.
+
+Staff login is separate from navigation lists, centered in the bottom footer bar. Desktop copyright sits at left; phone copyright stacks above the centered44px staff link. Fixed back-to-top stays at bottom-right.

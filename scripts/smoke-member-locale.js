@@ -33,6 +33,11 @@ try {
   await page.getByRole('button',{name,exact:true}).click()
   assert.equal(await page.locator('.member-account-panel').count(),0)
  }
+ await page.goto(origin + '/login?mode=register')
+ await page.getByRole('heading',{name:'สมัครสมาชิก / Create account',exact:true}).waitFor()
+ await page.getByLabel('ยืนยันรหัสผ่าน / Confirm password',{exact:true}).waitFor()
+ await page.reload()
+ await page.getByRole('heading',{name:'สมัครสมาชิก / Create account',exact:true}).waitFor()
  await page.goto(origin + '/login')
  await page.getByRole('heading',{name:'เข้าสู่ระบบสมาชิก / Member sign in',exact:true}).waitFor()
  await page.locator('.member-account-trigger').click()
