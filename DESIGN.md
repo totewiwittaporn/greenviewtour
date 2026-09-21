@@ -263,3 +263,7 @@ Owner refinement: Public chrome now uses the supplied transparent full-lettering
 Navbar logo is 67×44px desktop/tablet and 61×40px mobile, keeping breathing room within the compact header; Footer logo dimensions are unchanged.
 
 Owner photo policy: avoid people in decorative Public photography when consent is uncertain. The swimmer image is removed; Surin introduction reuses the distant island/sea image for now.
+
+## Approved Home reference refinement
+
+The owner supplied the teal/orange reference screen and approved a compact editorial layout: 390px desktop hero with continuous headline, centered welcome, company text left/map right, split-level coral photograph left/three icon-led topics right, and two-column live tour cards with category toggle aligned beside the section heading. Mobile stacks sections and keeps hamburger and 44px controls. Feature layout lives in HomePage.css and PublishedHighlights.css; Core owns shell, palette, locale and controls. Keep the supplied original brand logo. No fabricated tour offers or unsupported article links. Map embeds use validated coordinates when present, otherwise the saved public address as a Google Maps search; the verified saved map link remains the explicit directions action.

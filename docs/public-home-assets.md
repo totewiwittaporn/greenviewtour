@@ -35,3 +35,7 @@ The owner supplied `484293511_1146584594144725_4598489206089200479_n.jpg` and ex
 Latest owner-supplied `codex-clipboard-c9617f78-5800-43f3-8334-693c397fc827.png` is copied unchanged to `images/brand/greenview-logo.png` for shared Public chrome. The prior white-background `greenview-mark.png` remains the Public favicon. No generative image processing was used for this replacement.
 
 Owner requested removing the underwater swimmer photograph because permission from the person is uncertain. The Surin section now reuses the approved distant sea/island photograph; `surin-story.webp` is removed from shipped assets. Its source entry above is historical provenance, not an active website selection. A separate underwater scene without people can replace the interim landscape in a later selection.
+
+## Approved replacement: NIC_8148.jpg
+
+Owner selected the above/below-water coral photo from https://drive.google.com/file/d/1TV4H0SK5f6DQeGT1_LdtTlolyBwEbVgp/view. Original visually inspected: no people visible. Shipped as `images/home/surin-coral.webp`, resized to1400px wide and encoded WebP quality86 without generative alteration. It replaces the interim repeated landscape in the Surin introduction.

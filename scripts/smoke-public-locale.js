@@ -192,9 +192,17 @@ try {
   assert.equal(await page.locator('img[src^="/images/home/"]').count(), 2)
   const own = page.locator('.home-tour-group').filter({has: page.locator('#tours-GREENVIEW')})
   const other = page.locator('.home-tour-group').filter({has: page.locator('#tours-PARTNER')})
-  await other.getByRole('heading', {name: partner.name}).waitFor()
-  assert.ok((await own.innerText()).includes(tour.name))
+  const ownToggle = page.locator('.published-highlight-options button').nth(0)
+  const partnerToggle = page.locator('.published-highlight-options button').nth(1)
+  await own.getByRole('heading', {name: tour.name}).waitFor()
+  assert.equal(await ownToggle.getAttribute('aria-pressed'), 'true')
+  assert.equal(await other.count(), 0)
   assert.ok(!(await own.innerText()).includes(partner.name))
+  await partnerToggle.click()
+  await other.getByRole('heading', {name: partner.name}).waitFor()
+  assert.equal(await partnerToggle.getAttribute('aria-pressed'), 'true')
+  assert.equal(await ownToggle.getAttribute('aria-pressed'), 'false')
+  assert.equal(await own.count(), 0)
   assert.ok(!(await other.innerText()).includes(tour.name))
   assert.ok(tourQueries.some(q => new URLSearchParams(q).get('ownership') === 'GREENVIEW'))
   assert.ok(tourQueries.some(q => new URLSearchParams(q).get('ownership') === 'PARTNER'))
@@ -209,7 +217,11 @@ try {
   await page.getByText('Company information is not available yet.', {exact:true}).waitFor()
   assert.equal(await page.locator('#company a').count(), 0)
   await page.locator('.home-empty').first().waitFor()
-  assert.equal(await page.locator('.home-empty').count(), 2)
+  assert.equal(await own.locator('.home-empty').count(), 1)
+  await partnerToggle.click()
+  await other.locator('.home-empty').waitFor()
+  assert.equal(await own.count(), 0)
+  assert.equal(await page.locator('.home-empty').count(), 1)
   companyMode = 'unsafe'
   tourMode = 'ready'
   await page.reload()
@@ -219,16 +231,21 @@ try {
   tourMode = 'error'
   await page.reload()
   await page.locator('#company [role="alert"]').waitFor()
-  await page.locator('.home-tour-group [role="alert"]').first().waitFor()
+  await own.locator('[role="alert"]').waitFor()
   companyMode = 'ready'
   tourMode = 'ready'
   await page.locator('#company button').click()
   await page.locator('#company h3').waitFor()
   assert.equal(await page.locator('#company a[target="_blank"]').getAttribute('href'), company.mapUrl)
-  for (const group of await page.locator('.home-tour-group').all()) {
-    await group.getByRole('button').click()
-    await group.locator('.tour-card').waitFor()
-  }
+  await own.getByRole('button').click()
+  await own.locator('.tour-card').waitFor()
+  tourMode = 'error'
+  await partnerToggle.click()
+  await other.locator('[role="alert"]').waitFor()
+  assert.equal(await own.count(), 0)
+  tourMode = 'ready'
+  await other.getByRole('button').click()
+  await other.locator('.tour-card').waitFor()
   assert.equal(await page.locator('[role="alert"]').count(), 0)
   assert.deepEqual(unexpectedApi, [])
   assert.deepEqual(errors, [])
