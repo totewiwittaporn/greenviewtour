@@ -241,3 +241,9 @@ Public Thai mode now uses Thai-only owned headings/navigation/actions; English m
 Owner-approved Member Profile comparison sets main headings to 26px desktop / 24px mobile, section headings 20px / 18px, labels and content buttons 14px. Form values stay 16px with controls at least 44px tall. Content spacing is slightly tighter; User Info keeps its established type geometry.
 
 Employee and customer self-profile forms expose optional Nickname (50 characters). The User Info identity/trigger prefers a trimmed nickname, falling back to the existing full display name. Full names remain in the detail summary and are never overwritten by a nickname. Clearing a nickname restores that fallback. Nicknames do not influence access or account linking.
+
+## Persistent navigation shells (2026-09-21)
+
+Owner requirement: internal menu changes replace page content while preserving Public and Member Navbar/Footer DOM, and Backoffice Sidebar/Navbar DOM. This does not introduce sticky/fixed positioning. Public App owns SiteHeader/SiteFooter once, outside route content. Member owns its header/footer/session outside route-keyed forms and datasets. Each app owns its navigation implementation; do not import UI/providers across applications.
+
+Internal navigation and browser history preserve shell identity and locale without full-document reload. Native modified clicks, external destinations, downloads and unowned URLs retain browser behavior. Public home anchors scroll after their content mounts. Member draft guards protect internal links and back/forward, retaining fields and the original URL when navigation is cancelled. Explicit sign-out/recovery session termination may still reset the document at the authentication boundary. Backoffice reuses its existing guarded NavigationProvider; persistent shell/history checks are part of the browser suite.

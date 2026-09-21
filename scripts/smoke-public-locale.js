@@ -46,6 +46,57 @@ try {
   assert.ok((await page.locator('body').innerText()).includes('2,500.00'))
   await page.getByRole('heading', { name: tour.name, exact: true }).waitFor()
   assert.ok((await page.locator('body').innerText()).includes(tour.description))
+  // Route changes retain the actual shell nodes and browser document, including query detail links.
+  await page.evaluate(() => {
+    window.shellFixture = {header: document.querySelector('.site-header'), footer: document.querySelector('.public-footer'), language: document.querySelector('.language-selector')}
+  })
+  const assertShell = async () => {
+    assert.equal(await page.evaluate(() => Boolean(window.shellFixture && window.shellFixture.header === document.querySelector('.site-header') && window.shellFixture.footer === document.querySelector('.public-footer') && window.shellFixture.language === document.querySelector('.language-selector'))), true)
+    assert.equal(await page.locator('html').getAttribute('lang'), 'en')
+  }
+  await page.locator('.public-main-nav a[href="/promotions"]').click()
+  await page.getByRole('heading', {name: 'Tour promotions', exact: true}).waitFor()
+  await assertShell()
+  await page.locator('.public-main-nav a[href="/#contact"]').click()
+  await page.waitForURL(`${origin}/#contact`)
+  await page.waitForFunction(() => document.activeElement?.id === 'contact')
+  await page.waitForFunction(() => document.querySelector('#contact').getBoundingClientRect().top < innerHeight)
+  await assertShell()
+  await page.locator('.public-main-nav a[href="/#surin"]').click()
+  await page.waitForURL(`${origin}/#surin`)
+  await page.waitForFunction(() => document.activeElement?.id === 'surin')
+  await assertShell()
+  await page.locator('.public-main-nav a[href="/tours"]').click()
+  await page.getByRole('heading', {name: 'Tours', exact: true}).waitFor()
+  await page.locator('a[href="/tours?tour=locale-fixture"]').click()
+  await page.waitForURL(`${origin}/tours?tour=locale-fixture`)
+  await page.getByRole('heading', {name: 'Travel dates available for online booking', exact: true}).waitFor()
+  await assertShell()
+  await page.goBack()
+  await page.waitForURL(`${origin}/tours`)
+  await page.locator('a[href="/tours?tour=locale-fixture"]').waitFor()
+  await page.goForward()
+  await page.waitForURL(`${origin}/tours?tour=locale-fixture`)
+  await assertShell()
+  // Modified clicks and explicit browser targets/downloads are never consumed by the router.
+  const nativeChecks = await page.evaluate(() => {
+    const results = []
+    for (const setup of [{ctrlKey:true}, {metaKey:true}, {shiftKey:true}, {altKey:true}, {target:'_blank'}, {download:'tour'}, {href:'https://example.com/'}, {href:'/api/public/tours'}]) {
+      const anchor = document.createElement('a')
+      anchor.href = setup.href || '/tours'
+      if (setup.target) anchor.target = setup.target
+      if (setup.download) anchor.download = setup.download
+      document.body.append(anchor)
+      const event = new MouseEvent('click', {bubbles:true,cancelable:true,...setup})
+      const observe = observed => { if(observed===event) { results.push(!observed.defaultPrevented); observed.preventDefault() } }
+      document.addEventListener('click', observe)
+      anchor.dispatchEvent(event)
+      document.removeEventListener('click', observe)
+      anchor.remove()
+    }
+    return results
+  })
+  assert.deepEqual(nativeChecks, Array(8).fill(true))
   await page.reload()
   await page.getByRole('heading', { name: 'Tours', exact: true }).waitFor()
   await page.setViewportSize({ width: 375, height: 812 })
@@ -94,7 +145,10 @@ try {
           assert.equal(await hamburger.evaluate(el=>el===document.activeElement),true)
           await hamburger.focus()
           await page.keyboard.press('Enter')
+          await page.evaluate(() => { window.mobileShell = document.querySelector('.site-header') })
           await page.locator('.public-main-nav a').first().click()
+          await page.waitForURL(`${origin}/tours`)
+          assert.equal(await page.evaluate(() => window.mobileShell === document.querySelector('.site-header')),true)
           assert.equal(await page.locator('.public-main-nav').isVisible(),false)
         }else{
           assert.equal(await hamburger.isVisible(),false)
@@ -106,7 +160,7 @@ try {
   }
   assert.deepEqual(unexpectedApi, [])
   assert.deepEqual(errors, [])
-  console.log('Public locale fixtures passed: titles, language, persistence, custom event, dates/currency, mobile layout and original CMS content.')
+  console.log('Public locale fixtures passed: titles, language, persistence, custom event, dates/currency, mobile layout, original CMS content, persistent shell nodes, history, anchors and native link behavior.')
 } finally {
   await browser.close()
 }

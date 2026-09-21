@@ -7,13 +7,14 @@ try {
  const context = await browser.newContext({viewport:{width:1280,height:900}})
  const page = await context.newPage(), errors = []
  page.on('pageerror', error => errors.push(error.message))
- let authenticated = false, quoteCalls = 0, failSave = false, profileWrites = 0, recovery = false
+ let authenticated = false, quoteCalls = 0, profileReads = 0, failSave = false, profileWrites = 0, recovery = false
  const customer = {id:'customer',displayName:'นักเดินทางเดิม',email:'traveller@example.com',phone:'0812345678',lineId:'traveller.line',version:1}
  const tour = {id:'tour',slug:'surin',name:'ชื่อทัวร์จากฐานข้อมูล',description:'เก็บข้อความต้นฉบับ',durationDays:2,adultPrice:'1500',childPrice:'1000',promotions:[{id:'promo',name:'โปรโมชั่นต้นฉบับ',remaining:10,quotaUnit:'SEAT',adultPrice:'1400',childPrice:'900',serviceStartsOn:'2026-09-21',serviceEndsOn:'2026-10-04'}],components:[]}
  await context.route(/^https:/, route => route.abort())
  await context.route('**/api/**', route => {
   const path = new URL(route.request().url()).pathname
   if (path === '/api/member/profile') {
+   if (route.request().method() === 'GET') profileReads++
    if (route.request().method() === 'POST') {
     profileWrites++
     if (failSave) return route.fulfill({status:409,json:{code:'SETTINGS_CONFLICT'}})
@@ -21,6 +22,8 @@ try {
    }
    return route.fulfill(authenticated ? {json:{customer,recovery}} : {status:401,json:{code:'LOGIN_REQUIRED'}})
   }
+  if (path === '/api/member/login') {authenticated = true; return route.fulfill({json:{customer}})}
+  if (path === '/api/member/requests') return route.fulfill({json:{rows:[],page:1,total:0}})
   if (path === '/api/public/tours') return route.fulfill({json:{rows:[tour],page:1,total:1}})
   if (path === '/api/public/quote') { quoteCalls++; return route.fulfill({json:{packageTotal:'1500',adultPrice:'1500',childPrice:'1000',components:[],quoteKey:'fixture-quote',terms:{fees:'ค่าธรรมเนียมต้นฉบับ',cancellationTerms:'เงื่อนไขต้นฉบับ'}}}) }
   return route.fulfill({status:400,json:{code:'FIXTURE_UNEXPECTED_REQUEST'}})
@@ -170,6 +173,50 @@ try {
  assert.equal(customer.lineId,'')
  assert.equal(customer.nickname,'')
  assert.equal(await shell.locator('.member-account-name').textContent(),customer.displayName)
+ // Internal navigation keeps the document, shell nodes and loaded session alive.
+ await shell.setViewportSize({width:1440,height:900})
+ await shell.evaluate(() => {window.shellNodes = [document.querySelector('header'),document.querySelector('footer')];window.shellMarker = true})
+ const readsBeforeNavigation = profileReads
+ await shell.locator('#member-navigation a[href="/tours"]').click()
+ await shell.getByRole('heading',{name:tour.name,exact:true}).waitFor()
+ await shell.locator('main a[href="/tours?tour=surin"]').click()
+ await shell.getByLabel('วันเดินทาง / Travel date',{exact:true}).waitFor()
+ assert.match(shell.url(),/tour=surin/)
+ await shell.goBack()
+ await shell.locator('main a[href="/tours?tour=surin"]').waitFor()
+ await shell.goForward()
+ await shell.getByLabel('วันเดินทาง / Travel date',{exact:true}).waitFor()
+ await shell.locator('#member-navigation a[href="/profile"]').click()
+ await shell.getByLabel('ชื่อเล่น / Nickname',{exact:true}).fill('unsaved navigation nickname')
+ // Hash navigation keeps the same dirty form and contributes a distinct history entry.
+ await shell.evaluate(() => document.querySelector('.skip').click())
+ assert.equal(await shell.getByLabel('ชื่อเล่น / Nickname',{exact:true}).inputValue(),'unsaved navigation nickname')
+ await shell.goBack()
+ assert.equal(await shell.getByRole('dialog').count(),0)
+ // Browser back is blocked by an app dialog after restoring the original URL.
+ await shell.evaluate(() => history.back())
+ await shell.getByRole('dialog').waitFor()
+ assert.match(shell.url(),/\/profile$/)
+ await shell.getByRole('button',{name:'ทำรายการต่อ',exact:true}).click()
+ assert.equal(await shell.getByLabel('ชื่อเล่น / Nickname',{exact:true}).inputValue(),'unsaved navigation nickname')
+ await shell.evaluate(() => history.back())
+ await shell.getByRole('dialog').waitFor()
+ await shell.getByRole('button',{name:'ออกโดยไม่บันทึก',exact:true}).click()
+ await shell.getByLabel('วันเดินทาง / Travel date',{exact:true}).waitFor()
+ // A contact-only dirty tour form also blocks browser forward before choosing a date.
+ await shell.getByLabel('ชื่อผู้ติดต่อ / Contact name',{exact:true}).fill('unsent tour contact')
+ await shell.evaluate(() => history.forward())
+ await shell.getByRole('dialog').waitFor()
+ assert.match(shell.url(),/tour=surin/)
+ await shell.getByRole('button',{name:'ทำรายการต่อ',exact:true}).click()
+ assert.equal(await shell.getByLabel('ชื่อผู้ติดต่อ / Contact name',{exact:true}).inputValue(),'unsent tour contact')
+ await shell.evaluate(() => history.forward())
+ await shell.getByRole('dialog').waitFor()
+ await shell.getByRole('button',{name:'ออกโดยไม่บันทึก',exact:true}).click()
+ await shell.getByLabel('ชื่อเล่น / Nickname',{exact:true}).waitFor()
+ assert.equal(await shell.getByLabel('ชื่อเล่น / Nickname',{exact:true}).inputValue(),'')
+ assert.equal(profileReads,readsBeforeNavigation)
+ assert.equal(await shell.evaluate(() => window.shellMarker && window.shellNodes[0] === document.querySelector('header') && window.shellNodes[1] === document.querySelector('footer')),true)
  // Long contact content stays inside a short mobile viewport and scrolls to actions.
  customer.lineId = 'long-line-id-'.repeat(8)
  customer.displayName = 'ชื่อสมาชิกที่มีความยาวเพื่อทดสอบการตัดบรรทัด'.repeat(4)
@@ -182,6 +229,30 @@ try {
  await shell.locator('.member-signout').scrollIntoViewIfNeeded()
  assert.equal(await shell.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true)
  await shell.keyboard.press('Escape')
+ // Native link contracts: browser owns modified, external, download and API navigation.
+ for (const options of [{href:'/tours',ctrlKey:true},{href:'/tours',target:'_blank'},{href:'/api/member/documents/fixture'},{href:'https://example.com'},{href:'/tours',download:true}]) {
+  assert.equal(await shell.evaluate(options => {
+   const a = document.createElement('a'); a.href = options.href
+   if (options.target) a.target = options.target
+   if (options.download) a.download = 'fixture'
+   document.body.append(a)
+   let intercepted
+   document.addEventListener('click', event => {intercepted = event.defaultPrevented; event.preventDefault()}, {once:true})
+   a.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,button:0,ctrlKey:options.ctrlKey}))
+   a.remove(); return intercepted
+  }, options), false)
+ }
+ authenticated = false
+ const login = await context.newPage()
+ await login.goto(origin + '/login?next=' + encodeURIComponent('/tours?tour=surin'))
+ await login.evaluate(() => {window.authHeader = document.querySelector('header')})
+ await login.getByLabel('อีเมล / Email',{exact:true}).fill('traveller@example.com')
+ await login.getByLabel('รหัสผ่าน / Password',{exact:true}).fill('valid-password')
+ await login.getByRole('button',{name:'เข้าสู่ระบบ',exact:true}).click()
+ await login.getByLabel('วันเดินทาง / Travel date',{exact:true}).waitFor()
+ assert.match(login.url(),/\/tours\?tour=surin$/)
+ assert.equal(await login.evaluate(() => window.authHeader === document.querySelector('header')),true)
+ await login.close()
  recovery = true
  await shell.reload()
  await shell.locator('.member-account-trigger').click()

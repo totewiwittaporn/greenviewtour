@@ -1,14 +1,13 @@
 import {useLocale} from '../../core/useLocale.js'
-import {SiteHeader,SiteFooter} from '../../core/ui/SiteNavigation.jsx'
 import PublishedHighlights from '../catalog/PublishedHighlights.jsx'
 const base = 'https://greenviewtour.com'
 export default function HomePage() {const {t,label}=useLocale();
-  return <><a className="skip-link" href="#content">{label("ข้ามไปเนื้อหา")}</a>
-    <SiteHeader/>
+  return <>
+
     <main id="content"><section className="hero"><img className="hero-image" src={`${base}/wp-content/uploads/2025/01/DJI_0351.jpg`} alt={t("ทะเลและหมู่เกาะสุรินทร์")} fetchPriority="high" /><div className="hero-shade" /><div className="hero-copy"><p className="script-label">{t("Your island escape")}</p><p className="location-label">{t("SURIN ISLANDS · PHANG NGA")}</p><h1>{label("ให้ทะเลพาเรา")}<br />{label("ไปพักใจ")}</h1><p className="hero-description">{t("น้ำทะเลใส โลกใต้ทะเลที่มีชีวิต")}<br />{t("และวันพักผ่อนที่ได้อยู่ใกล้ธรรมชาติจริง ๆ")}</p><a href="#tours" className="public-button">{label("ค้นหาทริปของคุณ")} <span>→</span></a></div><div className="hero-caption"><span>GREENVIEW TOUR</span><span>{t("ใช้ชีวิต ติดเกาะสุรินทร์")}</span></div></section>
     <div className="journey-strip"><div><span className="strip-symbol">☀</span><div><strong>{t("ทะเลในแบบที่คุณชอบ")}</strong><span>{t("ทริปวันเดียว หรือพักค้างคืน")}</span></div></div><div><span className="strip-symbol">≈</span><div><strong>{t("ใกล้ชิดโลกใต้ทะเล")}</strong><span>{t("ดำน้ำตื้นชมปะการัง")}</span></div></div><div><span className="strip-symbol">⌁</span><div><strong>{t("เริ่มต้นที่คุระบุรี")}</strong><span>{t("ท่าเรือกรีนวิว ทัวร์ จังหวัดพังงา")}</span></div></div></div>
     <section className="tour-section" id="tours"><div className="section-heading"><div><p className="section-eyebrow">{t("FIND YOUR NEXT JOURNEY")}</p><h2>{label("เลือกวันพักผ่อน")}<br className="mobile-break" /> {label("ในแบบของคุณ")}</h2></div><p>{t("ไปเช้าเย็นกลับ หรืออยู่ฟังเสียงคลื่นให้นานขึ้น")}<br />{t("เริ่มต้นความทรงจำครั้งใหม่กับ Greenview Tour")}</p></div><PublishedHighlights/></section>
     <section className="island-story" id="surin"><img src={`${base}/wp-content/uploads/2025/01/DSC_3817.jpg`} alt={t("บรรยากาศธรรมชาติจาก Greenview Tour")} loading="lazy" /><div><p className="section-eyebrow">{t("MORE THAN A DAY AT SEA")}</p><h2>{label("มีเรื่องราวรออยู่")}<br />{label("ทั้งบนเกาะและใต้ทะเล")}</h2><p>{t("สัมผัสวิถีชีวิตหมู่บ้านมอแกน เดินเล่นริมชายหาด และลงไปพบสีสันของแนวปะการัง ให้การเดินทางครั้งนี้เป็นเวลาของคุณ")}</p><a className="public-button" href={`${base}/category/อุทยานหมู่เกาะสุรินทร์/หมู่เกาะสุรินทร์/`} target="_blank" rel="noreferrer">{label("รู้จักหมู่เกาะสุรินทร์")} <span>↗</span></a></div></section>
     <section className="contact-section" id="contact"><div><p className="section-eyebrow">{t("LET’S PLAN YOUR ISLAND DAYS")}</p><h2>{label("ทริปถัดไป เริ่มจากคุยกัน")}</h2><p>{t("สอบถามโปรแกรม วันเดินทาง และรายละเอียดกับทีมกรีนวิว ทัวร์")}</p></div><a className="public-button" href={"https://web.facebook.com/greenviewtour99"} target="_blank" rel="noreferrer">{label("ติดต่อ Greenview Tour")} <span>↗</span></a></section></main>
-    <SiteFooter/></>
+    </>
 }
