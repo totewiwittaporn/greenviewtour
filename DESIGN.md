@@ -223,3 +223,9 @@ Core ReferenceField uses the Backoffice stylesheet as its single spacing owner: 
 ## Role-aware Dashboard · 21 September 2026
 
 Dashboard is the authenticated landing workspace. Keep the Backoffice sea-green tokens, typography and natural document scrolling. Its signature is a 14-day arrival calendar (seven columns on desktop, four on tablet, two on phone) with semantic day buttons and the existing Core summary Dialog. Reusable attention widgets link to domain work rather than duplicate editors. Core Shell/Navigation, Button, RefreshButton and DataTable retain ownership; feature CSS controls only calendar/widget layout. See docs/dashboard.md for count definitions and access boundaries.
+
+## Approved navigation and compact tables (2026-09-21)
+
+Owner-approved preview: Public places the TH/EN dropdown followed by Login / Register in the shared top bar, leaving the primary navigation on one row at wide widths. Member keeps Tours, My trips and Profile separate from User Info. Authenticated Member and Backoffice User Info own language selection and sign out; unauthenticated screens retain a language dropdown. Mobile primary navigation uses a hamburger; dropdowns remain bounded by the viewport and support keyboard dismissal. Thai labels continue pairing Thai / English.
+
+Backoffice Core table tokens use 12px data, 11px column headings and 8px vertical / 10px horizontal cell padding across page and dialog tables. Row action buttons are 28px on desktop with 16px icons; touch/narrow screens retain 40px targets. Existing table overflow and dialog scroll ownership are preserved.

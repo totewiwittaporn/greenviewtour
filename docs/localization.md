@@ -1,6 +1,6 @@
 # Thai and English interfaces
 
-The Backoffice, public website and Member applications expose TH / EN controls in their existing header or authentication layout. Each application owns its React locale provider and dictionaries; applications do not import another application's UI. No API, permission, scope, record transition or persisted business value changes are part of this interface localization.
+The public website exposes a TH/EN dropdown followed by Login / Register in its shared top bar. Authenticated Backoffice and Member place language choices and sign out inside User Info; unauthenticated screens retain a language dropdown. Member navigation stays separate from User Info. Mobile primary navigation uses hamburger controls. Each application owns its React locale provider and dictionaries; applications do not import another application's UI. No API, permission, scope, record transition or persisted business value changes are part of this interface localization.
 
 ## Thai interface terminology
 

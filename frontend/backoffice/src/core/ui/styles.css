@@ -290,3 +290,23 @@ html[lang="th"] body { font-family: 'Noto Sans Thai', Inter, 'Segoe UI', sans-se
 .breadcrumbs { flex-wrap: wrap; }
 
 @media(max-width:760px) { .topbar { height: auto; min-height: 76px; padding-block: 12px; } }
+
+/* Owner-approved compact dataset density, shared by page and dialog tables. */
+:root { --table-cell-padding: 8px 10px; --table-font-size: 12px; --row-action-size: 28px; }
+th, td, .table-scroll :is(th,td) { padding:var(--table-cell-padding); font-size:var(--table-font-size); line-height:1.5; }
+th, .table-scroll th { font-size:11px; }
+td small { font-size:11px; }
+.table-cell-controls .dropdown-anchor > .button, .table-cell-copy .dropdown-anchor > .button, .button-row-actions { width:var(--row-action-size); height:var(--row-action-size); min-height:var(--row-action-size); flex-basis:var(--row-action-size); padding:4px; font-size:16px; }
+.button-row-actions svg { width:16px; height:16px; }
+.dropdown-section { padding:10px 12px 4px; font-size:11px; color:var(--muted); border-top:1px solid var(--line); margin-top:6px; }
+.core-dropdown .menu-selected { background:var(--brand-tint); color:var(--brand); }
+.menu-check { margin-left:auto; }
+.core-dropdown[role="menu"] { max-width:calc(100vw - 16px); max-height:calc(100dvh - 16px); overflow-y:auto; }
+.dropdown-heading { overflow-wrap:anywhere; }
+@media (max-width:760px), (pointer:coarse) {
+  :root { --row-action-size:40px; }
+
+}
+
+.breadcrumbs { max-width:100%; }
+.breadcrumbs > :is(span,strong) { min-width:0; overflow-wrap:anywhere; }

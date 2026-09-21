@@ -1,6 +1,9 @@
 import {useLocale} from '../i18n/locale.jsx'
-import {Button} from './Button.jsx'
+import {Dropdown} from './Dropdown.jsx'
 export function LanguageSwitcher() {
- const {locale,setLocale}=useLocale()
- return <div className="language-switcher" role="group" aria-label="Language / ภาษา"><Button aria-label="Thai / ภาษาไทย" lang="th" aria-pressed={locale==='th'} onClick={()=>setLocale('th')}>TH</Button><Button aria-label="English" lang="en" aria-pressed={locale==='en'} onClick={()=>setLocale('en')}>EN</Button></div>
+  const {locale, setLocale} = useLocale()
+  return <div className="language-switcher"><Dropdown label="Language / ภาษา" items={[
+    {label:'TH ไทย', literal:true, lang:'th', checked:locale==='th', onSelect:()=>setLocale('th')},
+    {label:'EN English', literal:true, lang:'en', checked:locale==='en', onSelect:()=>setLocale('en')},
+  ]}>{locale.toUpperCase()} <span aria-hidden="true">⌄</span></Dropdown></div>
 }

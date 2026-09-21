@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { messages, thaiMessages, bilingualLabel } from './locale.js'
+import { useDisclosure } from './useDisclosure.js'
 import { LocaleContext, useLocale } from './useLocale.js'
 const normalize = value => value === 'en' ? 'en' : 'th'
 export function LocaleProvider({children}) {
@@ -28,5 +29,12 @@ export function LocaleProvider({children}) {
 }
 export function LanguageSelector() {
   const {locale,setLocale} = useLocale()
-  return <div className="language-selector" role="group" aria-label={locale === 'th' ? 'ภาษา' : 'Language'}>{[['th','TH','Thai / ภาษาไทย'],['en','EN','English']].map(([value,code,name]) => <button key={value} type="button" lang={value} aria-label={name} aria-pressed={locale===value} onClick={() => setLocale(value)}>{code}</button>)}</div>
+  const {open,setOpen,container,trigger} = useDisclosure()
+  const id = useId()
+  return <div className="language-selector" ref={container}>
+    <button ref={trigger} type="button" aria-label={locale === 'th' ? 'ภาษา / Language' : 'Language'} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>{locale.toUpperCase()} <span aria-hidden="true">⌄</span></button>
+    {open && <div className="language-options" id={id} role="group" aria-label="TH / EN">
+      {[['th','TH','ไทย'],['en','EN','English']].map(([value,code,name]) => <button key={value} type="button" lang={value} aria-pressed={locale===value} onClick={() => { setLocale(value); setOpen(false); trigger.current?.focus() }}><strong>{code}</strong> {name}<span aria-hidden="true">{locale===value ? '✓' : ''}</span></button>)}
+    </div>}
+  </div>
 }

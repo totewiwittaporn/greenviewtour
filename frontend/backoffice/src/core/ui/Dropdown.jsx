@@ -22,7 +22,7 @@ export function Dropdown({ label, children, items, heading, disabled = false, ro
     place()
     window.addEventListener('resize', place)
     window.addEventListener('scroll', place, true)
-    const options = popup.current.querySelectorAll('[role="menuitem"]:not(:disabled)')
+    const options = popup.current.querySelectorAll('[role^="menuitem"]:not(:disabled)')
     options[initial.current < 0 ? options.length - 1 : 0]?.focus({ preventScroll: true })
     return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true) }
   }, [open])
@@ -37,7 +37,7 @@ export function Dropdown({ label, children, items, heading, disabled = false, ro
     setKeyboard(true)
     if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); return }
     if (event.key === 'Tab') { close(true); return }
-    const options = [...popup.current.querySelectorAll('[role="menuitem"]:not(:disabled)')]
+    const options = [...popup.current.querySelectorAll('[role^="menuitem"]:not(:disabled)')]
     const index = options.indexOf(document.activeElement)
     const next = event.key === 'ArrowDown' ? (index + 1) % options.length : event.key === 'ArrowUp' ? (index - 1 + options.length) % options.length : event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : -1
     if (next >= 0) { event.preventDefault(); options[next]?.focus({ preventScroll: true }) }
@@ -46,6 +46,6 @@ export function Dropdown({ label, children, items, heading, disabled = false, ro
     if (['ArrowDown','ArrowUp'].includes(event.key)) { event.preventDefault(); setKeyboard(true); initial.current = event.key === 'ArrowUp' ? -1 : 0; setOpen(true) }
   }}>{rowActions?<Icon name="more"/>:children}</Button></span>{open && createPortal(<div id={id} ref={popup} role="menu" aria-label={t(label)} className="core-dropdown" data-keyboard={keyboard || undefined} style={position} onKeyDown={keydown} onPointerMove={() => setKeyboard(false)}>
     {heading && <div className="dropdown-heading" role="presentation">{heading}</div>}
-    {items.map(item => item.href ? <a key={item.label} role="menuitem" tabIndex={-1} href={item.href} target={item.target} rel={item.target ? 'noreferrer' : undefined} onClick={() => close(true)}>{item.icon && <Icon name={item.icon} className="menu-icon" />}<span>{bilingualLabel(item.label)}</span></a> : <button key={item.label} type="button" role="menuitem" tabIndex={-1} className={item.danger ? 'menu-danger' : ''} disabled={item.disabled} onClick={() => { close(true); item.onSelect() }}>{item.icon && <Icon name={item.icon} className="menu-icon" />}<span>{bilingualLabel(item.label)}</span></button>)}
+    {items.map(item => item.section ? <div key={item.section} className="dropdown-section" role="presentation">{item.section}</div> : item.href ? <a key={item.label} role="menuitem" tabIndex={-1} href={item.href} target={item.target} rel={item.target ? 'noreferrer' : undefined} onClick={() => close(true)}>{item.icon && <Icon name={item.icon} className="menu-icon" />}<span>{bilingualLabel(item.label)}</span></a> : <button key={item.label} type="button" role={item.checked === undefined ? "menuitem" : "menuitemradio"} aria-checked={item.checked} lang={item.lang} tabIndex={-1} className={[item.danger ? 'menu-danger' : '', item.checked ? 'menu-selected' : ''].filter(Boolean).join(' ')} disabled={item.disabled} onClick={() => { close(true); item.onSelect() }}>{item.icon && <Icon name={item.icon} className="menu-icon" />}<span>{item.literal ? item.label : bilingualLabel(item.label)}</span>{item.checked && <span className="menu-check" aria-hidden="true">✓</span>}</button>)}
   </div>, host || document.body)}</>
 }
