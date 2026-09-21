@@ -37,10 +37,10 @@ export function SiteFooter(){
   const {t}=useLocale()
   return <footer className="public-footer">
     <div className="public-footer-main">
-      <div className="public-footer-brand"><Brand/><p>{t('ใกล้ทะเล ใกล้ธรรมชาติ กับกรีนวิว ทัวร์')}</p><p className="public-footer-location">{t('คุระบุรี · พังงา · ประเทศไทย')}</p></div>
+      <div className="public-footer-brand"><Brand/><p>{t('ใกล้ทะเล ใกล้ธรรมชาติ กับกรีนวิว ทัวร์')}</p><svg className="footer-islands" viewBox="0 0 320 80" aria-hidden="true"><path d="M0 65 35 57 70 29 88 38 114 14 130 19 146 8 168 20 188 16 223 46 242 41 274 61 320 68Z" fill="currentColor"/><path d="M4 73h296M40 79h195" stroke="currentColor" strokeWidth="2"/></svg><p className="public-footer-location">{t('คุระบุรี · พังงา · ประเทศไทย')}</p></div>
       <nav aria-label={t('เมนูส่วนท้าย')}><h2>{t('เมนูหลัก')}</h2>{links.map(([href,text])=><a key={href} href={href}>{t(text)}</a>)}</nav>
-      <nav aria-label={t('ข้อมูลที่เป็นประโยชน์')}><h2>{t('ข้อมูลที่เป็นประโยชน์')}</h2><a href="/#company">{t('ที่ตั้งและการเดินทาง')}</a><a href="/promotions">{t('โปรโมชั่น')}</a><a href="/#company">{t('ติดต่อเรา')}</a>{staffLogin&&<a className="staff-login" href={staffLogin}>{t('สำหรับพนักงาน')}</a>}</nav>
-      <p className="public-footer-note">{t('ออกไปเห็น')}<br/>{t('สิ่งใหม่กว่าเดิม')}</p>
+      <nav aria-label={t('ข้อมูลที่เป็นประโยชน์')}><h2>{t('ข้อมูลที่เป็นประโยชน์')}</h2><a href="/#company">{t('ที่ตั้งและการเดินทาง')}</a><a href="/promotions">{t('โปรโมชั่น')}</a><a href="/#company">{t('ติดต่อเรา')}</a>{staffLogin&&<a className="staff-login" href={staffLogin}>{t('เข้าสู่ระบบพนักงาน')}</a>}</nav>
+      <p className="public-footer-note">{t('ออกไปเห็น')}<br/>{t('สิ่งที่มากกว่าเดิม')}</p>
     </div>
     <div className="public-footer-bottom"><small>© {new Date().getFullYear()} GREENVIEW TOUR. {t('สงวนลิขสิทธิ์')}</small><a className="public-back-top" href="#" aria-label={t('กลับขึ้นด้านบน')}>↑</a></div>
   </footer>

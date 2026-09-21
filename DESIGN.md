@@ -267,3 +267,7 @@ Owner photo policy: avoid people in decorative Public photography when consent i
 ## Approved Home reference refinement
 
 The owner supplied the teal/orange reference screen and approved a compact editorial layout: 390px desktop hero with continuous headline, centered welcome, company text left/map right, split-level coral photograph left/three icon-led topics right, and two-column live tour cards with category toggle aligned beside the section heading. Mobile stacks sections and keeps hamburger and 44px controls. Feature layout lives in HomePage.css and PublishedHighlights.css; Core owns shell, palette, locale and controls. Keep the supplied original brand logo. No fabricated tour offers or unsupported article links. Map embeds use validated coordinates when present, otherwise the saved public address as a Google Maps search; the verified saved map link remains the explicit directions action.
+
+Final map treatment: use a clearly labeled schematic sea/island route illustration matching the visual reference, not an embedded address search or precise map. The real saved Maps link remains the directions action; no guessed coordinate is persisted.
+
+Owner detail pass: quiet botanical corner illustrations, Sriracha handwritten hero/footer notes with curved underline, island silhouette under footer brand, explicit Staff login label, and44px back-to-top control fixed at the viewport bottom-right with safe-area offsets. Decorative SVGs are hidden from accessibility and pointer input.

@@ -178,6 +178,13 @@ try {
       }
     }
   }
+  await page.goto(origin)
+  await page.locator('.public-footer').scrollIntoViewIfNeeded()
+  const backTop = page.locator('.public-back-top')
+  assert.equal(await backTop.evaluate(el => getComputedStyle(el).position), 'fixed')
+  assert.equal(await page.locator('.staff-login').getAttribute('href'), 'http://localhost:5174/login')
+  await backTop.click()
+  await page.waitForFunction(() => window.scrollY < 2)
   // Home consumes public company data and ownership-filtered published tours.
   await page.setViewportSize({width: 1440, height: 1000})
   await page.goto(origin)
