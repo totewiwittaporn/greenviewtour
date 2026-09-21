@@ -273,3 +273,13 @@ html[data-core-modal-open], html[data-core-modal-open] body { overflow:hidden; o
 .auth-layout .auth-panel{width:100%;max-width:480px;padding:32px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
 .auth-layout .auth-back{margin-bottom:28px}.auth-layout .auth-form-wrap h2{font-weight:500}
 @media(max-width:640px){.auth-layout{padding:20px 16px}.auth-layout .auth-panel{padding:24px 20px}}
+
+/* Language preference stays available without remounting an active workspace. */
+.language-switcher { display: inline-flex; flex-shrink: 0; margin-inline-start: auto; }
+.language-switcher { gap: 4px; }
+.language-switcher .button { min-height: 40px; padding: 7px 10px; }
+.language-switcher .button[aria-pressed="true"] { color: #fff; background: #087f8c; border-color: #087f8c; }
+.auth-form-wrap > .language-switcher { display: flex; width: fit-content; margin-bottom: 16px; }
+.topbar > .language-switcher { margin-inline: auto 12px; }
+html[lang="th"] body { font-family: 'Noto Sans Thai', Inter, 'Segoe UI', sans-serif; }
+@media(max-width:760px) { .topbar { flex-wrap: wrap; gap: 8px; } .topbar > .language-switcher { margin-inline: auto 0; } .breadcrumbs { min-width:0; } }

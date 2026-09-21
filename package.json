@@ -19,7 +19,7 @@
     "postinstall": "npm run prisma:generate --workspace @greenviewtour/api",
     "db:migrate": "npm run db:migrate --workspace @greenviewtour/api",
     "owner:invite": "npm run owner:invite --workspace @greenviewtour/api --",
-    "test:frontend": "node --test frontend/backoffice/test/*.test.js",
+    "test:frontend": "node --test frontend/backoffice/test/*.test.js frontend/member/test/*.test.js frontend/public-web/test/*.test.js",
     "build:member": "npm run build --workspace @greenviewtour/member"
   },
   "devDependencies": {

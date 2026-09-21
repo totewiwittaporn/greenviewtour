@@ -9,4 +9,4 @@ export const operationGroups = [
  {id:'stock-history',label:'Inventory',icon:'grid',capability:'stock',entities:['inventory','movements']},
  {id:'daily-summary',label:'Daily summaries',icon:'grid',capability:'booking',entities:['daily-close']},
 ]
-export const operationTitles={'check-in':'Customer check-in',...Object.fromEntries(Object.entries(operationCatalog).map(([key,value])=>[key,value.title])),'daily-close':'Daily summaries','guide-assignments':'Booking guides',guide:'Boat assignments',driver:'Transfer assignments',bookings:'Bookings',stock:'Supplies · ของใช้',issues:'Loans & returns · ยืมของใช้',inventory:'Stock balances',movements:'Stock movements'}
+export const operationTitles={'check-in':'Customer check-in',...Object.fromEntries(Object.entries(operationCatalog).map(([key,value])=>[key,value.title])),'daily-close':'Daily summaries','guide-assignments':'Booking guides',guide:'Boat assignments',driver:'Transfer assignments',bookings:'Bookings',stock:'Supplies',issues:'Loans & returns',inventory:'Stock balances',movements:'Stock movements'}

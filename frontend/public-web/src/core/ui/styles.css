@@ -12,3 +12,7 @@
 .staff-login{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;min-height:44px;padding:8px;text-underline-offset:4px}.staff-login:hover{color:var(--brand);text-decoration:underline}
 @media(max-width:900px){.site-header{flex-wrap:wrap}.site-header nav{order:3;width:100%;justify-content:center}.site-header .customer-login{margin-left:auto}}
 @media(max-width:600px){.site-header{justify-content:space-between}.site-header .logo{width:120px}.site-header .customer-login{font-size:12px;padding:9px 12px}.site-header nav{gap:6px 16px;font-size:12px}.public-footer{gap:12px 24px}}
+
+.language-selector{display:flex;gap:4px;flex-shrink:0}.language-selector button{font:inherit;font-size:12px;min-height:44px;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--white);color:var(--deep);cursor:pointer}.language-selector button[aria-pressed="true"]{background:var(--soft);border-color:var(--brand)}.language-selector button:hover{border-color:var(--brand)}button:focus-visible{outline:3px solid var(--brand);outline-offset:3px}.site-header nav{min-width:0}.hero h1{overflow-wrap:break-word}@media(max-width:600px){.language-selector{margin-left:auto}.site-header .customer-login{margin-left:0}.hero h1{font-size:38px}.site-header nav{flex-wrap:wrap}}
+
+:lang(th) .script-label{font-family:"Noto Sans Thai",sans-serif;font-size:24px}:lang(th) .section-eyebrow,:lang(th) .location-label{letter-spacing:normal}

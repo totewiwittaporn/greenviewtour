@@ -1,3 +1,4 @@
+import { translate as t, useLocale } from '../../core/i18n/locale.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { AuthLayout } from '../../core/ui/AuthLayout.jsx'
 import { FormField } from '../../core/ui/FormField.jsx'
@@ -17,6 +18,7 @@ const recovery = window.location.pathname === '/reset-password' && fragment.get(
 const callbackError = fragment.has('error')
 if (window.location.hash) window.history.replaceState(null, '', window.location.pathname)
 export default function AuthPage({ mode = 'login' }) {
+ const { locale } = useLocale()
   const [values, setValues] = useState({ email: '', password: '', confirm: '' })
   const [errors, setErrors] = useState({}), [busy, setBusy] = useState(false), [message, setMessage] = useState('')
   const [failure, setFailure] = useState(callbackError ? 'This link is invalid or expired. Request a new link.' : '')
@@ -29,8 +31,8 @@ export default function AuthPage({ mode = 'login' }) {
     return () => clearInterval(timer)
   }, [retryUntil])
   const [title, description, action] = content[mode]
+  useEffect(() => { document.title = `${t(title)} · Greenview Tour` }, [title, locale])
   useEffect(() => {
-    document.title = `${title} · Greenview Tour`
     if (mode === 'register') {
       if (!invitation) return
       invitation.promise ||= api('/api/auth/invitation', { invitationCode: invitation.code })
@@ -84,17 +86,17 @@ export default function AuthPage({ mode = 'login' }) {
     } catch (error) { setFailure(authMessage(error)); if (error.status === 429) { const current = Date.now(); setNow(current); setRetryUntil(current + Math.min(3600, Math.max(1, error.retryAfterSeconds || 60)) * 1000) } }
     finally { lock.current = false; setBusy(false) }
   }
-  return <AuthLayout title={title} description={description}>
-    {message ? <div className="auth-result" role="status"><strong>{mode === 'reset' ? 'Password updated' : 'Check your email'}</strong><p>{message}</p><a href="/login">Return to sign in →</a></div> : <form ref={form} noValidate onSubmit={submit} aria-busy={busy}>
-      <div className="form-feedback" role={failure ? 'alert' : undefined}>{failure}</div>
-      {mode === 'register' && !ready ? <div className="auth-result"><p>{invitation && !failure ? 'Checking your invitation…' : 'Accounts are created by invitation only. Ask your Manager for a new invitation link.'}</p><a href="/login">Return to sign in</a></div> : mode === 'reset' && !ready ? <div className="auth-result"><p>{recovery && !failure ? 'Checking your reset link…' : 'Open the password reset link from your email to continue.'}</p><a href="/forgot-password">Request a new reset link</a></div> : <>
-        {mode !== 'reset' && <FormField label="Email address" name="email" type="email" autoComplete="email" maxLength={254} value={values.email} onChange={change('email')} error={errors.email} disabled={busy} readOnly={mode === 'register'} />}
-        {mode !== 'forgot' && <FormField label={mode === 'login' ? 'Password' : 'New password'} name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} maxLength={128} value={values.password} onChange={change('password')} error={errors.password} hint={mode === 'login' ? '' : 'Use 12–128 characters. Password managers and paste are welcome.'} disabled={busy} />}
-        {['register','reset'].includes(mode) && <FormField label="Confirm password" name="confirm" type="password" autoComplete="new-password" maxLength={128} value={values.confirm} onChange={change('confirm')} error={errors.confirm} disabled={busy} />}
-        {mode === 'login' && <a className="forgot-link" href="/forgot-password">Forgot password?</a>}
-        <Button type="submit" className="button-primary auth-submit" busy={busy} disabled={busy || !ready || retrySeconds > 0}>{retrySeconds > 0 ? `Wait ${retrySeconds}s` : action}<span aria-hidden="true">{busy ? '…' : '→'}</span></Button>
+  return <AuthLayout title={t(title)} description={t(description)}>
+    {message ? <div className="auth-result" role="status"><strong>{mode === 'reset' ? t('Password updated') : t('Check your email')}</strong><p>{t(message)}</p><a href="/login">{t("Return to sign in →")}</a></div> : <form ref={form} noValidate onSubmit={submit} aria-busy={busy}>
+      <div className="form-feedback" role={failure ? 'alert' : undefined}>{t(failure)}</div>
+      {mode === 'register' && !ready ? <div className="auth-result"><p>{invitation && !failure ? t('Checking your invitation…') : t('Accounts are created by invitation only. Ask your Manager for a new invitation link.')}</p><a href="/login">{t("Return to sign in")}</a></div> : mode === 'reset' && !ready ? <div className="auth-result"><p>{recovery && !failure ? t('Checking your reset link…') : t('Open the password reset link from your email to continue.')}</p><a href="/forgot-password">{t("Request a new reset link")}</a></div> : <>
+        {mode !== 'reset' && <FormField label={t("Email address")} name="email" type="email" autoComplete="email" maxLength={254} value={values.email} onChange={change('email')} error={errors.email} disabled={busy} readOnly={mode === 'register'} />}
+        {mode !== 'forgot' && <FormField label={mode === 'login' ? t('Password') : t('New password')} name="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} maxLength={128} value={values.password} onChange={change('password')} error={errors.password} hint={mode === 'login' ? '' : t('Use 12–128 characters. Password managers and paste are welcome.')} disabled={busy} />}
+        {['register','reset'].includes(mode) && <FormField label={t("Confirm password")} name="confirm" type="password" autoComplete="new-password" maxLength={128} value={values.confirm} onChange={change('confirm')} error={errors.confirm} disabled={busy} />}
+        {mode === 'login' && <a className="forgot-link" href="/forgot-password">{t("Forgot password?")}</a>}
+        <Button type="submit" className="button-primary auth-submit" busy={busy} disabled={busy || !ready || retrySeconds > 0}>{retrySeconds > 0 ? t('Wait {seconds}s', {seconds: retrySeconds}) : t(action)}<span aria-hidden="true">{busy ? '…' : '→'}</span></Button>
       </>}
     </form>}
-    <div className="auth-switch">{mode === 'login' ? <>Need access? Ask your Manager for an invitation.</> : <a href="/login">Back to sign in</a>}</div>
+    <div className="auth-switch">{mode === 'login' ? <>{t("Need access? Ask your Manager for an invitation.")}</> : <a href="/login">{t("Back to sign in")}</a>}</div>
   </AuthLayout>
 }
