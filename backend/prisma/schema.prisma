@@ -920,6 +920,7 @@ model CustomerProfile {
  displayName String @db.VarChar(200)
  email String? @db.VarChar(254)
  phone String? @db.VarChar(32)
+ lineId String? @db.VarChar(100)
  status String @default("ACTIVE") @db.VarChar(20)
  createdAt DateTime @default(now()) @db.Timestamptz(6)
  updatedAt DateTime @updatedAt @db.Timestamptz(6)

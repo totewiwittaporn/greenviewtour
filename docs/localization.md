@@ -4,7 +4,7 @@ The public website exposes a TH/EN dropdown followed by Login / Register in its 
 
 ## Thai interface terminology
 
-Thai mode pairs English with Thai for navigation, headings, tabs, field labels and table headings (for example `ภาพรวมงาน / Dashboard`). English mode remains English. Long descriptions, validation and status feedback continue to use the selected language; English is not appended to every sentence. The selector visibly uses `TH` and `EN` with accessible full-language names. User-authored content and persisted codes remain unchanged. Semantic label helpers own this pairing rather than changing the general text translator.
+Backoffice and Member Thai mode pair English with Thai for navigation, headings, tabs, field labels and table headings (for example `ภาพรวมงาน / Dashboard`). The public website uses Thai-only owned copy in Thai mode, including its Login / Register entry. English mode remains English. Long descriptions, validation and status feedback continue to use the selected language; English is not appended to every sentence. The selector visibly uses `TH` and `EN` with accessible full-language names. User-authored content and persisted codes remain unchanged. Semantic label helpers own this pairing rather than changing the general text translator.
 
 ## Preference and rendering
 
@@ -34,3 +34,7 @@ Full bilingual editorial content requires an additive content model, Backoffice 
 `npm run check` runs lint, backend tests, frontend tests for all three applications and all builds. `node scripts/smoke-browser-fixtures.js` runs the existing Backoffice regression scenarios and the three locale fixture scripts using isolated Vite servers and intercepted API data. The locale tests verify translation coverage, preserved unknown content, missing-price versus zero-price behavior, date/year consistency, persistence, error retranslation, draft and consent preservation, modal/focus behavior, no additional dashboard fetch on switching, and narrow-screen overflow.
 
 These browser scenarios are fixtures, not real-account or live-database acceptance. The standard local launcher remains `npm run dev`; no hosted or Production deployment is needed for this change.
+
+## User Info contact fields
+
+Authenticated User Info summaries hide locked account email/status/access fields and show editable self-contact details. Employee details include name, primary/alternate phone, LINE ID and structured address; a saved map link is shown only through the existing safe URL validator. Customer details include name, phone and optional LINE ID. The companion profile change adds `CustomerProfile.lineId` (100 characters) and keeps authenticated ownership and version checks; it is separate from interface translation.

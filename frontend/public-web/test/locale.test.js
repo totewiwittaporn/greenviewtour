@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
-import {messages,thaiMessages,pageTitle,bilingualLabel} from '../src/core/locale.js'
+import {messages,thaiMessages,pageTitle,localizedLabel} from '../src/core/locale.js'
 
 test('public titles follow locale and route with a Thai fallback',()=>{
   assert.equal(pageTitle('en','/tours'),'Tours | Greenview Tour')
@@ -22,10 +22,10 @@ test('every static translation reference has both language variants',()=>{
   }
 })
 
-test('semantic labels retain both languages only in Thai mode',()=>{
+test('public labels use only the selected language and preserve unknown content',()=>{
   const thai=Object.keys(messages).find(key=>messages[key]==='Tours')
-  assert.equal(bilingualLabel('th',thai),thai+' / Tours')
-  assert.equal(bilingualLabel('en',thai),'Tours')
-  assert.equal(bilingualLabel('th','Greenview Tour'),'Greenview Tour')
-  assert.equal(bilingualLabel('th','Your island escape'),thaiMessages['Your island escape']+' / Your island escape')
+  assert.equal(localizedLabel('th',thai),thai)
+  assert.equal(localizedLabel('en',thai),'Tours')
+  assert.equal(localizedLabel('th','Greenview Tour'),'Greenview Tour')
+  assert.equal(localizedLabel('th','Your island escape'),thaiMessages['Your island escape'])
 })

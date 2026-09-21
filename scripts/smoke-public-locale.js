@@ -30,7 +30,7 @@ try {
   await page.goto(`${origin}/tours?tour=${tour.slug}`)
   await page.getByRole('heading', { name: tour.name, exact: true }).waitFor()
   assert.equal(await page.locator('html').getAttribute('lang'), 'th')
-  assert.match(await page.locator('h1').innerText(), / \/ Tours$/)
+  assert.equal(await page.locator('h1').innerText(), 'โปรแกรมทัวร์')
   const chooseLanguage = async code => {
     await page.locator('.language-selector > button').click()
     await page.locator('.language-options button').filter({hasText: code}).click()
@@ -71,6 +71,9 @@ try {
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),false,`${locale} ${width} ${path} overflow`)
         const login=page.locator('.public-topbar-actions .customer-login')
         assert.equal(await login.getAttribute('href'),'http://localhost:5175/login')
+        assert.equal(await login.innerText(),locale==='th'?'เข้าสู่ระบบ / สมัครสมาชิก':'Login / Register')
+        const navigationText=await page.locator('.public-main-nav').innerText()
+        if(locale==='th') assert.doesNotMatch(navigationText, /Tours|Promotions|Contact us|About Surin Islands/)
         assert.equal(await page.locator('.site-header .customer-login').count(),0)
         await language.click()
         await page.locator('.language-options').waitFor()

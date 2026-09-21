@@ -7,13 +7,20 @@ try {
  const context = await browser.newContext({viewport:{width:1280,height:900}})
  const page = await context.newPage(), errors = []
  page.on('pageerror', error => errors.push(error.message))
- let authenticated = false, quoteCalls = 0
- const customer = {id:'customer',displayName:'นักเดินทางเดิม',email:'traveller@example.com',phone:'0812345678',version:1}
+ let authenticated = false, quoteCalls = 0, failSave = false, profileWrites = 0, recovery = false
+ const customer = {id:'customer',displayName:'นักเดินทางเดิม',email:'traveller@example.com',phone:'0812345678',lineId:'traveller.line',version:1}
  const tour = {id:'tour',slug:'surin',name:'ชื่อทัวร์จากฐานข้อมูล',description:'เก็บข้อความต้นฉบับ',durationDays:2,adultPrice:'1500',childPrice:'1000',promotions:[{id:'promo',name:'โปรโมชั่นต้นฉบับ',remaining:10,quotaUnit:'SEAT',adultPrice:'1400',childPrice:'900',serviceStartsOn:'2026-09-21',serviceEndsOn:'2026-10-04'}],components:[]}
  await context.route(/^https:/, route => route.abort())
  await context.route('**/api/**', route => {
   const path = new URL(route.request().url()).pathname
-  if (path === '/api/member/profile') return route.fulfill(authenticated ? {json:{customer}} : {status:401,json:{code:'LOGIN_REQUIRED'}})
+  if (path === '/api/member/profile') {
+   if (route.request().method() === 'POST') {
+    profileWrites++
+    if (failSave) return route.fulfill({status:409,json:{code:'SETTINGS_CONFLICT'}})
+    Object.assign(customer,route.request().postDataJSON(),{version:customer.version+1})
+   }
+   return route.fulfill(authenticated ? {json:{customer,recovery}} : {status:401,json:{code:'LOGIN_REQUIRED'}})
+  }
   if (path === '/api/public/tours') return route.fulfill({json:{rows:[tour],page:1,total:1}})
   if (path === '/api/public/quote') { quoteCalls++; return route.fulfill({json:{packageTotal:'1500',adultPrice:'1500',childPrice:'1000',components:[],quoteKey:'fixture-quote',terms:{fees:'ค่าธรรมเนียมต้นฉบับ',cancellationTerms:'เงื่อนไขต้นฉบับ'}}}) }
   return route.fulfill({status:400,json:{code:'FIXTURE_UNEXPECTED_REQUEST'}})
@@ -87,6 +94,13 @@ try {
     assert.equal(await shell.locator('.member-account-panel').isVisible(),true)
     assert.equal(await shell.locator('.member-signout').count(),signedIn ? 1 : 0)
     assert.equal(await shell.locator('.member-identity').count(),signedIn ? 1 : 0)
+    if (signedIn) {
+     assert.equal(await shell.locator('.member-contact-details').innerText().then(text=>text.includes(customer.lineId)),true)
+     assert.equal(await shell.locator('.member-account-panel').innerText().then(text=>text.includes(customer.email)),false)
+     assert.equal(await shell.locator('.member-edit-profile').getAttribute('href'),'/profile')
+     assert.equal(await shell.locator('main').innerText().then(text=>text.includes(customer.email)),false)
+     assert.equal(await shell.getByLabel('LINE ID',{exact:true}).getAttribute('maxlength'),'100')
+    }
     assert.equal(await shell.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true)
     await shell.keyboard.press('Escape')
     assert.equal(await account.evaluate(element=>element===document.activeElement),true)
@@ -108,7 +122,50 @@ try {
    }
   }
  }
+ // LINE ID participates in locale-preserving edits, failure preservation and saved identity.
+ await shell.setViewportSize({width:390,height:844})
+ await shell.getByLabel('LINE ID',{exact:true}).fill('new.line')
+ await shell.locator('.member-menu-toggle').click()
+ await shell.locator('#member-navigation a[href="/tours"]').click()
+ await shell.getByRole('dialog').waitFor()
+ await shell.getByRole('button',{name:'Continue editing',exact:true}).click()
+ assert.equal(await shell.getByLabel('LINE ID',{exact:true}).inputValue(),'new.line')
+ await shell.locator('.member-account-trigger').click()
+ await shell.getByRole('button',{name:'Thai / ภาษาไทย',exact:true}).click()
+ assert.equal(await shell.getByLabel('LINE ID',{exact:true}).inputValue(),'new.line')
+ failSave = true
+ await shell.getByRole('button',{name:'บันทึกข้อมูล',exact:true}).click()
+ await shell.getByText('ข้อมูลเปลี่ยนแล้ว กรุณาโหลดข้อมูลล่าสุด',{exact:true}).waitFor()
+ assert.equal(await shell.getByLabel('LINE ID',{exact:true}).inputValue(),'new.line')
+ failSave = false
+ await shell.getByRole('button',{name:'บันทึกข้อมูล',exact:true}).click()
+ await shell.getByText('บันทึกข้อมูลแล้ว',{exact:true}).waitFor()
+ assert.equal(profileWrites,2)
+ assert.equal(customer.lineId,'new.line')
+ await shell.locator('.member-account-trigger').click()
+ assert.match(await shell.locator('.member-contact-details').innerText(),/new.line/)
+ await shell.keyboard.press('Escape')
+ await shell.getByLabel('LINE ID',{exact:true}).fill('')
+ await shell.getByRole('button',{name:'บันทึกข้อมูล',exact:true}).click()
+ await shell.waitForFunction(()=>document.querySelector('button[type="submit"]').disabled===false)
+ assert.equal(customer.lineId,'')
+ // Long contact content stays inside a short mobile viewport and scrolls to actions.
+ customer.lineId = 'long-line-id-'.repeat(8)
+ customer.displayName = 'ชื่อสมาชิกที่มีความยาวเพื่อทดสอบการตัดบรรทัด'.repeat(4)
+ await shell.setViewportSize({width:320,height:400})
+ await shell.reload()
+ await shell.getByLabel('LINE ID',{exact:true}).waitFor()
+ await shell.locator('.member-account-trigger').click()
+ const bounds = await shell.locator('.member-account-panel').boundingBox()
+ assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= 320 && bounds.y + bounds.height <= 400)
+ await shell.locator('.member-signout').scrollIntoViewIfNeeded()
+ assert.equal(await shell.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true)
+ await shell.keyboard.press('Escape')
+ recovery = true
+ await shell.reload()
+ await shell.locator('.member-account-trigger').click()
+ assert.equal(await shell.locator('.member-edit-profile').count(),0)
  await shell.close()
  assert.deepEqual(errors,[])
- console.log('Member locale browser fixtures passed: login/reload/errors/recovery, 320/390/834/1440px authenticated and guest header menus, keyboard/outside dismissal, catalog content, quote/contact/consent preservation and event switching.')
+ console.log('Member locale browser fixtures passed: login/reload/errors/recovery, 320/390/834/1440px authenticated and guest header menus, keyboard/outside dismissal, catalog content, quote/contact/consent preservation, LINE ID dirty/error/save/clear, hidden locked details, bounded long-contact dropdown and recovery action visibility.')
 } finally { await browser.close() }

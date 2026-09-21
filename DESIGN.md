@@ -229,3 +229,9 @@ Dashboard is the authenticated landing workspace. Keep the Backoffice sea-green 
 Owner-approved preview: Public places the TH/EN dropdown followed by Login / Register in the shared top bar, leaving the primary navigation on one row at wide widths. Member keeps Tours, My trips and Profile separate from User Info. Authenticated Member and Backoffice User Info own language selection and sign out; unauthenticated screens retain a language dropdown. Mobile primary navigation uses a hamburger; dropdowns remain bounded by the viewport and support keyboard dismissal. Thai labels continue pairing Thai / English.
 
 Backoffice Core table tokens use 12px data, 11px column headings and 8px vertical / 10px horizontal cell padding across page and dialog tables. Row action buttons are 28px on desktop with 16px icons; touch/narrow screens retain 40px targets. Existing table overflow and dialog scroll ownership are preserved.
+
+## Contact details and public Thai copy (2026-09-21)
+
+Owner-approved User Info shows self-editable contact details: employee display name, primary/alternate phone, LINE ID and structured address with a validated saved map link; Member shows name, phone and LINE ID. Locked account email, status and access details are omitted from these summaries. Edit profile remains the existing full-page form. Menus are viewport-bounded with internal scrolling and visible keyboard navigation. Language radio rows share the Core menu item geometry.
+
+Public Thai mode now uses Thai-only owned headings/navigation/actions; English mode uses English. Brand names, TH/EN codes and authored CMS content remain unchanged. Member and Backoffice retain paired Thai/English labels. Customer LINE ID is an optional contact field (100 characters), editable only through the authenticated self-profile with the existing version check.

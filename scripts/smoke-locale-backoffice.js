@@ -11,7 +11,7 @@ try {
  const page = await browser.newPage({viewport:{width:834,height:1000}})
  const errors=[]; page.on('pageerror',error=>errors.push(error.message))
  let signedIn=false, calls=0, loginCalls=0
- const user={id:'fixture',displayName:'Name',email:'locale@example.invalid',status:'ACTIVE',roles:[{code:'MANAGER',name:'Manager',scope:'COMPANY'}],permissions:[],management:{company:true},operations:{booking:true},companyAccess:{'inventory.request':true}}
+ const user={id:'fixture',displayName:'Name',primaryPhone:'+66812345678',emergencyPhone:'+66890000000',lineId:'tee.fixture',houseNumber:'12/34',province:'Phang-Nga',district:'Khura Buri',subdistrict:'Khura',postalCode:'82150',email:'locale@example.invalid',status:'ACTIVE',roles:[{code:'MANAGER',name:'Manager',scope:'COMPANY'}],permissions:[],management:{company:true},operations:{booking:true},companyAccess:{'inventory.request':true}}
  const calendar=customerCalendar([{id:'booking',status:'CONFIRMED',outboundDate:'2026-09-21',adults:3,children:1,programSnapshot:{tourId:'tour',name:'Maintenance jobs'}}], '2026-09-21')
  await page.route('**/api/auth/login',route=>{loginCalls++; return route.fulfill({status:401,json:{code:'INVALID_CREDENTIALS'}})})
  await page.route('**/api/me',route=>route.fulfill({status:signedIn?200:401,json:signedIn?{user}:{code:'LOGIN_REQUIRED'}}))
@@ -62,6 +62,12 @@ try {
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,`Thai overflow at ${width}: ${JSON.stringify(await page.locator('body *').evaluateAll(nodes=>nodes.filter(n=>n.getBoundingClientRect().right>innerWidth).map(n=>({tag:n.tagName,cls:n.className,width:n.getBoundingClientRect().width}))))}`)
   await page.locator('.account-menu .dropdown-anchor > button').click()
   const menu=page.getByRole('menu')
+  assert.equal(await menu.getByText('tee.fixture',{exact:true}).count(),1)
+  assert.equal(await menu.getByText('+66812345678',{exact:true}).count(),1)
+  assert.equal(await menu.getByText('locale@example.invalid',{exact:true}).count(),0)
+  const languageRows=await page.getByRole('menuitemradio').evaluateAll(rows=>rows.map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,font:getComputedStyle(el).fontSize})))
+  assert.deepEqual(languageRows[0],languageRows[1],'Language options must share row sizing')
+  assert.ok(languageRows[0].height>=40 && languageRows[0].width>200)
   const box=await menu.boundingBox()
   assert.ok(box.x>=0 && box.x+box.width<=width && box.y>=0 && box.y+box.height<=900,'User Info stays inside viewport')
   assert.equal(await page.getByRole('menuitemradio',{name:'TH ไทย',exact:true}).getAttribute('aria-checked'),'true')
@@ -73,6 +79,13 @@ try {
   assert.equal(await page.locator('.account-menu button').evaluate(el=>el===document.activeElement),true)
   await page.screenshot({path:new URL(`locale-backoffice-${width}.png`,screenshots).pathname,fullPage:true})
  }
+ await page.setViewportSize({width:320,height:400})
+ await page.locator('.account-menu .dropdown-anchor > button').click()
+ await page.keyboard.press('End')
+ const focusedBounds=await page.locator(':focus').boundingBox(), popupBounds=await page.getByRole('menu').boundingBox()
+ assert.ok(focusedBounds.y>=popupBounds.y && focusedBounds.y+focusedBounds.height<=popupBounds.y+popupBounds.height,'Keyboard action stays visible in short User Info')
+ await page.screenshot({path:new URL('userinfo-backoffice-short.png',screenshots).pathname,fullPage:true})
+ await page.keyboard.press('Escape')
  await page.reload()
  await page.getByRole('heading',{name:'ลูกค้า · 14 วันข้างหน้า / Customers · next 14 days'}).waitFor()
  assert.equal(await page.locator('html').getAttribute('lang'),'th')

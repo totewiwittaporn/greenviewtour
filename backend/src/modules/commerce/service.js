@@ -6,7 +6,7 @@ import { effectiveAccess } from '../../../../packages/contracts/access.js'
 import { validateEvidence } from '../evidence/service.js'
 import { randomUUID } from 'node:crypto'
 import { isoDay, saleDateAllowed, promotionAllowed, promotionUnits, cents, thailandDay } from '../../../../packages/contracts/commerce.js'
-import { authorize, fail, uuid, int, string, hash } from '../operations/common.js'
+import { authorize, fail, uuid, int, string, hash, keys } from '../operations/common.js'
 
 export const publicTourSelect={id:true,name:true,slug:true,tourType:true,description:true,highlights:true,imageUrls:true,route:true,departureTimes:true,childPolicy:true,cancellationTerms:true,bookingCutoff:true,adultPrice:true,childPrice:true,meals:true,fees:true,inclusions:true,exclusions:true,preparationNotes:true,ownership:true,durationDays:true,journeyMode:true,version:true,components:{where:{status:'ACTIVE',selection:'OPTIONAL'},select:{id:true,resource:{select:{name:true,salePrice:true}},basis:true,quantity:true}}}
 const liveTour={status:'ACTIVE',publicStatus:'PUBLISHED'}
@@ -45,8 +45,9 @@ export async function enrollCustomer(db,user) {
 }
 export async function saveCustomerProfile(db,user,input) {
  const customer=await customerFor(db,user)
+ keys(input,['version','displayName','phone','lineId'])
  if(input.version!==customer.version)fail('SETTINGS_CONFLICT')
- const changed=await db.customerProfile.updateMany({where:{id:customer.id,version:input.version,status:'ACTIVE'},data:{displayName:string(input.displayName,200),phone:string(input.phone||'',32,false),version:{increment:1}}})
+ const changed=await db.customerProfile.updateMany({where:{id:customer.id,version:input.version,status:'ACTIVE'},data:{displayName:string(input.displayName,200),phone:string(input.phone??'',32,false),...(Object.hasOwn(input,'lineId')?{lineId:string(input.lineId??'',100,false)}:{}),version:{increment:1}}})
  if(!changed.count)fail('SETTINGS_CONFLICT')
  return {customer:await customerFor(db,user)}
 }
