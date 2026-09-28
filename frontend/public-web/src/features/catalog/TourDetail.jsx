@@ -1,5 +1,3 @@
-[Reading 94 lines from start (total: 94 lines, 0 remaining)]
-
 import {useEffect,useMemo,useState} from 'react'
 import {useLocale} from '../../core/useLocale.js'
 import {Button} from '../../core/ui/Controls.jsx'
@@ -94,5 +92,3 @@ export default function TourDetail({slug,search=''}){
     <section className="tour-detail-cta"><h2>{t('พร้อมออกเดินทางไปเกาะสุรินทร์แล้วหรือยัง?')}</h2><p>{t('ให้ Greenview Tour ดูแลการเดินทางของคุณ')}</p><a href="/tours">{label('ดูโปรแกรมทัวร์ทั้งหมด')} →</a></section>
   </main>
 }
-
-[executed on device: Wutcharapongs-MacBook-Air.local (df69a579-c325-4180-ad88-edccd35dfdc1)]
