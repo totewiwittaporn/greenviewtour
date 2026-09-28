@@ -1,3 +1,5 @@
+[Reading 94 lines from start (total: 94 lines, 0 remaining)]
+
 import {useEffect,useMemo,useState} from 'react'
 import {useLocale} from '../../core/useLocale.js'
 import {Button} from '../../core/ui/Controls.jsx'
@@ -33,13 +35,16 @@ export default function TourDetail({slug,search=''}){
   },[tour])
   useEffect(()=>{
     if(!content)return
-    document.title=(content.seoTitle||content.name)+' | Greenview Tour'
+    document.title=content.seoTitle||(content.name+' | Greenview Tour')
     const meta=document.createElement('meta')
     meta.name='description'
     meta.content=content.metaDescription||content.summary||content.introduction||content.name
     meta.dataset.tourDetail='true'
-    document.head.appendChild(meta)
-    return()=>meta.remove()
+    const ogTitle=document.createElement('meta'),ogDescription=document.createElement('meta')
+    ogTitle.setAttribute('property','og:title');ogTitle.content=content.ogTitle||content.seoTitle||content.name;ogTitle.dataset.tourDetail='true'
+    ogDescription.setAttribute('property','og:description');ogDescription.content=content.ogDescription||meta.content;ogDescription.dataset.tourDetail='true'
+    document.head.append(meta,ogTitle,ogDescription)
+    return()=>{meta.remove();ogTitle.remove();ogDescription.remove()}
   },[content])
   if(state.loading)return <main id="content" className="tour-detail-v2"><p className="tour-detail-state" role="status">{t('กำลังโหลด…')}</p></main>
   if(state.error||!tour)return <main id="content" className="tour-detail-v2"><section className="tour-detail-state" role="alert"><p>{t('โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง')}</p><Button onClick={()=>setAttempt(n=>n+1)}>{t('ลองอีกครั้ง')}</Button></section></main>
@@ -72,7 +77,16 @@ export default function TourDetail({slug,search=''}){
       {!!highlightRows.length&&<section><h2>{t('ไฮไลต์ของโปรแกรม')}</h2><div className="tour-highlight-grid">{highlightRows.map((row,index)=><article key={row.id}><span>{['♢','⌁','▧','▱','◎'][index%5]}</span><h3>{row.title}</h3>{row.description&&<p>{row.description}</p>}</article>)}</div></section>}
       {!!steps.length&&<section><h2>{t('กำหนดการเดินทาง')}</h2><div className="tour-itinerary">{steps.map(step=><article key={step.id}><time>{step.timeLabel||('Day '+step.day)}</time><div><h3>{step.title||step.location}</h3>{step.location&&step.title&&<span>{step.location}</span>}{step.description&&<p>{step.description}</p>}</div></article>)}</div>{content.specialConditions&&<p className="tour-section-note">{content.specialConditions}</p>}</section>}
       {(included.length||excluded.length)&&<section className="tour-package-grid"><article className="included"><h2>✓ {t('รวมในราคา')}</h2><ul>{included.map(item=><li key={item}>{item}</li>)}</ul></article><article className="excluded"><h2>− {t('ไม่รวมในราคา')}</h2><ul>{excluded.map(item=><li key={item}>{item}</li>)}</ul>{content.fees&&<p>{content.fees}</p>}</article></section>}
-      <section><h2>{t('ข้อมูลสำคัญ')}</h2><div className="tour-info-grid">{[[t('สิ่งที่ต้องเตรียม'),content.preparationNotes],[t('เหมาะสำหรับ'),content.suitableFor],[t('เงื่อนไขการยกเลิก'),content.cancellationTerms],[t('สภาพอากาศ'),content.weatherNotes]].filter(([,value])=>value).map(([title,value])=><article key={title}><h3>{title}</h3><p>{value}</p></article>)}</div></section>
+      <section><h2>{t('ข้อมูลสำคัญ')}</h2><div className="tour-info-grid">{[
+        [t('เวลาออกเดินทาง'),content.departureTimes],
+        [t('อาหาร'),content.meals],
+        [t('เงื่อนไขเด็ก'),content.childPolicy],
+        [t('ปิดรับจอง'),content.bookingCutoff],
+        [t('สิ่งที่ต้องเตรียม'),content.preparationNotes],
+        [t('เหมาะสำหรับ'),content.suitableFor],
+        [t('เงื่อนไขการยกเลิก'),content.cancellationTerms],
+        [t('สภาพอากาศ'),content.weatherNotes],
+      ].filter(([,value])=>value).map(([title,value])=><article key={title}><h3>{title}</h3><p className="preserve-lines">{value}</p></article>)}</div></section>
       {media.length>1&&<section><div className="tour-section-heading"><h2>{t('ภาพความประทับใจ')}</h2><span>{media.length} {t('ภาพ')}</span></div><div className="tour-gallery-strip">{media.slice(0,6).map(item=><figure key={item.id}><img src={item.url} alt={item.alt||content.name} loading="lazy"/>{item.caption&&<figcaption>{item.caption}</figcaption>}</figure>)}</div></section>}
       {!!faqRows.length&&<section><h2>{t('คำถามที่พบบ่อย')}</h2><div className="tour-faq-grid">{faqRows.map(row=><details key={row.id}><summary>{row.question}</summary><p>{row.answer}</p></details>)}</div></section>}
       {!!related.length&&<section><div className="tour-section-heading"><h2>{t('โปรแกรมทัวร์อื่น ๆ ที่คุณอาจสนใจ')}</h2><a href="/tours">{t('ดูโปรแกรมทัวร์ทั้งหมด')} →</a></div><div className="tour-related-grid">{related.map(row=><RelatedCard key={row.id} tour={row} locale={locale} t={t} money={money}/>)}</div></section>}
@@ -80,3 +94,5 @@ export default function TourDetail({slug,search=''}){
     <section className="tour-detail-cta"><h2>{t('พร้อมออกเดินทางไปเกาะสุรินทร์แล้วหรือยัง?')}</h2><p>{t('ให้ Greenview Tour ดูแลการเดินทางของคุณ')}</p><a href="/tours">{label('ดูโปรแกรมทัวร์ทั้งหมด')} →</a></section>
   </main>
 }
+
+[executed on device: Wutcharapongs-MacBook-Air.local (df69a579-c325-4180-ad88-edccd35dfdc1)]

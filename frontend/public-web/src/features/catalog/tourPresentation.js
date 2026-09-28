@@ -1,3 +1,5 @@
+[Reading 58 lines from start (total: 58 lines, 0 remaining)]
+
 export function tourContent(tour, locale='th') {
   const rows=Array.isArray(tour?.publicContent)?tour.publicContent:[]
   const row=rows.find(item=>item.locale===locale)||rows.find(item=>item.locale==='th')||rows.find(item=>item.locale==='en')||{}
@@ -21,6 +23,8 @@ export function tourContent(tour, locale='th') {
     weatherNotes:row.weatherNotes||'',
     seoTitle:row.seoTitle||'',
     metaDescription:row.metaDescription||'',
+    ogTitle:row.ogTitle||'',
+    ogDescription:row.ogDescription||'',
   }
 }
 export function localizedPair(row,locale,thKey,enKey){
@@ -54,3 +58,5 @@ export function badgeText(value,t){
 export function typeText(value,t){
   return ({DAY_TRIP:t('Day Trip'),OVERNIGHT:t('Overnight'),PRIVATE:t('Private Tour'),JOIN:t('Join Tour'),TRANSFER:t('Boat Ticket')})[value]||''
 }
+
+[executed on device: Wutcharapongs-MacBook-Air.local (df69a579-c325-4180-ad88-edccd35dfdc1)]
