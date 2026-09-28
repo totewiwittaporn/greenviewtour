@@ -2,17 +2,18 @@ import {useEffect, useId} from 'react'
 import {useDisclosure} from '../useDisclosure.js'
 import {useLocale} from '../useLocale.js'
 import {LanguageSelector} from '../Locale.jsx'
+import {normalizePublicPath} from '../publicRoutes.js'
 const local=['localhost','127.0.0.1'].includes(location.hostname)
 const customerLogin=local?'http://localhost:5175/login':'https://member.greenviewtour.com/login'
 const staffLogin=local?'http://localhost:5174/login':import.meta.env.VITE_STAFF_LOGIN_URL
-const links=[['/','หน้าแรก'],['/#company','รู้จักเรา'],['/#surin','รู้จักเกาะสุรินทร์'],['/tours','โปรแกรมทัวร์']]
+const links=[['/','หน้าแรก'],['/about','รู้จักเรา'],['/surin-islands','รู้จักเกาะสุรินทร์'],['/tours','โปรแกรมทัวร์']]
 function Brand(){
   const {t}=useLocale()
   return <a className="public-brand" href="/" aria-label={t('Greenview Tour หน้าแรก')}><img src="/images/brand/greenview-logo.png" alt="" width="1508" height="994"/></a>
 }
 function isCurrent(href){
   const target=new URL(href,location.origin)
-  return target.pathname===location.pathname && target.hash===location.hash
+  return target.pathname===normalizePublicPath(location.pathname) && target.hash===location.hash
 }
 function CustomerAccess(){
   const {t}=useLocale()
@@ -49,7 +50,7 @@ export function SiteFooter(){
     <div className="public-footer-main">
       <div className="public-footer-brand"><Brand/><p>{t('ใกล้ทะเล ใกล้ธรรมชาติ กับกรีนวิว ทัวร์')}</p><p className="public-footer-location">{t('คุระบุรี · พังงา · ประเทศไทย')}</p></div>
       <nav aria-label={t('เมนูส่วนท้าย')}><h2>{t('เมนูหลัก')}</h2>{links.map(([href,text])=><a key={href} href={href}>{t(text)}</a>)}</nav>
-      <nav aria-label={t('ข้อมูลที่เป็นประโยชน์')}><h2>{t('ข้อมูลที่เป็นประโยชน์')}</h2><a href="/#company">{t('ที่ตั้งและการเดินทาง')}</a><a href="/promotions">{t('โปรโมชั่น')}</a><a href="/#company">{t('ติดต่อเรา')}</a></nav>
+      <nav aria-label={t('ข้อมูลที่เป็นประโยชน์')}><h2>{t('ข้อมูลที่เป็นประโยชน์')}</h2><a href="/surin-islands/travel-guide">{t('ที่ตั้งและการเดินทาง')}</a><a href="/promotions">{t('โปรโมชั่น')}</a><a href="/faq">{t('คำถามที่พบบ่อย')}</a><a href="/contact-us">{t('ติดต่อเรา')}</a></nav>
       <p className="public-footer-note">{t('ออกไปเห็น')}<br/>{t('สิ่งที่มากกว่าเดิม')}</p>
     </div>
     <div className="public-footer-bottom"><small>© {new Date().getFullYear()} GREENVIEW TOUR. {t('สงวนลิขสิทธิ์')}</small>{staffLogin&&<a className="staff-login" href={staffLogin}>{t('เข้าสู่ระบบพนักงาน')}</a>}<a className="public-back-top" href="#" aria-label={t('กลับขึ้นด้านบน')}>↑</a></div>

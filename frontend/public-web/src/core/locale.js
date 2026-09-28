@@ -1,4 +1,7 @@
+import {publicInfo, normalizePublicPath} from './publicRoutes.js'
 export const messages = {
+  "คำถามที่พบบ่อย": "Frequently asked questions",
+  "อ่านเรื่องราวของสุรินทร์": "Read about the Surin Islands",
   "เลือกทริปสุรินทร์ในแบบของคุณ": "Find your kind of Surin escape",
   "ทะเลใส ธรรมชาติ และช่วงเวลาที่คุณเลือกได้": "Clear seas, island nature, and time on your terms",
   "สุรินทร์… มากกว่าการเดินทาง": "Surin… more than a journey",
@@ -172,6 +175,9 @@ export const thaiMessages = {
 }
 
 export function pageTitle(locale, pathname) {
+  const info = publicInfo(pathname)
+  if (info) return `${info.title[locale === 'en' ? 'en' : 'th']} | Greenview Tour`
+  pathname = normalizePublicPath(pathname)
   const titles = {
     '/': ['Greenview Tour — \u0e17\u0e23\u0e34\u0e1b\u0e2b\u0e21\u0e39\u0e48\u0e40\u0e01\u0e32\u0e30\u0e2a\u0e38\u0e23\u0e34\u0e19\u0e17\u0e23\u0e4c', 'Greenview Tour — Surin Islands trips'],
     '/tours': ['\u0e42\u0e1b\u0e23\u0e41\u0e01\u0e23\u0e21\u0e17\u0e31\u0e27\u0e23\u0e4c | Greenview Tour', 'Tours | Greenview Tour'],

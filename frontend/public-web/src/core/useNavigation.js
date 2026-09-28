@@ -1,7 +1,7 @@
 import {useEffect, useLayoutEffect, useState} from 'react'
 
-const ownedPaths = new Set(['/', '/tours', '/promotions'])
-const currentRoute = () => ({pathname: location.pathname, search: location.search, hash: location.hash})
+import {ownsPublicPath, normalizePublicPath} from './publicRoutes.js'
+const currentRoute = () => ({pathname: normalizePublicPath(location.pathname), search: location.search, hash: location.hash})
 
 // Public-web owns navigation only inside its known routes; member and external links stay native.
 export function useNavigation() {
@@ -13,7 +13,7 @@ export function useNavigation() {
       const anchor = event.target.closest?.('a[href]')
       if (!anchor || anchor.hasAttribute('download') || (anchor.target && anchor.target !== '_self')) return
       const url = new URL(anchor.href, location.href)
-      if (url.origin !== location.origin || !ownedPaths.has(url.pathname)) return
+      if (url.origin !== location.origin || !ownsPublicPath(url.pathname)) return
       event.preventDefault()
       if (url.href !== location.href) history.pushState(null, '', url.pathname + url.search + url.hash)
       sync()

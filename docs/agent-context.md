@@ -29,3 +29,5 @@ For shared seat availability, temporary holds, waiting-team confirmation and who
 ## Data-fetch and read-model contracts
 
 For list/detail/lookup changes or performance work, read [the data-fetch audit and contracts](data-fetch-audit-2026-09-27.md). Reuse the domain-owned reduced read models and Core loading controls. Preserve complete capacity/stock/financial calculations and server-side authorization; list DTOs must not initialize editable forms. The report distinguishes fixture tests, stored-profile read-only checks and untested hosted environments.
+
+For Public company/Surin editorial pages, review [the 28 September content handoff](public-content-2026-09-28.md), `frontend/public-web/src/core/publicRoutes.js` and `features/content`. Shared contact reading belongs to `features/company/CompanyLocation.jsx`. Source-authored TH/EN copy is not localized CMS authoring or proof of a completed SEO migration.
