@@ -1,7 +1,7 @@
 import { operationAccess } from '../../../../packages/contracts/operation-access.js'
 import { createHash } from 'node:crypto'
 import { AccessError } from '../identity-access/membership.js'
-import { profileInclude } from '../identity-access/policy.js'
+import { accessProfileSelect } from '../identity-access/policy.js'
 import { managementScope } from '../identity-access/user-management.js'
 import { isUUID, whole } from '../../../../packages/contracts/operations.js'
 export function fail(code,status=409){throw new AccessError(code,status)}
@@ -10,7 +10,7 @@ export function int(value,min=1,max=1000000){try{return whole(value,min,max)}cat
 export function string(value,max=200,required=true){if(typeof value!=='string'||value.trim().length>max||(required&&!value.trim())||[...value].some(c=>(c.charCodeAt(0)<32&&!['\n','\r','\t'].includes(c))||c.charCodeAt(0)===127))fail('INVALID_INPUT',400);return value.trim()||null}
 export function hash(input){return createHash('sha256').update(JSON.stringify(input)).digest('hex')}
 export async function authorize(tx,actorId,duty='manager') {
- const actor=await tx.userProfile.findUnique({where:{id:actorId},include:profileInclude})
+ const actor=await tx.userProfile.findUnique({where:{id:actorId},select:accessProfileSelect})
  const access=operationAccess(actor)
  if(duty==='active' ? actor?.status!=='ACTIVE' : duty==='manager' ? !managementScope(actor)?.company : duty==='stockOrPrepare' ? !(access.stock||access.prepareStock) : duty==='stockOrBooking' ? !(access.stock||access.booking) : !access[duty]) fail('PERMISSION_DENIED',403)
  return {actor,access}

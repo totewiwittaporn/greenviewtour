@@ -21,8 +21,15 @@ export function can(profile, permission, scope = 'COMPANY') {
     grant.scope === scope && grant.role.permissions.some(item => item.permissionCode === permission))
 }
 export const profileInclude = { permissionOverrides: true, roles: { include: { role: { include: { permissions: true } } } } }
+// Fresh authorization projection. Preserve stored role permissions and override
+// dates/scopes; account contacts and profile metadata do not authorize domain work.
+export const accessProfileSelect = {
+ id: true, displayName: true, status: true, department: true,
+ roles: { select: { roleCode: true, scope: true, role: { select: { permissions: { select: { permissionCode: true } } } } } },
+ permissionOverrides: { select: { permissionCode: true, effect: true, scopeId: true, startsAt: true, expiresAt: true } },
+}
 export function publicProfile(profile, email) {
-  return { ...Object.fromEntries(addressKeys.map(key=>[key,profile[key]])), id: profile.id, email, displayName: profile.displayName, status: profile.status, department: profile.department, updatedAt: profile.updatedAt, createdAt: profile.createdAt, address: profile.address, primaryPhone: profile.primaryPhone, emergencyPhone: profile.emergencyPhone, lineId: profile.lineId, management: managementScope(profile), operations: operationAccess(profile),
+  return { ...Object.fromEntries(addressKeys.map(key=>[key,profile[key]])), id: profile.id, email, displayName: profile.displayName, nickname: profile.nickname, status: profile.status, department: profile.department, updatedAt: profile.updatedAt, createdAt: profile.createdAt, address: profile.address, primaryPhone: profile.primaryPhone, emergencyPhone: profile.emergencyPhone, lineId: profile.lineId, management: managementScope(profile), operations: operationAccess(profile),
     canReceivePayment:effectiveAccess(profile,'finance.receive').allowed,
     companyAccess:Object.fromEntries(Object.keys(accessDefinitions).filter(code=>!code.startsWith('operations.')).map(code=>[code,effectiveAccess(profile,code).allowed])),
     roles: profile.roles.map(item => ({ code: item.roleCode, name: item.role.name, scope: item.scope })),

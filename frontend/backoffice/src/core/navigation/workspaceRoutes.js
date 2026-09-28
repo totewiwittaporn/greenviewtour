@@ -7,7 +7,12 @@ const settingsEntities = new Set(settingsGroups.flatMap(group => group.entities)
 export const normalizePath = path => path.replace(/\/+$/, '') || '/'
 export function workspaceRoute(pathname) {
  const path = normalizePath(pathname)
- if (path === '/') return { kind: 'home', title: 'Workspace', path }
+ if (path === '/' || path === '/dashboard') return { kind: 'dashboard', title: 'Dashboard', path: '/dashboard' }
+ if (path === '/customers') return {kind:'legacy-customers',title:'Customers',path}
+ if (path === '/settings/customers') return {kind:'customers',title:'Customers',path}
+ if (path === '/manuals') return {kind:'manuals',title:'User guides',path,role:null}
+ const manualMatch=path.match(/^\/manuals\/([^/]+)$/)
+ if(manualMatch)return {kind:'manuals',title:'User guides',path,role:manualMatch[1]}
  if (path === '/profile') return { kind: 'profile', title: 'Edit profile', path }
  if (path === '/settings/users') return { kind: 'users', title: 'Users', path }
  const [, scope, entity, extra] = path.split('/')
@@ -17,4 +22,4 @@ export function workspaceRoute(pathname) {
  const group = scope === 'operations' && operationGroups.find(item => item.entities.includes(entity))
  return group ? {kind:'operations',entity,group,title:operationTitles[entity],path} : null
 }
-export const canUseOperation = (user, group) => Boolean((!group.managerOnly || user?.management?.company) && (user?.operations?.[group.capability] || (group.id==='booking' && user?.operations?.islandBooking)))
+export const canUseOperation = (user, group) => Boolean((!group.managerOnly || user?.management?.company) && (user?.operations?.[group.capability] || group.anyCapabilities?.some(key=>user?.operations?.[key]) || (group.id==='booking' && (user?.operations?.islandBooking || user?.management?.company))))

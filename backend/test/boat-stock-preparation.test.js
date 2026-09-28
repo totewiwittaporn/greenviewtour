@@ -1,3 +1,4 @@
+import { preparationGroups } from '../src/backoffice/dashboard/overview/work-summary.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { preparationShare, projectBoatPreparation, boatPreparation, stockCommand } from '../src/modules/operations/stock.js'
@@ -127,4 +128,41 @@ test('guest dietary and preparation instructions flow to assistant without agent
  assert.deepEqual(result.guestRequirements[0].specialRequirements,['VEGAN'])
  assert.equal(result.guestRequirements[0].requestNotes,'Use child mask')
  assert.equal('paymentTerms' in result.guestRequirements[0],false)
+})
+
+test('equipment returns are ready in one step and reject retired cleaning without changing stock',async()=>{
+ const {resource}=fixture()
+ const lot={id:id(30),resource,expiresOn:null}
+ let returned,settled=0
+ const tx={$executeRaw:async()=>{},userProfile:{findUnique:async()=>profile('MANAGER')},stockMovement:{findUnique:async()=>null,create:async({data})=>data},stockIssue:{findUnique:async()=>({id:id(21),lot,quantity:3,settledQty:0,destinationId:id(32)}),update:async({data})=>{settled+=data.settledQty.increment}},stockBalance:{upsert:async({create})=>{returned=create;return create}},stockLocation:{findUnique:async()=>({id:id(32),name:'Store',status:'ACTIVE'})},auditEvent:{create:async()=>{}}}
+ const prisma={$transaction:fn=>fn(tx)}
+ const input={id:id(20),action:'SETTLE',issueId:id(21),locationId:id(32),quantity:2,disposition:'RETURN_CLEANING'}
+ await assert.rejects(stockCommand(prisma,id(6),input),{code:'INVALID_DISPOSITION'})
+ assert.equal(returned,undefined)
+ assert.equal(settled,0)
+ const result=await stockCommand(prisma,id(6),{...input,disposition:'RETURN_READY'})
+ assert.equal(returned.condition,'READY')
+ assert.equal(returned.quantity,2)
+ assert.equal(settled,2)
+ assert.equal(result.row.details.disposition,'RETURN_READY')
+ await assert.rejects(stockCommand(prisma,id(6),{...input,disposition:'RETURN_READY',quantity:4}),{code:'RETURN_EXCEEDS_ISSUE'})
+})
+
+test('cancelled assignment links cannot consume a preparation share or display passengers',()=>{
+ const {stock,booking,transport,run}=fixture()
+ transport.dispatchAssignments[0].status='CANCELLED'
+ assert.equal(preparationShare(stock,booking,id(1)),0)
+ assert.equal(preparationShare(stock,booking,id(2)),3)
+ run.assignments[0].status='CANCELLED'
+ assert.equal(projectBoatPreparation(run).bookings.passengers,0)
+ assert.deepEqual(projectBoatPreparation(run).rows,[])
+})
+test('dashboard preparation keeps different item units separate',()=>{
+ const {run,stock,booking}=fixture()
+ booking.lines.push({...stock,id:id(88),resourceId:id(89),resource:{...stock.resource,id:id(89)},snapshot:{...stock.snapshot,baseUnit:'BOTTLE',name:'Water'}})
+ const result=preparationGroups(run)
+ assert.equal(result.items.length,2)
+ assert.deepEqual(result.items.map(row=>row.unit).sort(),['BOTTLE','PIECE'])
+ assert.equal(result.pendingLines,2)
+ assert.equal(result.quantity,undefined)
 })

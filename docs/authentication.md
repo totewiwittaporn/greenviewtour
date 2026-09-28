@@ -79,3 +79,7 @@ POST /api/me/profile lets every active user edit their own display name only. PO
 ## Access editor extension · 2026-09-13
 
 Migration 20260913090000_user_access adds UserProfile.accessVersion, private UserPermissionOverride, Sales and Housekeeping roles/departments. Configure permissions is a separate Manager-only GET/POST /api/users/:id/access workflow with fresh authorization, explicit review, version conflict protection and before/after audit. Per-request profileInclude now loads overrides. See company-workflows.md and UX-CONTRACT.md for the current implementation; the earlier phase descriptions above remain historical. Database rollout of this extension is not claimed by code verification.
+
+## Dashboard landing · 21 September 2026
+
+The earlier root workspace description is superseded: successful staff login and the root route now lead to `/dashboard`. An authenticated `/login` visit returns there after `/api/me` verifies the account; recovery and invitation routes remain independent. GET `/api/dashboard` composes permission/scope-filtered summaries under the existing workspace-session guard. See dashboard.md for the count contract and validation limits.

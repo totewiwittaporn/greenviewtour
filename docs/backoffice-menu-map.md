@@ -61,3 +61,15 @@ Screens, endpoints, authentication, migrations, billing rules, permissions and a
 ## Implemented master-data settings extension
 
 Owner approval dated 2026-09-08 adds `/settings/partners`, `/settings/tours`, `/settings/rates`, `/settings/locations`, `/settings/vehicles` and `/settings/channels`, and implements `/settings/company`. They share `features/settings/shared/CatalogPage.jsx` and the field contract in `packages/contracts/catalog.js`. See `docs/tour-settings.md` for scope. Existing reserved Services/Fleet folders are future operational pages, not duplicate active catalogue routes. The 34 folders above remain the original scaffold inventory.
+
+## Booking intake and customer directory — owner override 27 September 2026
+
+This supersedes the original top-level Customers placement, not the historical scaffold inventory above.
+
+- Sales & Bookings → Booking (`/operations/bookings`) owns All bookings, Direct bookings, Agent bookings and Customer requests (`?tab=requests`). Direct bookings replaces the misleading Direct customers label; its existing DIRECT source filter is unchanged.
+- Settings → Customers (`/settings/customers`) is one customer-profile dataset, without a redundant tab or customer-request panel. Employee Users remains separate. Existing Booking staff can still read the directory; only existing company-manager authority can edit customer profiles or read/review requests. Moving a page does not create new business permissions.
+- The former `/customers` link replaces its own history entry with the old role-dependent destination: requests for company Managers, directory for Booking readers. Explicit `tab`/`kind=customers` targets the directory; explicit requests still undergo the target access check.
+- Core Navigation/Tabs/TabPanel preserve the shell, keyboard activation, dirty navigation, browser history and independent per-tab search/page state. Customer profiles and customer requests now have independent data-fetch owners and cancellation, preventing one record shape from being rendered as the other.
+- Accepted requests retain their history and offer Open booking to the existing operational Booking when the actor can read it. Opening this link does not create or confirm a second record. Request acceptance, capacity, payment/evidence checks and customer mutations keep the existing server endpoints and authorization.
+
+No schema, persistent business records, role grants, Production or deployment changes are required for this navigation revision. `scripts/smoke-customers.js` covers the moved flow; the capacity UI regression now enters the requests tab directly.

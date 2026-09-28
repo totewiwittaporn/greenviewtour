@@ -18,6 +18,10 @@ try {
   return route.fulfill({json:{version:1,roles:row.roles,overrides:[],history:[],availableRoles:Object.entries(roleNames).filter(([code])=>!['ADMIN_MANAGER','MANAGER'].includes(code)).map(([code,name])=>({code,name})),permissions:Object.entries(accessDefinitions).map(([code,d])=>({code,label:d.label}))}})
  })
  await page.goto(((process.env.GREENVIEW_TEST_ORIGIN || 'http://localhost:5174') + '/settings/users'))
+ await page.getByRole('button',{name:'Actions for staff@example.invalid'}).waitFor()
+ const density=await page.locator('.table-scroll td').first().evaluate(el=>({font:getComputedStyle(el).fontSize,padding:getComputedStyle(el).paddingTop}))
+ assert.deepEqual(density,{font:'12px',padding:'8px'})
+ assert.equal((await page.getByRole('button',{name:'Actions for staff@example.invalid'}).boundingBox()).width,28)
  async function open(){await page.getByRole('button',{name:'Actions for staff@example.invalid'}).click();await page.getByRole('menuitem',{name:'Configure permissions'}).click()}
  await open();await page.getByText('Unable to load permissions.',{exact:false}).waitFor();failLoad=false;await page.getByRole('button',{name:'Retry',exact:true}).click()
  await page.getByRole('checkbox',{name:'Sales',exact:true}).check()

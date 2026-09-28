@@ -45,3 +45,16 @@ The explicit seed script creates only owner-named starter services, equipment an
 - scripts/smoke-operations-ui.js: isolated browser fixtures and rendered forms, dialogs, tabs, narrow viewport and action icons.
 
 BusinessPartner classification additionally supports SERVICE_PROVIDER for meals, accommodation and other service vendors. This changes business classifications only, not employee security roles. Existing partner classifications remain valid.
+
+
+## Booking responsibility and commission — owner update 22 September 2026
+
+Existing role codes remain stable: HEAD_BOOKING is Booking Manager and BOOKING is Booking Assistant. Both roles with effective booking access read all bookings and the customer directory. Customer account edits, customer-request fulfillment and finance approvals retain existing separate permissions. Assistant mutations require the effective responsible person (assigneeId, falling back to immutable createdById for legacy rows); Booking Manager may manage and assign all Booking work. Every mutation, including status, details, return amendments, price requests and evidence writes, rechecks ownership on the server. Assignment is versioned and audited. It changes responsibility without changing creator or recorded commission beneficiary.
+
+Agent and Tour Program each explicitly enable Booking staff commission; either disabled takes precedence. Defaults are disabled, including previously unconfigured catalog records. Direct bookings have no Agent condition and use the program condition; standalone services without a program have no Booking commission. Program adult/child rates are independently configured in THB per passenger, separate from supplier commission. Missing rates are unconfigured, not zero. No rates are seeded.
+
+New Booking saves capture eligibility, catalog versions, rates and beneficiary in commissionSnapshot. Ordinary edits preserve those conditions and update the passenger-based estimate; changing Agent or program captures the new conditions while retaining an existing beneficiary. Legacy bookings with no snapshot do not gain inferred historical commission. Reassignments do not transfer commission. This is an estimate, not a payroll posting, approval or payment.
+
+Booking dashboards share the reference sky header and dark rail. Both see confirmed/completed arrivals for today through day29 (Thailand dates), with30 selectable daily bars. Booking Manager sees the whole team’s work; Assistant sees only responsible work counts and rows, while the Bookings list still shows all records with server-derived edit actions. Work tables show up to10 active bookings; domain lists retain pagination. Other non-GM/non-Programmer roles remain redesign-pending. Per-role manuals describe this workflow.
+
+Shared UserInfo owns its name and role subtitle inside the button, with the account group aligned right. Navbar uses natural grid height and separate mobile rows to avoid overlapping content. Hero date text is white with a contrasting backing.

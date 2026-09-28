@@ -1,3 +1,6 @@
+import {operationReadSelect,attachBookingListFlags} from './list-read-models.js'
+import { canEditBooking } from '../../../../packages/contracts/access.js'
+import { priceActions } from './booking-price.js'
 import { randomUUID } from 'node:crypto'
 import { catalog, validateCatalog } from '../../../../packages/contracts/catalog.js'
 import { operationCatalog } from '../../../../packages/contracts/operations.js'
@@ -5,12 +8,13 @@ import { active,audit,authorize,fail,hash,int,keys,uuid,write } from './common.j
 const include={services:{provider:true},components:{tour:true,resource:true},slots:{resource:true,vehicle:true},trips:{tour:true},bookings:{trip:{include:{tour:true}},lines:{include:{resource:true,source:true,slot:true,dispatchAssignments:{include:{run:{include:{slot:{include:{vehicle:true}}}}}}}}},stock:{lot:{include:{resource:true}},location:true},issues:{lot:{include:{resource:true}},bookingLine:{include:{booking:{include:{trip:true}}}}}}
 const extra={resources:'operationResource',bookings:'tourBooking',stock:'stockBalance',issues:'stockIssue',movements:'stockMovement'}
 export async function listOperations(prisma,actorId,entity,params){
- const {access}=await authorize(prisma,actorId,['stock','issues','movements'].includes(entity)?'stock':['resources','stores'].includes(entity)?'stockOrBooking':entity==='bookings'?'islandBooking':['bookings','services','resources','stores','trips','slots'].includes(entity)?'booking':'manager')
+ const {actor,access}=await authorize(prisma,actorId,['stock','issues','movements'].includes(entity)?'stock':['resources','stores'].includes(entity)?'stockOrBooking':entity==='bookings'?'islandBooking':['bookings','services','resources','stores','trips','slots'].includes(entity)?'booking':'manager')
  const definition=operationCatalog[entity],model=definition?.model||extra[entity];if(!model)fail('NOT_FOUND',404)
  const q=(params.get('q')||'').trim(),requested=Number(params.get('page')||1),status=params.get('status')
  if(q.length>100||!Number.isSafeInteger(requested)||requested<1||requested>100000)fail('INVALID_FILTER',400)
  if(status&&!['ACTIVE','INACTIVE','OPEN','DRAFT','CONFIRMED','COMPLETED','CANCELLED','READY','CLEANING','DAMAGED'].includes(status))fail('INVALID_FILTER',400)
  const base=definition?.kind?{kind:definition.kind}:entity==='bookings'&&!access.booking?{createdById:actorId}:{},where={...base}
+ if(entity==='bookings'&&params.get('source')){const source=params.get('source');if(!['DIRECT','AGENT'].includes(source))fail('INVALID_FILTER',400);base.agentId=source==='DIRECT'?null:{not:null};where.agentId=base.agentId}
  if(params.get('bookingId')){if(entity!=='bookings')fail('INVALID_FILTER',400);where.id=uuid(params.get('bookingId'))}
  if(entity==='resources'&&params.get('kind')){const kind=params.get('kind');if(!['SERVICE','EQUIPMENT','CONSUMABLE','MATERIAL'].includes(kind))fail('INVALID_FILTER',400);where.kind=kind==='MATERIAL'?{in:['EQUIPMENT','CONSUMABLE']}:kind}
  if(status&&!['stock','issues','movements'].includes(entity))where.status=status
@@ -20,12 +24,31 @@ export async function listOperations(prisma,actorId,entity,params){
   if(!allowed.includes(entity))fail('INVALID_FILTER',400);where[key]=uuid(params.get(key))
  }
  if(q)where.OR=entity==='components'?[{tour:{name:{contains:q,mode:'insensitive'}}},{resource:{name:{contains:q,mode:'insensitive'}}}]:['stock','issues'].includes(entity)?[{lot:{resource:{name:{contains:q,mode:'insensitive'}}}},{lot:{label:{contains:q,mode:'insensitive'}}}]:entity==='movements'?[{kind:{contains:q,mode:'insensitive'}},...['resourceName','resourceCode','lotLabel','sourceName','destinationName','note','custodian','bookingCode'].map(key=>({details:{path:[key],string_contains:q,mode:'insensitive'}}))]:['code','name'].map(k=>({[k]:{contains:q,mode:'insensitive'}}))
+ const recordId=params.get('recordId')||params.get('bookingId'),view=params.get('view')
+ if(view&&!['list','options','detail'].includes(view))fail('INVALID_FILTER',400)
+ if(recordId)where.id=uuid(recordId)
  return prisma.$transaction(async tx=>{
+  if(recordId){
+   const rows=await tx[model].findMany({where,include:include[entity],take:1})
+   const row=rows[0];if(!row)fail('NOT_FOUND',404)
+   if(entity==='bookings'){row.canEdit=canEditBooking({...actor,id:actorId},row);row.priceActions=row.canEdit?priceActions(row,actorId,access):[]}
+   if(entity==='components'){row.name=row.resource.name;row.code=row.tour.code}
+   return {rows:[row],total:1,page:1,pages:1,pageSize:25}
+  }
   const total=await tx[model].count({where}),pages=Math.max(1,Math.ceil(total/25)),page=Math.min(requested,pages)
-  let rows=await tx[model].findMany({where,include:include[entity],skip:(page-1)*25,take:25,orderBy:entity==='stock'?[{id:'asc'}]:[{createdAt:'desc'},{id:'asc'}]})
+  const select=operationReadSelect(entity,view)
+  let rows=await tx[model].findMany({where,...(select?{select}:{include:include[entity]}),skip:(page-1)*25,take:25,orderBy:entity==='stock'?[{id:'asc'}]:[{createdAt:'desc'},{id:'asc'}]})
+  if(entity==='bookings'&&view==='list')rows=await attachBookingListFlags(tx,rows)
+  if(entity==='bookings')rows=rows.map(row=>{const canEdit=canEditBooking({...actor,id:actorId},row);return {...row,canEdit,priceActions:canEdit?priceActions(row,actorId,access):[]}})
   if(entity==='components')rows=rows.map(r=>({...r,name:r.resource.name,code:r.tour.code}))
+  if(view==='options')return {rows,total,page,pages,pageSize:25}
+  if(entity==='bookings'&&view==='list'){
+   const counts=await tx.tourBooking.groupBy({by:['status'],where:base,_count:{_all:true}})
+   const all=counts.reduce((sum,row)=>sum+row._count._all,0),count=status=>counts.find(row=>row.status===status)?._count._all||0
+   return {rows,total,page,pages,pageSize:25,summary:{total:all,active:count('CONFIRMED'),inactive:all-count('CONFIRMED'),featured:all,...Object.fromEntries(['DRAFT','CONFIRMED','COMPLETED','CANCELLED'].map(status=>[status.toLowerCase(),count(status)]))}}
+  }
   if(entity==='issues'){
-   const ids=[...new Set(rows.flatMap(r=>[r.sourceId,r.destinationId]))],stores=await tx.stockLocation.findMany({where:{id:{in:ids}}})
+   const ids=[...new Set(rows.flatMap(r=>[r.sourceId,r.destinationId]))],stores=ids.length?await tx.stockLocation.findMany({where:{id:{in:ids}},select:{id:true,name:true,code:true}}):[]
    rows=rows.map(r=>({...r,source:stores.find(s=>s.id===r.sourceId),destination:stores.find(s=>s.id===r.destinationId)}))
   }
   const all=await tx[model].count({where:entity==='stock'?{quantity:{gt:0}}:base})
@@ -34,8 +57,8 @@ export async function listOperations(prisma,actorId,entity,params){
    activeCount=await tx.stockBalance.count({where:{condition:'READY',quantity:{gt:0}}})
    featured=await tx.stockBalance.count({where:{condition:'CLEANING',quantity:{gt:0}}})
   }else if(entity==='issues'){
-   const issues=await tx.stockIssue.findMany({select:{quantity:true,settledQty:true}})
-   activeCount=issues.filter(i=>i.quantity>i.settledQty).length
+   if(view==='list')activeCount=await tx.stockIssue.count({where:{quantity:{gt:tx.stockIssue.fields.settledQty}}})
+   else {const issues=await tx.stockIssue.findMany({select:{quantity:true,settledQty:true}});activeCount=issues.filter(i=>i.quantity>i.settledQty).length}
   }else if(entity==='movements')activeCount=all
   else activeCount=await tx[model].count({where:{...base,status:entity==='trips'?'OPEN':entity==='bookings'?'CONFIRMED':'ACTIVE'}})
   const featuredWhere={services:{salePrice:{not:null}},equipment:{size:{not:null}},consumables:{OR:[{packSize:{not:null}},{caseSize:{not:null}}]},stores:{kind:'BOAT'},components:{selection:'REQUIRED'},slots:{vehicleId:{not:null}},trips:{tourId:{not:null}}}

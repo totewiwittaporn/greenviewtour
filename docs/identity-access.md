@@ -35,3 +35,8 @@ Finance/approval rights, insurance submission authorization, sensitive passenger
 ## Implemented extension · 2026-09-13
 
 The current role catalog also includes SALES, HEAD_HOUSEKEEPING and HOUSEKEEPING. Users Actions now supports multiple ordinary roles and time-bounded per-user operational allow/deny overrides, including paid-status permission. See company-workflows.md for the authoritative scope, precedence, no-self/Manager hierarchy, audit and remaining warehouse/personnel workflows. Admin Manager grants remain bootstrap-controlled; this editor cannot create or change them.
+
+
+## Booking responsibility and commission — owner update 22 September 2026
+
+Existing role codes remain stable: HEAD_BOOKING is Booking Manager and BOOKING is Booking Assistant. Both roles with effective booking access read all bookings and the customer directory. Customer account edits, customer-request fulfillment and finance approvals retain existing separate permissions. Assistant mutations require the effective responsible person (assigneeId, falling back to immutable createdById for legacy rows); Booking Manager may manage and assign all Booking work. Every mutation, including status, details, return amendments, price requests and evidence writes, rechecks ownership on the server. Assignment is versioned and audited. It changes responsibility without changing creator or recorded commission beneficiary.

@@ -1,6 +1,6 @@
 // Shared effective access. A scoped grant never implies company-wide access.
 export const roleNames = {
- ADMIN_MANAGER:'Admin Manager', MANAGER:'Manager', BOOKING:'Booking', HEAD_BOOKING:'Head Booking', SALES:'Sales', ACCOUNT:'Account',
+ ADMIN_MANAGER:'Admin Manager', MANAGER:'Manager', BOOKING:'Booking Assistant', HEAD_BOOKING:'Booking Manager', SALES:'Sales', ACCOUNT:'Account',
  GUIDE:'Guide', HEAD_GUIDE:'Head Guide', ASSISTANT_TOUR_GUIDE:'Assistant tour guide',
  CAPTAIN:'Captain', HEAD_CAPTAIN:'Head Captain', ASSISTANT_CAPTAIN:'Assistant Captain', DRIVER:'Driver', HEAD_DRIVER:'Head Driver',
  HOUSEKEEPING:'Housekeeping', HEAD_HOUSEKEEPING:'Head Housekeeping',
@@ -53,4 +53,25 @@ export function effectiveAccess(profile,code,{scopeId=null,now=new Date()}={}) {
  if(isManager(profile)&&definition.managerDefault)inherited.push('Manager')
  if(isAdmin(profile)&&definition.adminDefault)inherited.push('Admin Manager')
  return {allowed:inherited.length>0,source:inherited.length?`Role: ${inherited.join(', ')}`:'No grant'}
+}
+
+// Booking ownership is independent of immutable creation attribution.
+const activeRole = (profile, code) => (profile?.roles || []).some(role => ['SELF', 'COMPANY'].includes(role.scope) && (role.roleCode || role.code) === code)
+export function canManageBookingTeam(profile) {
+ return effectiveAccess(profile, 'operations.booking').allowed && effectiveAccess(profile, 'operations.islandBooking').allowed && (isManager(profile) || activeRole(profile, 'HEAD_BOOKING'))
+}
+export function canEditBooking(profile, booking) {
+ if (profile?.status !== 'ACTIVE') return false
+ const bookingAccess = effectiveAccess(profile, 'operations.booking').allowed
+ const islandAccess = effectiveAccess(profile, 'operations.islandBooking')
+ const bookingStaff = activeRole(profile, 'BOOKING') || activeRole(profile, 'HEAD_BOOKING')
+ if (islandAccess.source === 'User restriction' || bookingStaff && (!bookingAccess || !islandAccess.allowed)) return false
+ if (!bookingAccess) return effectiveAccess(profile, 'operations.islandBooking').allowed && (booking.assigneeId ?? booking.createdById) === profile.id && booking.programSnapshot?.journeyMode === 'RETURN_ONLY'
+ if (canManageBookingTeam(profile)) return true
+ if (activeRole(profile, 'BOOKING') || activeRole(profile, 'HEAD_BOOKING')) return (booking.assigneeId ?? booking.createdById) === profile.id
+ return true // Preserve explicit booking grants for other existing duties.
+}
+
+export function canReadCustomers(profile) {
+ return isManager(profile) || (effectiveAccess(profile, 'operations.booking').allowed && (activeRole(profile, 'BOOKING') || activeRole(profile, 'HEAD_BOOKING')))
 }

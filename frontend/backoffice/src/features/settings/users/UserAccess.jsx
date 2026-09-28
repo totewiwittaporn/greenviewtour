@@ -1,3 +1,6 @@
+import {translateLabel as bilingualLabel} from '../../../core/i18n/runtime.js'
+import { formatDate as displayDate } from '../../../core/i18n/runtime.js'
+import { translate as t, useLocale } from '../../../core/i18n/locale.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { effectiveAccess } from '../../../../../../packages/contracts/access.js'
 import { api } from '../../../core/auth/api.js'
@@ -7,6 +10,7 @@ import { Button } from '../../../core/ui/Button.jsx'
 import { FormField } from '../../../core/ui/FormField.jsx'
 import { SelectField } from '../../../core/ui/SelectField.jsx'
 export function UserAccess({user,onClose,onSaved}) {
+ useLocale();
  const [data,setData]=useState(null),[roles,setRoles]=useState([]),[overrides,setOverrides]=useState([]),[reason,setReason]=useState('')
  const [error,setError]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true),[reload,setReload]=useState(0),[discard,setDiscard]=useState(false),[review,setReview]=useState(false)
  const lock=useRef(false),form=useRef(null)
@@ -30,23 +34,23 @@ export function UserAccess({user,onClose,onSaved}) {
   finally{lock.current=false;setBusy(false)}
  }
  const draft={status:user.status,roles:roles.map(roleCode=>({roleCode,scope:roleCode==='MANAGER'?'COMPANY':'SELF'})),permissionOverrides:overrides}
- return <Dialog title={discard?'Discard permission changes?':review?'Review permissions':'Configure permissions'} onClose={close} busy={busy}>
+ return <Dialog title={discard?bilingualLabel('Discard permission changes?'):review?bilingualLabel('Review permissions'):bilingualLabel('Configure permissions')} onClose={close} busy={busy}>
   <p className="action-subject">{user.displayName} · {user.email}</p>
-  {discard?<><p>These permission changes have not been saved.</p><div className="dialog-actions"><Button onClick={()=>setDiscard(false)}>Keep editing</Button><Button onClick={onClose}>Discard changes</Button></div></>:<>
-   {error&&<p role="alert" className="inline-error">{error}</p>}
-   {loading?<p role="status">Loading current permissions…</p>:!data?<Button onClick={()=>setReload(n=>n+1)}>Retry</Button>:<form ref={form} onSubmit={save} noValidate aria-busy={busy}>
-    <p>Roles describe duties. Explicit restrictions take priority over all role grants. Changes apply to subsequent requests.</p><p>Inventory access covers all locations. Preparation duties retain job-assignment checks. Head directory access also requires a matching department; this form does not change the department.</p>
-    <fieldset className="address-section" disabled={busy||review}><legend>Main duties · select one or more roles</legend><div className="access-role-grid">{data.availableRoles.map(role=><label key={role.code}><input type="checkbox" checked={roles.includes(role.code)} onChange={e=>setRoles(old=>e.target.checked?[...old,role.code]:old.filter(r=>r!==role.code))}/>{role.name}</label>)}</div></fieldset>
-    <fieldset className="address-section" disabled={busy||review}><legend>Role permissions and special permissions</legend>
+  {discard?<><p>{t("These permission changes have not been saved.")}</p><div className="dialog-actions"><Button onClick={()=>setDiscard(false)}>{t("Keep editing")}</Button><Button onClick={onClose}>{t("Discard changes")}</Button></div></>:<>
+   {error&&<p role="alert" className="inline-error">{t(error)}</p>}
+   {loading?<p role="status">{t("Loading current permissions…")}</p>:!data?<Button onClick={()=>setReload(n=>n+1)}>{t("Retry")}</Button>:<form ref={form} onSubmit={save} noValidate aria-busy={busy}>
+    <p>{t("Roles describe duties. Explicit restrictions take priority over all role grants. Changes apply to subsequent requests.")}</p><p>{t("Inventory access covers all locations. Preparation duties retain job-assignment checks. Head directory access also requires a matching department; this form does not change the department.")}</p>
+    <fieldset className="address-section" disabled={busy||review}><legend>{bilingualLabel("Main duties · select one or more roles")}</legend><div className="access-role-grid">{data.availableRoles.map(role=><label key={role.code}><input type="checkbox" checked={roles.includes(role.code)} onChange={e=>setRoles(old=>e.target.checked?[...old,role.code]:old.filter(r=>r!==role.code))}/>{bilingualLabel(role.name)}</label>)}</div></fieldset>
+    <fieldset className="address-section" disabled={busy||review}><legend>{bilingualLabel("Role permissions and special permissions")}</legend>
      {data.permissions.map(permission=>{const row=overrides.find(r=>r.permissionCode===permission.code),effective=effectiveAccess(draft,permission.code);return <div className="access-permission" key={permission.code}>
-      <SelectField label={permission.label} value={row?.effect||'INHERIT'} disabled={busy||review} onChange={e=>override(permission.code,'effect',e.target.value)} hint={`${effective.allowed?'Allowed':'Denied'} now · ${effective.source}`}><option value="INHERIT">Use role default</option><option value="ALLOW">Allow for this user</option><option value="DENY">Deny for this user</option></SelectField>
-      {row&&<div className="access-role-grid">{[['startsAt','Starts (UTC)'],['expiresAt','Expires (UTC)']].map(([key,label])=><FormField key={key} label={`${permission.label} — ${label}`} type="datetime-local" disabled={busy||review} value={row[key]?new Date(row[key]).toISOString().slice(0,16):''} onChange={e=>override(permission.code,key,e.target.value?`${e.target.value}:00.000Z`:null)} hint="Optional. Empty means no time limit."/>)}</div>}
+      <SelectField label={permission.label} value={row?.effect||'INHERIT'} disabled={busy||review} onChange={e=>override(permission.code,'effect',e.target.value)} hint={t("{value0} now · {value1}", {value0: t(effective.allowed?'Allowed':'Denied'), value1: t(effective.source)})}><option value="INHERIT">{t("Use role default")}</option><option value="ALLOW">{t("Allow for this user")}</option><option value="DENY">{t("Deny for this user")}</option></SelectField>
+      {row&&<div className="access-role-grid">{[['startsAt','Starts (UTC)'],['expiresAt','Expires (UTC)']].map(([key,label])=><FormField key={key} label={`${bilingualLabel(permission.label)} — ${bilingualLabel(label)}`} type="datetime-local" disabled={busy||review} value={row[key]?new Date(row[key]).toISOString().slice(0,16):''} onChange={e=>override(permission.code,key,e.target.value?`${e.target.value}:00.000Z`:null)} hint={t("Optional. Empty means no time limit.")}/>)}</div>}
      </div>})}
     </fieldset>
-    <FormField label="Reason for change" value={reason} maxLength={1000} required disabled={busy||review} onChange={e=>setReason(e.target.value)}/>
-    {review&&<p role="status">Save {roles.length} roles and {overrides.length} individual permission overrides for {user.displayName}? This change will be recorded with your account and reason.</p>}
-    <div className="dialog-actions">{review&&<Button disabled={busy} onClick={()=>setReview(false)}>Back to edit</Button>}<Button type="submit" className="button-primary" busy={busy} disabled={busy||!dirty}>{review?'Confirm permissions':'Review changes'}</Button></div>
-    <details><summary>Recent permission history ({data.history.length})</summary>{!data.history.length?<p>No permission changes recorded.</p>:data.history.map(event=><p key={event.id}>{new Date(event.createdAt).toLocaleString('en-GB',{timeZone:'Asia/Bangkok'})} Bangkok · {event.details.reason}<br/>Changed by {event.actorId}</p>)}</details>
+    <FormField label={bilingualLabel("Reason for change")} value={reason} maxLength={1000} required disabled={busy||review} onChange={e=>setReason(e.target.value)}/>
+    {review&&<p role="status">{t("Save")}{' '}{roles.length}{' '}{t("roles and")}{' '}{overrides.length}{' '}{t("individual permission overrides for")}{' '}{user.displayName}{t("? This change will be recorded with your account and reason.")}</p>}
+    <div className="dialog-actions">{review&&<Button disabled={busy} onClick={()=>setReview(false)}>{t("Back to edit")}</Button>}<Button type="submit" className="button-primary" busy={busy} disabled={busy||!dirty}>{review?t('Confirm permissions'):t('Review changes')}</Button></div>
+    <details><summary>{t("Recent permission history (")}{data.history.length})</summary>{!data.history.length?<p>{t("No permission changes recorded.")}</p>:data.history.map(event=><p key={event.id}>{displayDate(new Date(event.createdAt), {dateStyle:'short', timeStyle:'medium', ...{timeZone:'Asia/Bangkok'}})}{' '}{t("Bangkok ·")}{' '}{event.details.reason}<br/>{t("Changed by")}{' '}{event.actorId}</p>)}</details>
    </form>}
   </>}
  </Dialog>

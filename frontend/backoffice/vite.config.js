@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '127.0.0.1', port: 5174, strictPort: true,
+    // Tool-managed writes on macOS may not emit filesystem events.
+    watch: process.platform === 'darwin' ? { usePolling: true, interval: 500 } : undefined,
     proxy: {
       '/api': {
         target: `http://127.0.0.1:${process.env.LOCAL_API_PORT || 5000}`, changeOrigin: true,

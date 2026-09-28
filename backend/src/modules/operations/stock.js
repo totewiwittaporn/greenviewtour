@@ -44,7 +44,7 @@ export async function stockCommand(prisma,actorId,input,{authorizeDelegated=null
    lot=issue.lot;resource=lot.resource;converted=units(resource,input)
    if(converted.quantity>issue.quantity-issue.settledQty)fail('RETURN_EXCEEDS_ISSUE')
    const disposition=input.disposition
-   const condition={RETURN_READY:'READY',RETURN_CLEANING:'CLEANING',RETURN_DAMAGED:'DAMAGED'}[disposition]
+   const condition={RETURN_READY:'READY',RETURN_DAMAGED:'DAMAGED'}[disposition]
    if(!condition&&!['CONSUMED','WASTED'].includes(disposition))fail('INVALID_DISPOSITION',400)
    if(resource.kind==='EQUIPMENT'&&disposition==='CONSUMED'||resource.kind==='CONSUMABLE'&&condition==='CLEANING')fail('INVALID_DISPOSITION',400)
    if(condition){destination=await active(tx,'stockLocation',input.locationId);if(condition==='READY'&&expired(lot))fail('EXPIRED_STOCK');await add(tx,lot.id,destination.id,condition,converted.quantity)}
@@ -68,7 +68,7 @@ export async function stockCommand(prisma,actorId,input,{authorizeDelegated=null
      destination=await active(tx,'stockLocation',input.destinationId);if(destination.id===source.id)fail('SAME_LOCATION',400)
      await add(tx,lot.id,destination.id,balance.condition,converted.quantity)
     }else if(input.action==='CONDITION'){
-     if(!['READY','CLEANING','DAMAGED'].includes(input.condition)||input.condition===balance.condition||resource.kind==='CONSUMABLE'&&input.condition==='CLEANING')fail('INVALID_CONDITION',400)
+     if(!['READY','DAMAGED'].includes(input.condition)||input.condition===balance.condition||resource.kind==='CONSUMABLE'&&input.condition==='CLEANING')fail('INVALID_CONDITION',400)
      if(input.condition==='READY'&&expired(lot))fail('EXPIRED_STOCK')
      destination=source;await add(tx,lot.id,source.id,input.condition,converted.quantity)
      details={...details,previousCondition:balance.condition,condition:input.condition}
@@ -113,7 +113,7 @@ export function preparationShare(line, booking, runId) {
  const candidates=(outbound.length?outbound:transport).sort((a,b)=>Number((a.snapshot?.category||a.resource?.category)==='LONGTAIL_BOAT')-Number((b.snapshot?.category||b.resource?.category)==='LONGTAIL_BOAT')||a.id.localeCompare(b.id))
  const primary=candidates[0],direction=outbound.length?'OUTBOUND':'RETURN'
  if(!primary)return 0
- const allocations=(primary.dispatchAssignments||[]).filter(a=>a.run.kind==='BOAT'&&a.run.status!=='CANCELLED'&&a.run.direction===direction).sort((a,b)=>a.runId.localeCompare(b.runId))
+ const allocations=(primary.dispatchAssignments||[]).filter(a=>a.status!=='CANCELLED'&&a.run.kind==='BOAT'&&a.run.status!=='CANCELLED'&&a.run.direction===direction).sort((a,b)=>a.runId.localeCompare(b.runId))
  const weight=value=>line.snapshot?.basis==='PER_CHILD'?value.children:line.snapshot?.basis==='PER_ADULT'?value.adults:value.adults+value.children
  const total=weight(booking)
  if(!total)return 0
@@ -125,9 +125,17 @@ export function preparationShare(line, booking, runId) {
  }
  return quantity
 }
-const preparationInclude={
- slot:{include:{vehicle:true}},staff:true,
- assignments:{include:{bookingLine:{include:{booking:{include:{trip:true,lines:{include:{resource:true,source:true,issues:true,dispatchAssignments:{include:{run:true}}}}}}}}}},
+const preparationFields=names=>Object.fromEntries(names.split(' ').map(key=>[key,true]))
+export const preparationInclude={
+ slot:{select:{startsAt:true,endsAt:true,vehicle:{select:{name:true,registration:true}}}},staff:{select:{userId:true}},
+ assignments:{select:{status:true,adults:true,children:true,bookingLine:{select:{booking:{select:{
+  ...preparationFields('id code name status adults children outboundDate returnDate allergyStatus allergies specialRequirements assistance requestNotes'),trip:{select:{endsAt:true}},
+  lines:{select:{...preparationFields('id selected resourceId sourceId quantity issuedQty usagePoint dispatchDirection snapshot'),
+   resource:{select:preparationFields('id kind name code category baseUnit size mealPeriod accommodationType')},source:{select:{name:true}},
+   issues:{select:preparationFields('id runId quantity settledQty')},
+   dispatchAssignments:{select:{...preparationFields('runId status adults children'),run:{select:preparationFields('kind status direction')}}},
+  }},
+ }}}}}},
 }
 async function preparationRun(tx,actorId,runId){
  const {access}=await authorize(tx,actorId,'stockOrPrepare')
@@ -137,7 +145,7 @@ async function preparationRun(tx,actorId,runId){
  return run
 }
 export function projectBoatPreparation(run){
- const assigned=run.assignments.filter(a=>['CONFIRMED','COMPLETED'].includes(a.bookingLine.booking.status))
+ const assigned=run.assignments.filter(a=>a.status!=='CANCELLED'&&['CONFIRMED','COMPLETED'].includes(a.bookingLine.booking.status))
  const bookings=[...new Map(assigned.map(a=>[a.bookingLine.booking.id,a.bookingLine.booking])).values()]
  const rows=[],services=[]
  for(const booking of bookings)for(const line of booking.lines){
@@ -176,7 +184,7 @@ export async function boatPreparation(prisma,actorId,params){
  return prisma.$transaction(async tx=>{
   const result=projectBoatPreparation(await preparationRun(tx,actorId,params.get('runId')))
   const resourceIds=[...new Set(result.rows.map(row=>row.resourceId))]
-  const balances=resourceIds.length?await tx.stockBalance.findMany({where:{condition:'READY',quantity:{gt:0},location:{status:'ACTIVE'},lot:{resourceId:{in:resourceIds},resource:{status:'ACTIVE'}}},include:{location:true,lot:true},orderBy:[{lot:{expiresOn:'asc'}},{id:'asc'}]}):[]
+  const balances=resourceIds.length?await tx.stockBalance.findMany({where:{condition:'READY',quantity:{gt:0},location:{status:'ACTIVE'},lot:{resourceId:{in:resourceIds},resource:{status:'ACTIVE'}}},select:{id:true,version:true,quantity:true,locationId:true,lotId:true,location:{select:{name:true}},lot:{select:{resourceId:true,label:true,expiresOn:true}}},orderBy:[{lot:{expiresOn:'asc'}},{id:'asc'}]}):[]
   for(const row of result.rows)row.readyBalances=balances.filter(b=>b.lot.resourceId===row.resourceId&&(!row.sourceId||b.locationId===row.sourceId)&&!expired(b.lot)&&!expired(b.lot,row.useBy)).map(b=>({id:b.id,version:b.version,quantity:b.quantity,locationId:b.locationId,locationName:b.location.name,lotId:b.lotId,lotLabel:b.lot.label,expiresOn:b.lot.expiresOn}))
   result.destinations=await tx.stockLocation.findMany({where:{status:'ACTIVE'},select:{id:true,name:true},orderBy:{name:'asc'}})
   return result

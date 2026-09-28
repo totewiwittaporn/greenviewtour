@@ -32,7 +32,7 @@ function planFixture(){
  const agent={id:id(4),status:'ACTIVE',roles:['SALES_AGENT'],allowedPaymentTerms:['PREPAID','COUNTER','AGENT_CREDIT'],defaultPaymentTerms:'AGENT_CREDIT'}
  let rateQuery
  const rates=[]
- const tx={tourProgram:{findUnique:async()=>program},businessPartner:{findUnique:async()=>agent},agentTourPrice:{findMany:async q=>{rateQuery=q;return rates}}}
+ const tx={serviceDayClose:{count:async()=>0},bookingAttendance:{findMany:async()=>[],findUnique:async()=>null,count:async()=>0},tourProgram:{findUnique:async()=>program},businessPartner:{findUnique:async()=>agent},agentTourPrice:{findMany:async q=>{rateQuery=q;return rates}}}
  return {tx,program,agent,rates,query:()=>rateQuery,input:{tourId:program.id,serviceDate:'2026-11-10',adults:2,children:1}}
 }
 test('program plan snapshots negotiated annual agent price, allowed terms, components and Thailand envelope',async()=>{
@@ -70,7 +70,7 @@ test('return-only and open return program plans never fabricate an outbound/retu
 function saveFixture(){
  const f=planFixture(), records=new Map(), trips=new Map(), events=[]
  let sequence=0
- const tx={...f.tx,
+ const tx={serviceDayClose:{count:async()=>0},bookingAttendance:{findMany:async()=>[],findUnique:async()=>null,count:async()=>0},...f.tx,
   $executeRaw:async()=>{events.push('lock')},
   userProfile:{findUnique:async()=>({status:'ACTIVE',roles:[{roleCode:'BOOKING',scope:'SELF'}]})},
   bookingSequence:{upsert:async ({where})=>{events.push('sequence');return {year:where.year,value:++sequence}}},
@@ -118,4 +118,65 @@ test('modern Booking confirmation does not require meal slots or supply warehous
  f.tx.operationResource.findUnique=async({where})=>where.id===id(42)?{id:id(42),status:'ACTIVE',kind:'CONSUMABLE',category:'DRINK'}:{...f.program.components[0].resource,status:'ACTIVE'}
  const result=await bookingStatus(f.prisma,id(20),{id:id(43),bookingId:row.id,version:1,action:'CONFIRM'})
  assert.equal(result.status,'CONFIRMED')
+})
+
+test('editing an approved negotiated booking restores its standard snapshot instead of laundering the override',async()=>{
+ const f=planFixture()
+ const existing={agentId:f.agent.id,outboundDate:new Date('2026-11-10'),adultPrice:'10',childPrice:'5',paymentTerms:'COUNTER',lines:[],programSnapshot:{bookingOwnedTrip:true,tourId:f.program.id,journeyMode:'FIXED',durationDays:1,priceSource:{kind:'AGENT'},priceException:{status:'APPROVED',standard:{adultPrice:'1200',childPrice:'900'}}}}
+ const plan=await programBookingPlan(f.tx,{...f.input,agentId:f.agent.id},existing)
+ assert.equal(plan.adultPrice,'1200')
+ assert.equal(plan.childPrice,'900')
+ assert.equal(plan.preserve,true)
+})
+
+
+test('booking blueprint loads direct program pricing and checks the requested service dates',async()=>{
+ const {getBlueprint}=await import('../src/modules/operations/bookings.js')
+ const f=saveFixture();let checked
+ f.tx.serviceDayClose.count=async query=>{checked=query;return 0}
+ const result=await getBlueprint(f.tx,id(20),new URLSearchParams({...f.input,adults:'2',children:'1'}))
+ assert.equal(result.adultPrice,'1500')
+ assert.equal(result.lines[0].quantity,3)
+ assert.deepEqual(checked.where.serviceDate.in.map(d=>d.toISOString()),['2026-11-10T00:00:00.000Z'])
+ assert.equal(result.lines[0].resource.costPrice,undefined)
+})
+test('booking blueprint checks both overnight dates and preserves closed-day rejection',async()=>{
+ const {getBlueprint}=await import('../src/modules/operations/bookings.js')
+ const f=saveFixture();f.program.durationDays=3;let checked
+ f.tx.serviceDayClose.count=async query=>{checked=query;return 1}
+ await assert.rejects(getBlueprint(f.tx,id(20),new URLSearchParams({...f.input,adults:'2',children:'1'})),{code:'SERVICE_DAY_CLOSED'})
+ assert.deepEqual(checked.where.serviceDate.in.map(d=>d.toISOString()),['2026-11-10T00:00:00.000Z','2026-11-12T00:00:00.000Z'])
+})
+test('return-only blueprint handles the absent outbound date',async()=>{
+ const {getBlueprint}=await import('../src/modules/operations/bookings.js')
+ const f=saveFixture();f.program.journeyMode='RETURN_ONLY';let checked
+ f.tx.serviceDayClose.count=async query=>{checked=query;return 0}
+ const result=await getBlueprint(f.tx,id(20),new URLSearchParams({...f.input,adults:'2',children:'1'}))
+ assert.equal(result.journey.outboundDate,null)
+ assert.equal(result.journey.returnDate,'2026-11-10')
+ assert.equal(checked.where.serviceDate.in.length,1)
+})
+
+test('saveBooking persists commission rules and keeps them after catalog edits and owner transfer',async()=>{
+ const {saveBooking}=await import('../src/modules/operations/bookings.js')
+ const {assignBooking}=await import('../src/modules/operations/booking-ownership.js')
+ const f=saveFixture()
+ Object.assign(f.program,{bookingCommissionEligible:true,bookingAdultCommission:'12.35',bookingChildCommission:'2.10'})
+ Object.assign(f.agent,{bookingCommissionEligible:true})
+ f.tx.userProfile.findUnique=async({where})=>({id:where.id,status:'ACTIVE',roles:[{roleCode:where.id===id(30)?'HEAD_BOOKING':'BOOKING',scope:where.id===id(30)?'COMPANY':'SELF'}]})
+ f.tx.operationTrip.update=async()=>({})
+ f.tx.bookingComponent={deleteMany:async()=>{}}
+ const update=f.tx.tourBooking.update
+ f.tx.tourBooking.update=async args=>{const result=await update(args);if(args.data.lines)result.lines=args.data.lines.create.map(l=>({...l,resource:f.program.components[0].resource,issuedQty:0}));return result}
+ const input={...f.input,agentId:f.agent.id}
+ const first=(await saveBooking(f.prisma,id(20),input)).row
+ assert.equal(first.commissionSnapshot.amount,'26.80');assert.equal(first.commissionSnapshot.agentEligible,true);assert.equal(first.commissionSnapshot.beneficiaryId,id(20))
+ f.program.bookingCommissionEligible=false;f.program.bookingAdultCommission='900';f.agent.bookingCommissionEligible=false
+ const original=structuredClone(first.commissionSnapshot)
+ await assignBooking(f.prisma,id(30),{id:id(31),bookingId:first.id,version:first.version,assigneeId:id(21)})
+ assert.deepEqual(first.commissionSnapshot,original)
+ const edited=(await saveBooking(f.prisma,id(21),{...input,version:first.version,name:'Edited after assignment'})).row
+ assert.deepEqual(edited.commissionSnapshot,original)
+ const fresh=(await saveBooking(f.prisma,id(21),{...input,id:id(12),version:0})).row
+ assert.equal(fresh.commissionSnapshot.status,'NO_COMMISSION');assert.equal(fresh.commissionSnapshot.amount,'0.00')
 })

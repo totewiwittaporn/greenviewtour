@@ -1,0 +1,16 @@
+export default {
+ 'Agent short name':'ชื่อย่อเอเจนต์',
+ 'Job Order program code':'ชื่อย่อโปรแกรมบนใบงาน',
+ 'Up to 10 characters for Job Orders. Leave empty to use the full agent name.':'ไม่เกิน 10 ตัวอักษรสำหรับใบงาน เว้นว่างเพื่อใช้ชื่อเอเจนต์เต็ม',
+ 'Optional, up to 10 characters: DT, D/O, 2D1N or RT. This label does not change the program or its services.':'ไม่บังคับ ไม่เกิน 10 ตัวอักษร เช่น DT, D/O, 2D1N หรือ RT ชื่อย่อไม่เปลี่ยนโปรแกรมหรือบริการ',
+ 'Use a single line of up to 10 characters.':'กรอกบรรทัดเดียว ไม่เกิน 10 ตัวอักษร',
+ 'Print A4 portrait':'พิมพ์ A4 แนวตั้ง',
+ 'A4 portrait · Fit width · Scroll to read':'A4 แนวตั้ง · พอดีความกว้าง · เลื่อนขึ้นลงเพื่ออ่าน',
+ 'Preparing document pages…':'กำลังจัดหน้าเอกสาร…',
+ 'The document could not be paginated safely. Retry or review unusually long records before printing.':'จัดหน้าเอกสารไม่สำเร็จ กรุณาลองใหม่หรือตรวจรายการที่ยาวผิดปกติก่อนพิมพ์',
+ 'Unable to prepare the document for printing. Retry after all pages have loaded.':'เตรียมเอกสารพิมพ์ไม่สำเร็จ กรุณาลองใหม่หลังโหลดทุกหน้าครบแล้ว',
+ 'Job Order codes':'คำอธิบายรหัส Job Order',
+ 'Reference only. These explanations are not printed on each Job Order.':'สำหรับเปิดอ้างอิง คำอธิบายเหล่านี้จะไม่พิมพ์ซ้ำในใบงาน',
+ 'Programs in this document':'โปรแกรมในเอกสารนี้',
+ 'No active boat runs for this document.':'ไม่มีเที่ยวเรือที่ใช้งานอยู่สำหรับเอกสารนี้',
+}

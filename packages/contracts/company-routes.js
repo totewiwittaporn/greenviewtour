@@ -1,5 +1,6 @@
 const route=(title,section,kind,permission,finance=false)=>({title,section,kind,permission,finance})
 export const companyRoutes={
+ 'receivables':route('Agent receivables','Accounts & Finance','RECEIVABLES','finance.receive'),
  'cleaning-zones':route('Cleaning zones','Housekeeping','ZONE','housekeeping.view'),
  'work-schedules':route('Cleaning & count schedules','Housekeeping','SCHEDULE','housekeeping.view'),
  'cleaning-jobs':route('Cleaning & count jobs','Housekeeping','JOB','housekeeping.view'),

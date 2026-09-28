@@ -18,4 +18,4 @@ The UI reuses Core DataTable, Pagination, Dialog, Dropdown, SelectField, FormFie
 
 Validation includes fixed-cent arithmetic, malformed dates, hidden salary input rejection, independent approval, blocked premature payments, stale edits, idempotency, clearance balancing and payroll view denial. Live migration/query and browser verification are performed by the integration task.
 
-Remaining policy decisions: statutory payroll/tax rules and approved deduction calculations; external payroll/bank export; attachment upload/storage (current evidence is a reference); employee self-service payslips. These are not implied by recording drafts and externally completed payments.
+Update 15 September: private JPEG/PNG/PDF attachments are available from View and payroll CSV export respects the current filters. See user-manual-th.md section 11. Remaining policy decisions: statutory payroll/tax rules, automatic deductions, bank-specific export and employee self-service payslips. These are not implied by recording externally completed payments.

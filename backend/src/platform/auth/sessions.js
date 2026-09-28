@@ -3,6 +3,7 @@ import { AccessError } from '../../modules/identity-access/membership.js'
 export const COOKIE = 'gv_session'
 const ttl = 8 * 60 * 60 * 1000
 export class SessionStore {
+  constructor(cookieName = COOKIE) { this.cookieName = cookieName }
   entries = new Map()
   create(session, purpose = 'workspace') {
     for (const [key, entry] of this.entries) if (entry.deadline <= Date.now()) this.entries.delete(key)
@@ -11,14 +12,14 @@ export class SessionStore {
     this.entries.set(id, { session, purpose, deadline: Date.now() + ttl })
     return id
   }
-  id(req) { return req.headers.cookie?.split(';').map(item => item.trim()).find(item => item.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1) }
+  id(req) { return req.headers.cookie?.split(';').map(item => item.trim()).find(item => item.startsWith(`${this.cookieName}=`))?.slice(this.cookieName.length + 1) }
   get(req) {
     const id = this.id(req), entry = this.entries.get(id)
     if (!entry || entry.deadline <= Date.now()) { this.entries.delete(id); throw new AccessError('SESSION_REQUIRED', 401) }
     return { id, entry }
   }
   deleteUser(userId) { for (const [id, entry] of this.entries) if (entry.session.user.id === userId) this.entries.delete(id) }
-  cookie(id) { return `${COOKIE}=${id}; Path=/api; HttpOnly; SameSite=Strict; Max-Age=${id ? ttl / 1000 : 0}` }
+  cookie(id) { return `${this.cookieName}=${id}; Path=/api; HttpOnly; SameSite=Strict; Max-Age=${id ? ttl / 1000 : 0}` }
   async authenticated(req, provider, pool) {
     const { entry, id } = this.get(req)
     try {

@@ -4,9 +4,9 @@ Source: owner discussion on 2026-09-08. Scope: a company operations system, not 
 
 ## Decisions
 
-Use one npm-workspaces repository and an initially modular, single backend. Keep the existing React/Vite stack. Public web and backoffice have separate UI cores inside their own source trees. Do not create packages/ui or import another application's UI. Reuse contracts, not business data copies.
+Use one npm-workspaces repository and an initially modular, single backend. Keep the existing React/Vite stack. Public web, backoffice, and member have separate UI cores inside their own source trees. Do not create packages/ui or import another application's UI. Reuse contracts, not business data copies.
 
-Frontend `app` composes routes/providers, `features/<menu>/<page>` owns Backoffice screens/adapters, and `core/ui` owns that application's repeated presentation and interaction. Backoffice menu/page folders may be reserved before implementation; expose navigation only when the feature works. Public Web remains unchanged.
+Frontend `app` composes routes/providers, `features/<menu>/<page>` owns Backoffice screens/adapters, and `core/ui` owns that application's repeated presentation and interaction. Backoffice menu/page folders may be reserved before implementation; expose navigation only when the feature works. Public/member commerce has since been added; see docs/member-commerce-plan.md when touching those applications.
 
 Backend `app` composes runtime; `platform` contains technical adapters; `modules/<capability>` owns business rules. Each module should expose services/contracts and retain ownership of its writes. API authorization is mandatory for every protected action, regardless of UI visibility.
 
@@ -28,14 +28,14 @@ Backend `app` composes runtime; `platform` contains technical adapters; `modules
 
 Employee and User are distinct; an employee may have no login. Position is separate from access role. Operations references employees, fleet and assets rather than duplicating their master records. Booking, payment and service-execution statuses are independent. One central booking model handles every sales channel. Scope remains paired with each permission grant; combining roles must not widen unrelated grants.
 
-## Implementation order
+## Original implementation order (historical foundation)
 
 1. This repository foundation and separate UI ownership.
 2. Select backend/authentication/database infrastructure and specify identity-access acceptance criteria.
 3. Implement User/Role/Scope and Manager delegation with server-side checks and audit.
 4. Build remaining business modules from validated workflows.
 
-## Baseline audit
+## Baseline audit (historical foundation)
 
 Base main commit: 76633afed6ee8896d4593662e985e87dc9a45f32. Only a Vite/React starter existed; App.jsx was empty despite being imported as a default export. No AGENTS.md, API, database schema, hosting config or CI workflow existed. Main was the only branch and no open PR was found. This scaffold fixes the empty export with a null-rendering component, retains public template assets/styles, and adds no production integration.
 
@@ -51,4 +51,4 @@ The owner requested frontend/backend naming aligned with Chalin Clothes. Fronten
 
 ## Preview PostgreSQL adapter
 
-`backend/src/platform/database` owns the connection pool and read-only connection probe. It uses pinned node-postgres, verified TLS and explicit Preview project checks. This is connectivity infrastructure; no ORM, business schema or authorization runtime is selected by this change. See `docs/database-connection.md`.
+`backend/src/platform/database` owns the connection pool and read-only connection probe. It uses pinned node-postgres, verified TLS and explicit Preview project checks. The original adapter was connectivity-only. The current repository also includes Prisma schema/migrations and authorization runtime; inspect those owners for present behavior. See `docs/database-connection.md`.

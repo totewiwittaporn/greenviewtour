@@ -155,3 +155,190 @@ Retain the sea-green identity and existing Core typography, fields, dialog and t
 ## Company workflow forms · 2026-09-13
 
 CompanyWorkPage and PersonnelFinancePage retain the existing Core dialog, fields, paged references, filterbar and DataTable owners. Approval review includes resolved employee, supplier, warehouse and item names before mutation. Summary cards explicitly identify page-only totals. Payroll is manually entered base plus itemized earnings less deductions with reasons; approval and payment recording are separate states. No new visual tokens or theme are introduced.
+
+
+## Equipment returns · 15 September 2026
+
+Owner decision: remove separate equipment-washing reporting. Ordinary intact equipment returns use RETURN_READY in one transaction. Damaged returns and loss remain explicit; consumables retain consumption. BoatStockPage, StockPage and CompanyWorkPage reuse the existing shared SelectField. New transactions cannot create CLEANING stock. Historical movements remain immutable; existing CLEANING balances can be reviewed and moved to READY or DAMAGED using the existing condition action, without a recurring washing task. Housekeeping zone jobs remain separate.
+
+
+## Per-booking Agent price review · 15 September 2026
+
+Owner authorized continuing the proposed independent Manager review workflow. BookingPriceReview reuses Dialog/FormField/TextAreaField/Button, loads the current Booking revision, and shows standard/proposed rates, total, services and request/review reasons. Only another Manager reviews pending requests. Pending/rejected requests block confirmation. Draft saves restore standard rates and clear the request; explicit UI guidance explains re-requesting. Shared backend booking-price owns actions and confirmation checks; immutable audit entries retain history. Commands are actor-bound, revision-checked and idempotent, and replay rechecks current authority. Confirmed bookings are read-only for negotiated rates. Unit coverage: backend/test/booking-price.test.js and booking-flow.test.js. Browser coverage is recorded in docs/validation/agent-price-review.md.
+
+### Internal finance and company document evidence
+
+Receivables reuse the company navigation, DataTable, Pagination, Dialog, FormField and DateField owners. `EvidenceAttachments` is the shared document list/upload workflow for Booking, finance records, internal statements and individual received payments. Company-issued receipts/tax invoices remain external artifacts. Internal statements are labeled explicitly; uploads never imply payment. Amounts are THB with two decimals. Attachments use file-picker selection with visible type/size limits and retained entries on failure; download-only original files, with parent authorization on each access.
+
+
+## Table density and responsive dialogs · 15 September 2026
+
+Owner requested UI review before further manual authoring. Shared DataTable distributes column widths, reserves compact Actions columns and limits descriptive text/header previews to two lines. Full text remains in the DOM and a title; evidence also offers a keyboard-accessible details dialog. Interactive controls must never be clipped by text truncation, including minified production builds.
+
+Evidence download labels use at most eight Thai-safe grapheme clusters plus ellipsis; accessible names, details and downloaded filenames retain the original. Statement/payment/evidence row actions use the shared ellipsis dropdown. Shared spacing stays compact but separated (8px action gap, 12–14px table padding). Table dialogs may expand to 1040px within viewport gutters, superseding the narrow form-dialog width for table content. Phone dialogs use 8–12px gutters and readable fields; wide tables scroll inside the dialog only when the columns genuinely require more width. User manual revisions and final manual screenshots wait for owner UI approval.
+
+Owner refinement: table body text, including Users names and roles, uses normal weight (400). Safari and Chrome are the primary browser verification targets.
+
+
+## Document photos and billing signatures · 15 September 2026
+
+Owner decision: system-only signatures for both company presenter and Agent recipient. Each signer reviews the bill on the staff device, enters their name and draws in a wide 1000:260 pad. Company signs first; Agent receipt is a separate state from payment. Native pointer input plus keyboard drawing, clear, explicit acknowledgement, pending lock and unsaved-discard protection use existing Core dialog/form/button owners. Authorised finance staff record the in-person signature; this is not an independently authenticated Agent login. Immutable private audit events retain strokes, server time, recorder, signed document snapshot and hash; retries use the existing actor-bound command ledger and transaction lock. Bill versions protect concurrent actions. Void history retains signatures; a new bill requires new signatures.
+
+EvidenceAttachments remains the shared owner for Booking/finance/bill/payment documents. Booking already exposes Supporting documents under row actions. Added Agent ticket and Agent booking confirmation categories. Existing permissions remain unchanged. File selection supports a phone camera capture hint and normal device files; desktop camera capture is not promised. Photos are locally re-encoded without EXIF, limited to 2400px longest side, with a JPEG quality floor of 0.72; flat PNG documents use lossless encoding if smaller. This bounds compression to preserve readability rather than claiming an absolute minimum. Preview and before/after size are shown before attachment; PDFs remain unchanged. Uploads are at most 5 MB; input photos at most 25 MB. Original full-resolution photos are not uploaded or duplicated. Browser decoding failures retain an actionable JPEG conversion message. SVG signature strokes avoid storing large photo bitmaps.
+
+Safari and Chrome are primary browser targets. Actual phone camera hardware remains a separate device verification step; desktop checks cannot prove iPhone camera behavior.
+
+Document viewing refinement: every shared evidence list offers View document ↗ in the ellipsis menu, separately from metadata details and download. DocumentViewer fetches bytes with current parent authorization, validates PDF/JPEG/PNG type and magic bytes, uses a short-lived object URL and revokes it on close; no external viewer or public URL. Images support fit/zoom and PDFs use the browser's built-in viewer. Owner revised viewing to a separate browser tab at /documents/:id. Shared Dropdown uses a native target=_blank link with noreferrer. The standalone reader keeps the original workspace unchanged, displays the server-provided filename, and owns its loading/error/retry and image zoom states. View does not trigger a file download. Close the browser tab to return; no public link or third-party viewer is created.
+
+
+## Core consistency audit and native PDF · 15 September 2026
+
+Owner screenshots identified a Refresh without its icon, a status filter against the panel edge, and a three-dot action label wrapping onto two lines. These screens already used Core but lacked a consistent presentation contract. RefreshButton is now the canonical refresh owner for eleven feature consumers. Dropdown rowActions renders the Core more SVG (36px desktop/40px touch) instead of font-dependent text; seventeen action triggers migrated. Panel-first filterbars reserve 20px top padding (16px mobile). Existing SelectField remains the status-filter owner. Dispatch run selection uses Button with its business class; invitation-link output uses TextAreaField. Native semantic print tables remain owned by the document layouts; standard checkboxes retain native semantics.
+
+PDF View now links directly to the authenticated evidence endpoint with view=inline, opening the browser's native reader in a new tab with the original filename. Authorization is unchanged and rechecked; only PDFs receive inline disposition, with no-store and nosniff. Downloads retain attachment disposition. The /documents/:id image reader remains; legacy PDF reader URLs redirect to the native endpoint. No custom PDF heading, iframe, or duplicated PDF controls are needed in the final native flow.
+
+## Member commerce — September 2026
+
+The member portal is a separate Thai customer surface. It uses the existing sea palette, Noto Sans Thai at a 16px body baseline, 44px controls, 14px panels, a 1120px content width, and a one-column layout below 760px. Runtime ownership is `frontend/member/src/core/styles.css`; shared member controls belong to `src/core/ui.jsx` and leave protection to `src/core/LeaveGuard.jsx`. No UI imports cross application boundaries. Member headers use medium weight; long catalog descriptions truncate only on listing cards with a detail link.
+
+Public master-data catalog and promotion pages extend the existing Public card family. The homepage now reads published tour records rather than maintaining separate tour offers. Backoffice commerce, popup and independent guide forms reuse existing Core owners and density. Independent guide assignments appear beside Boat assignments; they do not require a fictitious vehicle.
+
+## Member and staff authentication refinement · 15 September 2026
+Owner request: member authentication adopts the existing island-photo/form composition; staff AuthLayout becomes a quiet centered card. This supersedes the earlier team photo-panel direction. Member core/AuthLayout owns the customer composition, core/ui owns password toggles and buttons; no cross-app UI imports. Anonymous member navigation contains only Tours and Sign in, with a separate public-home link in the footer. Personal trips/profile appear only for a signed-in customer. Authentication and role provisioning behavior remain owned by the existing APIs.
+
+## Public login entry points
+Owner prefers separate entry points: customer sign-in is the visible header action; staff access is a quiet, readable footer link, never a role picker. Public Core SiteNavigation owns the shared header/footer across home, catalog and promotions. Local links target member 5175 and staff 5174. Deployed staff destination requires VITE_STAFF_LOGIN_URL; no unapproved staff subdomain is invented. Placement does not replace server authorization. Mobile customer sign-in is available through the account disclosure.
+
+## Local demo checkout
+Member DemoCheckout composes Core Button/Notice in the existing quote panel. Only the server-allowlisted retained tour exposes the simulator. Copy explicitly says no money, no scannable QR, and LINE preview only. Success shows the created DEMO Booking and persisted customer-scoped message. Backoffice Review repeats the simulation label. No new visual theme or role-switch UI.
+
+## Service check-in
+
+Customer check-in is a distinct Tour Operations destination. Reuse Core DateField, FormField, SummaryCards, DataTable, Dropdown, Dialog, SelectField, Button and Pagination with the existing sea palette and normal table weight. The primary task is confirming arrivals, not editing the Booking. A no-show review uses the Core table dialog to show old/new passenger allocations before confirmation. Check-in is separate from next-day dispatch snapshots.
+
+## Reference lookup spacing · 20 September 2026
+
+Core ReferenceField uses the Backoffice stylesheet as its single spacing owner: an 8px grid gap separates search, labeled selection and paging/retry controls; its outer 20px separation remains. This applies in pages and all Dialog consumers, including Booking, dispatch, stock, company work, finance, guide assignments and catalog forms. Existing field label/control spacing and responsive control heights remain unchanged.
+
+## Role-aware Dashboard · 21 September 2026
+
+Dashboard is the authenticated landing workspace. Keep the Backoffice sea-green tokens, typography and natural document scrolling. Its signature is a 14-day arrival calendar (seven columns on desktop, four on tablet, two on phone) with semantic day buttons and the existing Core summary Dialog. Reusable attention widgets link to domain work rather than duplicate editors. Core Shell/Navigation, Button, RefreshButton and DataTable retain ownership; feature CSS controls only calendar/widget layout. See docs/dashboard.md for count definitions and access boundaries.
+
+## Approved navigation and compact tables (2026-09-21)
+
+Owner-approved preview: Public places the TH/EN dropdown followed by Login / Register in the shared top bar, leaving the primary navigation on one row at wide widths. Member keeps Tours, My trips and Profile separate from User Info. Authenticated Member and Backoffice User Info own language selection and sign out; unauthenticated screens retain a language dropdown. Mobile primary navigation uses a hamburger; dropdowns remain bounded by the viewport and support keyboard dismissal. Thai labels continue pairing Thai / English.
+
+Backoffice Core table tokens use 12px data, 11px column headings and 8px vertical / 10px horizontal cell padding across page and dialog tables. Row action buttons are 28px on desktop with 16px icons; touch/narrow screens retain 40px targets. Existing table overflow and dialog scroll ownership are preserved.
+
+## Contact details and public Thai copy (2026-09-21)
+
+Owner-approved User Info shows self-editable contact details: employee display name, primary/alternate phone, LINE ID and structured address with a validated saved map link; Member shows name, phone and LINE ID. Locked account email, status and access details are omitted from these summaries. Edit profile remains the existing full-page form. Menus are viewport-bounded with internal scrolling and visible keyboard navigation. Language radio rows share the Core menu item geometry.
+
+Public Thai mode now uses Thai-only owned headings/navigation/actions; English mode uses English. Brand names, TH/EN codes and authored CMS content remain unchanged. Member and Backoffice retain paired Thai/English labels. Customer LINE ID is an optional contact field (100 characters), editable only through the authenticated self-profile with the existing version check.
+
+## Member typography and nicknames (2026-09-21)
+
+Owner-approved Member Profile comparison sets main headings to 26px desktop / 24px mobile, section headings 20px / 18px, labels and content buttons 14px. Form values stay 16px with controls at least 44px tall. Content spacing is slightly tighter; User Info keeps its established type geometry.
+
+Employee and customer self-profile forms expose optional Nickname (50 characters). The User Info identity/trigger prefers a trimmed nickname, falling back to the existing full display name. Full names remain in the detail summary and are never overwritten by a nickname. Clearing a nickname restores that fallback. Nicknames do not influence access or account linking.
+
+## Persistent navigation shells (2026-09-21)
+
+Owner requirement: internal menu changes replace page content while preserving Public and Member Navbar/Footer DOM, and Backoffice Sidebar/Navbar DOM. This does not introduce sticky/fixed positioning. Public App owns SiteHeader/SiteFooter once, outside route content. Member owns its header/footer/session outside route-keyed forms and datasets. Each app owns its navigation implementation; do not import UI/providers across applications.
+
+Internal navigation and browser history preserve shell identity and locale without full-document reload. Native modified clicks, external destinations, downloads and unowned URLs retain browser behavior. Public home anchors scroll after their content mounts. Member draft guards protect internal links and back/forward, retaining fields and the original URL when navigation is cancelled. Explicit sign-out/recovery session termination may still reset the document at the authentication boundary. Backoffice reuses its existing guarded NavigationProvider; persistent shell/history checks are part of the browser suite.
+
+## Public Home and orange brand accents (2026-09-21)
+
+Owner approved the teal/orange Home mockup. Public retains the sea palette and introduces restrained orange accents through `frontend/public-web/src/core/ui/styles.css`: `--accent:#f28b36`, `--accent-hover:#ffad64`, `--accent-ink:#843800`. Orange filled actions use dark teal text for contrast. Backoffice/Member tokens are unchanged. Home owns its hero, short welcome, real company location, Surin introduction and separately labeled Greenview/partner published tours; shared Public navigation/footer remain mounted.
+
+Real company contact/map data comes from a server allowlist; no invented map coordinates or financial/company-private data. Tour ownership filtering occurs before server pagination. Home uses two locally hosted photo derivatives from the owner's shared Drive collections, with original source IDs and processing notes in `docs/public-home-assets.md`. Archived photography is illustrative of the destination, not proof of current vessel availability or operating conditions. Detailed Company/Surin article migration remains a later content phase; Home links use supported routes/anchors.
+
+## Public shared brand chrome (2026-09-21)
+
+Navbar and Footer use the owner's full original boat logo, including GREENVIEW TOUR lettering to match Facebook, on a pale plate against dark teal. No separate duplicate wordmark. Orange highlights retain the approved Home palette. Desktop navigation and TH/EN, Login and Register share one row; tablet/mobile use a one-row header with a hamburger; phone account actions are in an accessible account disclosure. Footer groups only supported destinations and stacks on small screens. Register opens the Member registration form directly through `/login?mode=register`.
+
+Owner refinement: Public chrome now uses the supplied transparent full-lettering PNG without a plate. Desktop Navbar is 64px; mobile uses a compact one-row shell with 44px header controls. Favicon uses the previous white-background original.
+
+Navbar logo is 67×44px desktop/tablet and 61×40px mobile, keeping breathing room within the compact header; Footer logo dimensions are unchanged.
+
+Owner photo policy: avoid people in decorative Public photography when consent is uncertain. The swimmer image is removed; Surin introduction reuses the distant island/sea image for now.
+
+## Approved Home reference refinement
+
+The owner supplied the teal/orange reference screen and approved a compact editorial layout: 390px desktop hero with continuous headline, centered welcome, company text left/map right, split-level coral photograph left/three icon-led topics right, and two-column live tour cards with category toggle aligned beside the section heading. Mobile stacks sections and keeps hamburger and 44px controls. Feature layout lives in HomePage.css and PublishedHighlights.css; Core owns shell, palette, locale and controls. Keep the supplied original brand logo. No fabricated tour offers or unsupported article links. Map embeds use validated coordinates when present, otherwise the saved public address as a Google Maps search; the verified saved map link remains the explicit directions action.
+
+Final map treatment: use a clearly labeled schematic sea/island route illustration matching the visual reference, not an embedded address search or precise map. The real saved Maps link remains the directions action; no guessed coordinate is persisted.
+
+Owner detail pass: quiet botanical corner illustrations, Sriracha handwritten hero/footer notes with curved underline, island silhouette under footer brand, explicit Staff login label, and44px back-to-top control fixed at the viewport bottom-right with safe-area offsets. Decorative SVGs are hidden from accessibility and pointer input.
+
+## Geographic accuracy and botanical refinement
+
+The owner rejected the schematic map: replace it with the actual Google Maps Share/Embed output verified against the saved Greenview pier link on2026-09-21. The viewport includes coast/islands at real scale; do not compress sea distance or claim travel time. Bind the static verified embed only to the matching saved map URL; other companies use validated coordinates or a neutral fallback. Palm decoration uses tapered curved leaflets; footer silhouette has two sharp M-like rear peaks (right higher) and a lower foreground mountain layer. This silhouette is decorative, based on the owner's description, not cartographic data.
+
+Map has two native Google views: an unpinned regional overview for visible Surin islands/coastline and the verified pier view for exact arrival location. Google controls scale and map labels; do not overlay guessed distances.
+
+## Approved Tour Programs redesign (2026-09-21)
+
+The owner approved replacing the shared Navbar/Footer and catalog listing with the new teal/orange responsive concept, retaining only the original logo. Use a compact scenic banner, Thai headline, provider segmented links, day/overnight filter pills, two large cards per row on desktop/tablet and stacked cards on phones. Existing owner-approved photography decorates the banner; individual offer images and prices come only from published TourProgram records. Missing images have a neutral placeholder. Decorative palms share Core Botanical with Home. Footer retains only supported links, staff login, handwritten accent and layered M-shaped mountain artwork; back-to-top is fixed bottom-right.
+
+Header remains64px tall. At600px and below account icon reveals Login/Register with keyboard/Escape/outside dismissal; tablet retains visible account links and hamburger navigation. Desktop navigation is inline above1100px. All public routes share the same mounted shell.
+
+Provider/duration filters use URL query state and reset pagination. Backend applies durationDays=1 or>1 before count and pagination, preserving ACTIVE/PUBLISHED selection. New catalog requests abort on navigation and time out after15seconds with retry. Detail/promotions retain their existing commercial content and booking flow. Actual catalog volume/content may differ from the illustrative two-card mockup; do not invent offers or destinations to fill it.
+
+Owner correction: replace the rejected SVG leaflets with a natural transparent palm-frond illustration, shared through Core Botanical. Use muted sage at low opacity, full curved tapering leaflets, and corner placement clear of headings/controls. Asset provenance and generation prompt are recorded in docs/public-home-assets.md.
+
+Staff login is separate from navigation lists, centered in the bottom footer bar. Desktop copyright sits at left; phone copyright stacks above the centered44px staff link. Fixed back-to-top stays at bottom-right.
+
+## Approved Backoffice Dashboard redesign (21 September 2026)
+
+Shared Core Shell now uses a216px deep-teal sidebar and56px white header,60px on phone, with the same original boat logo as Public. Existing navigation permission filtering, UserInfo, language controls and leave protection remain canonical. The question-mark before UserInfo opens a Core Dialog with Dashboard help; it does not claim to be the planned comprehensive illustrated manual. Shell.css owns only shared chrome, leaving other feature layouts unchanged.
+
+Dashboard uses the existing authenticated aggregate. A14-day arrival calendar has7weekday columns and2rows, today outlined teal, weekends tinted, and Core Dialog program summaries. It remains a rolling window starting today, not a Monday-aligned month calendar. No unsupported previous/next-period controls. Core DataTable replaces attention cards; rows show work area, actual scope, today, pending, overdue and awaiting acceptance with existing deep links. Core SelectField filters available scope and positive today/overdue/review measures. Null measures remain em dashes. Never sum overlapping queues into a fabricated total. Head/staff titles use the authorized response scope, not client role guesses; no invented assignee/task data. Narrow tables/calendar own horizontal scrolling; page itself does not overflow.
+
+
+## GM and Programmer reference Dashboard (22 September 2026)
+
+Owner-selected reference supersedes the previous teal-only dashboard treatment for these two personas. Active COMPANY ADMIN_MANAGER uses Programmer / System Administrator; COMPANY MANAGER uses General Manager. Role selection is presentation only, not an authorization grant. Other roles show a clean redesign-pending page with their existing work navigation; the old dashboard has been removed for every role. The original boat logo is retained without replacement.
+
+Core Shell.css owns `workspace-reference`: full-width 64px navbar, 196px near-black teal sidebar (#112c35), pale sea-blue canvas and white compact data panels. Search, bell, help and UserInfo follow that order. The reference shell persists across internal destinations for those users. Mobile retains the canonical inline, non-modal navigation; search wraps to its own header row.
+
+Dashboard reference-dashboard.css owns --reference-blue #0781ec, --reference-ink #082b45, --reference-line #d7edf8, --reference-muted #48667a. Existing Manrope/Inter/Noto Sans Thai families remain; semantic red, orange, blue, green and purple accents follow the supplied reference. The extracted/reconstructed island landscape is a project-local image at public/images/dashboard/island-hero.png, produced from the owner's supplied image using imagegen; it is not a pixel-identical crop. Hero retains the approved position, duties and Thai introduction; real headings and controls overlay the image. White panels use 11px radii and compact tables/charts.
+
+GM uses four KPIs, 30-day customer bars, agent ranking, booking day tabs, transport summaries and lower monthly/expense/report panels. Programmer uses the requested monitoring panel arrangement with explicit disconnected sources, rather than fabricated charts and health figures. A measured browser dashboard-request duration is labeled narrowly. The old 14-day calendar and generic attention table are removed from every role; they are not hidden or moved below the new panels.
+
+
+## Owner correction — remove legacy dashboards and scope manuals (22 September 2026)
+
+This supersedes earlier dashboard layout descriptions above. Remove the old calendar14 and generic work-attention table from every role, not merely below the new content. GM and Programmer show only the new reference layout; all other roles show a clean redesign-pending page and keep domain navigation. This changes the presentation, not persisted business records or domain permissions. The server may retain backward-compatible aggregate fields used by existing domain tests; the retired panels are not mounted.
+
+Manuals are served through authenticated role-aware routes and an API, not a combined public document. ACTIVE COMPANY Admin Manager may select every role manual. Other users may open only manuals for their assigned roles, including multiple roles; direct URLs are checked server-side. The previous public manual URL redirects to the authenticated manual index without containing any manual body. GM and Programmer manuals explain their own new panels; pending-role manuals explain current navigation and redesign status without resurrecting old widgets.
+
+
+## Booking responsibility and commission — owner update 22 September 2026
+
+Existing role codes remain stable: HEAD_BOOKING is Booking Manager and BOOKING is Booking Assistant. Both roles with effective booking access read all bookings and the customer directory. Customer account edits, customer-request fulfillment and finance approvals retain existing separate permissions. Assistant mutations require the effective responsible person (assigneeId, falling back to immutable createdById for legacy rows); Booking Manager may manage and assign all Booking work. Every mutation, including status, details, return amendments, price requests and evidence writes, rechecks ownership on the server. Assignment is versioned and audited. It changes responsibility without changing creator or recorded commission beneficiary.
+
+Agent and Tour Program each explicitly enable Booking staff commission; either disabled takes precedence. Defaults are disabled, including previously unconfigured catalog records. Direct bookings have no Agent condition and use the program condition; standalone services without a program have no Booking commission. Program adult/child rates are independently configured in THB per passenger, separate from supplier commission. Missing rates are unconfigured, not zero. No rates are seeded.
+
+New Booking saves capture eligibility, catalog versions, rates and beneficiary in commissionSnapshot. Ordinary edits preserve those conditions and update the passenger-based estimate; changing Agent or program captures the new conditions while retaining an existing beneficiary. Legacy bookings with no snapshot do not gain inferred historical commission. Reassignments do not transfer commission. This is an estimate, not a payroll posting, approval or payment.
+
+Booking dashboards share the reference sky header and dark rail. Both see confirmed/completed arrivals for today through day29 (Thailand dates), with30 selectable daily bars. Booking Manager sees the whole team’s work; Assistant sees only responsible work counts and rows, while the Bookings list still shows all records with server-derived edit actions. Work tables show up to10 active bookings; domain lists retain pagination. Other non-GM/non-Programmer roles remain redesign-pending. Per-role manuals describe this workflow.
+
+Shared UserInfo owns its name and role subtitle inside the button, with the account group aligned right. Navbar uses natural grid height and separate mobile rows to avoid overlapping content. Hero date text is white with a contrasting backing.
+
+
+## Compact persistent Navbar — 22 September 2026
+Owner refinement: UserInfo has a maximum width of180px. Name and role each use one-line ellipsis with full-value title; profile menu retains full identity. Shared Navbar stays sticky at viewport top during document scrolling, above page content and below dialogs.
+
+
+## One shared shell — owner correction 22 September 2026
+Every authenticated role uses the same sky Navbar and dark Sidebar. Role selection affects dashboard content and labels only; WorkspaceNavigation continues to filter links by existing permissions. Removed legacy sidebar branding, breadcrumb Navbar and alternate footer branches. Startup waits for verified identity without selecting a role layout.
+
+## Viewport-owned Backoffice Shell — 27 September 2026
+
+Owner correction replaces the prior document-scroll/sticky-Navbar model for Backoffice only. `Shell.jsx` and `Shell.css` own one viewport-fixed grid: natural-height Navbar above independently scrollable Sidebar and `#main`. The Sidebar starts below the actual Navbar and uses the remaining height, never `100dvh` plus a separate header. Content and its footer scroll inside `#main`; nested datasets keep their existing table scrollers. Core navigation resets only Content on route changes. Do not add screen-local offsets or scroll handlers.
+
+Mobile navigation is a bounded non-modal rail in the row below Navbar. Opening it does not push Content down or resize the document. Toggle/Escape and native modal focus behavior remain shared. Dialog stacks lock both underlying workspace scrollers until the final modal closes. Print media restores natural document flow independently of the screen-only viewport frame.
+
+The regression must use wheel/touch input over each actual region, not just `window.scrollTo`. See the corresponding UX-CONTRACT section and `scripts/smoke-shell-scroll.js`.

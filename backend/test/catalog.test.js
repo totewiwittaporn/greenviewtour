@@ -114,3 +114,22 @@ test('annual agreement validates calendar bounds and safe evidence references',a
  await assert.rejects(saveSettings(tx,'actor','rates',{...rate,id:randomUUID(),agreementId:''}),{code:'AGENT_RATE_PERIOD_OVERLAP'})
  await assert.rejects(saveSettings(tx,'actor','agreements',{...initialValues('agreements',agreement),id:agreement.id,version:1,endsOn:'2027-12-31'}),{code:'AGREEMENT_IN_USE'})
 })
+
+test('agent abbreviations trim, allow ten characters, reject eleven and preserve omitted old-client fields',async()=>{
+ const {tx}=fixture(),base=input('partners',{code:'ABBR',name:'Full agency name',roles:['SALES_AGENT'],shortName:'  ABCDEFGHIJ  '})
+ const created=(await saveSettings(tx,'actor','partners',base)).row
+ assert.equal(created.shortName,'ABCDEFGHIJ');assert.equal(created.name,'Full agency name')
+ assert.ok(validateCatalog('partners',{...base,shortName:'ABCDEFGHIJK'}).errors.shortName)
+ assert.ok(validateCatalog('partners',{...base,shortName:'A\nB'}).errors.shortName)
+ const older={...initialValues('partners',created),id:created.id,version:created.version};delete older.shortName
+ assert.equal((await saveSettings(tx,'actor','partners',older)).row.shortName,'ABCDEFGHIJ')
+ const latest=await tx.businessPartner.findUnique({where:{id:created.id}})
+ assert.equal((await saveSettings(tx,'actor','partners',{...initialValues('partners',latest),id:latest.id,version:latest.version,shortName:''})).row.shortName,null)
+})
+test('tour print codes accept owner abbreviations without deriving services or journey type',()=>{
+ for(const printCode of ['DT','D/O','2D1N','RT']){
+  const result=validateCatalog('tours',input('tours',{name:'Program',code:'T',printCode}))
+  assert.equal(result.data.printCode,printCode);assert.equal(result.data.journeyMode,'FIXED');assert.equal(result.data.durationDays,1)
+ }
+ assert.ok(validateCatalog('tours',input('tours',{printCode:'ABCDEFGHIJK'})).errors.printCode)
+})

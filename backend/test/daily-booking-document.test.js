@@ -18,7 +18,7 @@ test('daily document is unpaginated, Bangkok scoped and denies driver access',as
  assert.equal(query.where.OR[1].outboundDate,null)
  assert.equal(query.where.OR[1].returnDate.toISOString(),'2026-09-11T00:00:00.000Z')
  assert.equal(query.where.OR[1].returnStatus,'OUR')
- assert.equal(query.include.lines.where,undefined)
+ assert.equal(query.select.lines.where,undefined);assert.deepEqual(query.select.lines.select.resource.select,{category:true});assert.equal(query.select.requestHash,undefined)
  assert.deepEqual(query.where.status.in,['CONFIRMED','COMPLETED'])
  prisma.userProfile.findUnique=async()=>({status:'ACTIVE',roles:[{roleCode:'DRIVER',scope:'SELF'}]})
  await assert.rejects(()=>dailyBookingDocument(prisma,'actor','2026-09-11'),{code:'PERMISSION_DENIED'})

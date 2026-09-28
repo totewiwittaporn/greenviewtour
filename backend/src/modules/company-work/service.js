@@ -1,7 +1,8 @@
+import {readJsonFields} from '../../platform/database/read-json.js'
 import {randomUUID} from 'node:crypto'
 import {effectiveAccess,isManager} from '../../../../packages/contracts/access.js'
 import {workDefinitions,calendarDate,scheduleDates,purchaseTotal,satang,baht} from '../../../../packages/contracts/company-work.js'
-import {profileInclude} from '../identity-access/policy.js'
+import {accessProfileSelect} from '../identity-access/policy.js'
 import {fail,uuid,int,string,keys,hash} from '../operations/common.js'
 import {stockCommand} from '../operations/stock.js'
 
@@ -9,7 +10,7 @@ const permitted=(actor,permission)=>effectiveAccess(actor,permission).allowed
 const requirePermission=(actor,permission)=>{if(!permitted(actor,permission))fail('PERMISSION_DENIED',403)}
 const canArea=(actor,kind)=>permitted(actor,workDefinitions[kind]?.permission)||(kind==='SCHEDULE'&&permitted(actor,'inventory.approve'))||(kind==='JOB'&&permitted(actor,'inventory.request'))
 const nested=tx=>({...tx,$transaction:fn=>fn(tx)})
-async function actorFor(p,id){const actor=await p.userProfile.findUnique({where:{id},include:profileInclude});if(actor?.status!=='ACTIVE')fail('PERMISSION_DENIED',403);return actor}
+async function actorFor(p,id){const actor=await p.userProfile.findUnique({where:{id},select:accessProfileSelect});if(actor?.status!=='ACTIVE')fail('PERMISSION_DENIED',403);return actor}
 async function active(p,model,id){const row=await p[model].findUnique({where:{id:uuid(id)}});if(!row||row.status!=='ACTIVE')fail('RELATED_RECORD_UNAVAILABLE');return row}
 const audit=(p,actorId,targetId,action,details)=>p.auditEvent.create({data:{actorId,targetId,action:'company.'+action,details:JSON.parse(JSON.stringify(details))}})
 async function transact(p,actorId,fn){return p.$transaction(async tx=>{await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;return fn(tx,await actorFor(tx,actorId))},{timeout:60000,maxWait:15000})}
@@ -241,21 +242,30 @@ export async function listCompanyWork(prisma,actorId,params){
   }
   let where={...base,...(status&&kind!=='RESPONSIBILITY'?{status}:{}),...(q&&kind!=='RESPONSIBILITY'?{name:{contains:q,mode:'insensitive'}}:{})}
   if(kind==='RESPONSIBILITY'&&!permitted(actor,'inventory.assign'))where={...where,OR:[{primaryUserId:actorId},{deputyUserIds:{has:actorId}}]}
+  const recordId=params.get('recordId'),lean=params.get('view')==='list'&&!recordId
+  if(recordId)where[kind==='RESPONSIBILITY'?'storeId':'id']=uuid(recordId)
   const total=await tx[model].count({where}),page=Math.min(requested,Math.max(1,Math.ceil(total/25)))
-  let rows=await tx[model].findMany({where,orderBy:{updatedAt:'desc'},skip:(page-1)*25,take:25})
+  if(recordId&&!total)fail('NOT_FOUND',404)
+  const selected=lean&&kind!=='RESPONSIBILITY'?Object.fromEntries((kind==='PURCHASE'?'id name status version total receivedTotal createdById':'id kind name status version dueOn assigneeId storeId createdById completedById').split(' ').map(key=>[key,true])):undefined
+  let rows=await tx[model].findMany({where,select:selected,orderBy:[{updatedAt:'desc'},{[kind==='RESPONSIBILITY'?'storeId':'id']:'asc'}],skip:(page-1)*25,take:25})
+  if(lean&&model==='companyWorkRecord'){
+   const payloads=await readJsonFields(tx,'CompanyWorkRecord','payload',rows.map(row=>row.id),['jobKind','frequency','reason','description','issues'])
+   rows=rows.map(row=>({...row,payload:payloads.get(row.id)||{}}))
+  }
   if(kind==='RESPONSIBILITY'){
    const ids=rows.flatMap(r=>[r.primaryUserId,...r.deputyUserIds]),users=await tx.userProfile.findMany({where:{id:{in:ids}},select:{id:true,displayName:true}}),stores=await tx.stockLocation.findMany({where:{id:{in:rows.map(r=>r.storeId)}},select:{id:true,name:true}})
    rows=rows.map(r=>({...r,id:r.storeId,kind,name:stores.find(s=>s.id===r.storeId)?.name||'Stock location',status:'ACTIVE',payload:{storeId:r.storeId,primaryUserId:r.primaryUserId,deputyUserId:r.deputyUserIds[0]||'',reason:r.reason},primaryName:users.find(u=>u.id===r.primaryUserId)?.displayName}))
   }
+  const storeChecks=new Map()
   for(const row of rows){
-   row.actions=await availableActions(tx,actor,{...row,kind})
-   if(kind==='STOCK_REQUEST'&&row.payload.issues?.length)row.issueDetails=await tx.stockIssue.findMany({where:{id:{in:row.payload.issues.map(i=>i.id)}},select:{id:true,quantity:true,settledQty:true}})
+   row.actions=await availableActions(tx,actor,{...row,kind},storeChecks)
+   if(!lean&&kind==='STOCK_REQUEST'&&row.payload.issues?.length)row.issueDetails=await tx.stockIssue.findMany({where:{id:{in:row.payload.issues.map(i=>i.id)}},select:{id:true,quantity:true,settledQty:true}})
   }
-  await enrichRows(tx,rows,kind)
+  if(!lean)await enrichRows(tx,rows,kind)
   return {rows,total,page,pageSize:25,permissions:Object.fromEntries(Object.values(workDefinitions).flatMap(d=>[d.permission,d.edit]).concat(['housekeeping.approve','inventory.approve','purchasing.approve','purchasing.receive']).filter(Boolean).map(code=>[code,permitted(actor,code)])),actorId}
  },{isolationLevel:'RepeatableRead',timeout:15000})
 }
-async function availableActions(tx,actor,row){
+async function availableActions(tx,actor,row,storeChecks=new Map()){
  const result=[],own=row.createdById===actor.id,s=row.status,k=row.kind
  if(k==='RESPONSIBILITY')return permitted(actor,'inventory.assign')?['EDIT']:[]
  if(k==='PURCHASE'){
@@ -269,7 +279,8 @@ async function availableActions(tx,actor,row){
  if(own&&['DRAFT','REJECTED'].includes(s))result.push('EDIT','SUBMIT')
  if(own&&['DRAFT','REJECTED','SUBMITTED'].includes(s))result.push('CANCEL')
  if(s==='SUBMITTED'&&!own&&permitted(actor,'inventory.approve'))result.push('APPROVE','REJECT')
- if(k==='STOCK_REQUEST'&&await storeAccess(tx,actor,row.storeId)){if(s==='APPROVED')result.push('ISSUE');if(['APPROVED','ISSUED'].includes(s)&&row.payload.issues?.length)result.push('SETTLE')}
+ if(k==='STOCK_REQUEST'&&!storeChecks.has(row.storeId))storeChecks.set(row.storeId,storeAccess(tx,actor,row.storeId))
+ if(k==='STOCK_REQUEST'&&await storeChecks.get(row.storeId)){if(s==='APPROVED')result.push('ISSUE');if(['APPROVED','ISSUED'].includes(s)&&row.payload.issues?.length)result.push('SETTLE')}
  if(['JOB','MAINTENANCE'].includes(k)&&row.assigneeId===actor.id&&s===(k==='JOB'?'PENDING':'APPROVED')&&permitted(actor,k==='JOB'&&row.payload.jobKind==='CLEANING'?'housekeeping.view':'inventory.request'))result.push('COMPLETE')
  if(['JOB','MAINTENANCE'].includes(k)&&s==='DONE'&&row.completedById!==actor.id&&permitted(actor,k==='JOB'&&row.payload.jobKind==='CLEANING'?'housekeeping.approve':'inventory.approve'))result.push('ACCEPT','REOPEN')
  return result
@@ -287,12 +298,12 @@ async function lookup(p,actor,params){
   model='companyWorkRecord';where=entity==='zones'?{kind:'ZONE',status:'ACTIVE'}:entity==='jobs'?{kind:'JOB',status:'PENDING',assigneeId:actor.id,payload:{path:['jobKind'],equals:'COUNT'}}:{kind:'STOCK_REQUEST',status:'APPROVED'}
   if(entity==='requests'&&!permitted(actor,'purchasing.edit')&&!permitted(actor,'inventory.approve'))where.createdById=actor.id
  }else if(entity==='balances'){
-  model='stockBalance';select=undefined
+  model='stockBalance';select={id:true,quantity:true,version:true,condition:true,lot:{select:{label:true,resource:{select:{name:true}}}},location:{select:{name:true}}}
   const duties=effectiveAccess(actor,'operations.stock').source==='User restriction'?[]:await p.warehouseResponsibility.findMany({where:{OR:[{primaryUserId:actor.id},{deputyUserIds:{has:actor.id}}]},select:{storeId:true}})
   where={...(permitted(actor,'operations.stock')?{}:{locationId:{in:duties.map(d=>d.storeId)}}),...(q?{lot:{resource:{name:{contains:q,mode:'insensitive'}}}}:{})}
  }else fail('INVALID_LOOKUP',400)
  if(q&&entity!=='balances')where[entity==='users'?'displayName':'name']={contains:q,mode:'insensitive'}
- const total=await p[model].count({where}),rows=await p[model].findMany({where,select,...(entity==='balances'?{include:{lot:{include:{resource:true}},location:true}}:{}),orderBy:{id:'asc'},skip:(page-1)*25,take:25})
+ const total=await p[model].count({where}),rows=await p[model].findMany({where,select,orderBy:{id:'asc'},skip:(page-1)*25,take:25})
  return {rows:rows.map(r=>entity==='users'?{id:r.id,name:r.displayName}:entity==='balances'?{id:r.id,name:`${r.lot.resource.name} · ${r.location.name} · ${r.lot.label} · ${r.condition} · ${r.quantity}`,quantity:r.quantity,version:r.version}:r),total,page,pages:Math.max(1,Math.ceil(total/25)),pageSize:25}
 }
 async function enrichRows(tx,rows,kind){
@@ -303,5 +314,5 @@ async function enrichRows(tx,rows,kind){
   for(const row of rows){row.references||={};for(const key of keysFor){const id=(kind==='PURCHASE'?row:row.payload||{})[key]||row[key];if(id)row.references[key]=names.get(id)||'Unavailable record'}row.requesterName=row.references.createdById}
  }
  const balanceIds=rows.map(r=>r.payload?.balanceId).filter(Boolean)
- if(balanceIds.length){const balances=await tx.stockBalance.findMany({where:{id:{in:balanceIds}},include:{lot:{include:{resource:true}},location:true}});for(const row of rows){const b=balances.find(b=>b.id===row.payload?.balanceId);if(b)row.references.balanceId=`${b.lot.resource.name} · ${b.location.name} · ${b.lot.label} · ${b.condition}`}}
+ if(balanceIds.length){const balances=await tx.stockBalance.findMany({where:{id:{in:balanceIds}},select:{id:true,condition:true,lot:{select:{label:true,resource:{select:{name:true}}}},location:{select:{name:true}}}});for(const row of rows){const b=balances.find(b=>b.id===row.payload?.balanceId);if(b)row.references.balanceId=`${b.lot.resource.name} · ${b.location.name} · ${b.lot.label} · ${b.condition}`}}
 }
