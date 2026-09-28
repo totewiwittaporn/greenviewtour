@@ -1,6 +1,7 @@
+import {canManageBookingTeam} from '../../../../../packages/contracts/access.js'
 // Navigation projections only; the existing API remains the authorization boundary.
 export const canReadBookingList = user => Boolean(user?.operations?.booking || user?.operations?.islandBooking)
-export const canReviewCustomerRequests = user => Boolean(user?.management?.company)
+export const canReviewCustomerRequests = user => Boolean(user?.management?.company||canManageBookingTeam(user))
 export function bookingTabs(user) {
  return [
   ...(canReadBookingList(user) ? [{id:'',label:'All bookings'},{id:'DIRECT',label:'Direct bookings'},{id:'AGENT',label:'Agent bookings'}] : []),

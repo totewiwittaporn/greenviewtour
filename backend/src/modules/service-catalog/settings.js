@@ -1,3 +1,4 @@
+import {canManageBookingTeam} from '../../../../packages/contracts/access.js'
 import {catalogReadSelect} from './read-models.js'
 import {uuid} from '../operations/common.js'
 import thaiAreas from '../../../../packages/contracts/data/thai-areas.js'
@@ -6,10 +7,10 @@ import { catalog, validateCatalog } from '../../../../packages/contracts/catalog
 import { AccessError } from '../identity-access/membership.js'
 import { accessProfileSelect } from '../identity-access/policy.js'
 import { managementScope } from '../identity-access/user-management.js'
-export function canManageCatalog(profile) { return managementScope(profile)?.company === true }
-async function authorize(tx, actorId) {
+export function canManageCatalog(profile,entity) { return managementScope(profile)?.company === true || entity==='partners'&&canManageBookingTeam(profile) }
+async function authorize(tx, actorId,entity) {
  const actor=await tx.userProfile.findUnique({where:{id:actorId},select:accessProfileSelect})
- if(!canManageCatalog(actor))throw new AccessError('PERMISSION_DENIED')
+ if(!canManageCatalog(actor,entity))throw new AccessError('PERMISSION_DENIED')
 }
 const referenceSelect={id:true,name:true,code:true}
 // Summary cards describe the full company-authorized dataset, independently of list filters.
@@ -17,7 +18,7 @@ const summaryWhere={agreements:{signedOn:{not:null}},partners:{roles:{has:'SALES
 const includes={seasons:{tour:{select:referenceSelect}},promotions:{tour:{select:referenceSelect}},agreements:{agent:{select:referenceSelect}},tours:{operator:{select:referenceSelect}},rates:{agent:{select:referenceSelect},tour:{select:referenceSelect},agreement:{select:{...referenceSelect,startsOn:true,endsOn:true}}},vehicles:{provider:{select:referenceSelect}}}
 export async function listSettings(prisma,actorId,entity,params){
  if(!Object.hasOwn(catalog,entity))throw new AccessError('NOT_FOUND',404)
- await authorize(prisma,actorId)
+ await authorize(prisma,actorId,entity)
  const model=catalog[entity].model
  if(entity==='company'){const rows=await prisma[model].findMany({take:1});return{rows,total:rows.length,page:1,pages:1}}
  const q=(params.get('q')||'').trim(),requested=Number(params.get('page')||1),role=params.get('role'),status=params.get('status')
@@ -54,14 +55,14 @@ export async function saveSettings(prisma,actorId,entity,input){
  const definition=catalog[entity]
  try{return await prisma.$transaction(async tx=>{
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
-  await authorize(tx,actorId)
+  await authorize(tx,actorId,entity)
   if(Object.keys(input).some(key=>!['id','version',...definition.fields.map(f=>f.key)].includes(key)))throw new AccessError('INVALID_SETTINGS',400)
   if(typeof input.id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.id)||!Number.isSafeInteger(input.version)||input.version<0)throw new AccessError('INVALID_SETTINGS',400)
   const{data,errors}=validateCatalog(entity,input)
   if(['company','partners','locations'].includes(entity)){Object.assign(data,englishAddress(data,thaiAreas));data.postalCode=postalCodeFor(data,thaiAreas)||null}
   if(Object.keys(errors).length)throw new AccessError('INVALID_SETTINGS',400)
   const existing=await tx[definition.model].findUnique({where:{id:input.id}})
-  for(const key of ['shortName','printCode'])if(existing&&definition.fields.some(f=>f.key===key)&&!Object.hasOwn(input,key))data[key]=existing[key]??null
+  for(const key of ['shortName','printCode','billingMode','billingCycleCount','billingCycleUnit','billingCycleAnchor','creditCount','creditUnit','creditAnchor'])if(existing&&definition.fields.some(f=>f.key===key)&&!Object.hasOwn(input,key))data[key]=existing[key]??null
   if(entity==='company'&&['province','district','subdistrict','houseNumber','moo','villageName'].some(key=>(data[key]||'')!==(existing?.[key]||''))&&Object.keys(validateThaiAddress(data,thaiAreas)).length)throw new AccessError('INVALID_SETTINGS',400)
   if(existing&&input.version===0){
    const same=definition.fields.every(f=>f.type==='money' && existing[f.key]!==null && data[f.key]!==null ? Number(existing[f.key])===Number(data[f.key]) : String(existing[f.key]??'')===String(data[f.key]??''))

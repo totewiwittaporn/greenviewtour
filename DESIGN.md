@@ -342,3 +342,8 @@ Owner correction replaces the prior document-scroll/sticky-Navbar model for Back
 Mobile navigation is a bounded non-modal rail in the row below Navbar. Opening it does not push Content down or resize the document. Toggle/Escape and native modal focus behavior remain shared. Dialog stacks lock both underlying workspace scrollers until the final modal closes. Print media restores natural document flow independently of the screen-only viewport frame.
 
 The regression must use wheel/touch input over each actual region, not just `window.scrollTo`. See the corresponding UX-CONTRACT section and `scripts/smoke-shell-scroll.js`.
+
+
+## Backoffice finance completion — 28 September 2026
+
+Issue #24 supersedes the placeholder Programmer panels: only Error/Bug and API status remain. GM cash panels use existing compact reference-panel styling, paired pie summaries with exact textual category totals, and a forecast table separated into dated, overdue, unscheduled and later items. Cash amount is never presented as profit or opening balance. Core DataTable, SelectField, DateField and Dialog retain ownership. The bell uses a permission-filtered audit-event inbox. Agent billing/reschedule/collection and separate commission/refund payment kinds reuse existing settings and finance controls. There are no new Sales roles, UI libraries or provider activations.

@@ -1,4 +1,6 @@
 export const personnelFinanceKinds = {
+ AGENT_REFUND:{title:'Agent margin refunds',group:'expenses',fields:[['receiptId','Source receipt','receipt'],['amount','Refund amount (THB)','money'],['notes','Refund details']]},
+ BOOKING_COMMISSION:{title:'Booking commissions',group:'expenses',fields:[['bookingId','Booking','booking'],['startsOn','Payment period starts','date'],['endsOn','Payment period ends','date'],['amount','Commission amount (THB)','money'],['notes','Payment period notes']]},
  EMPLOYMENT:{title:'Seasonal employment',group:'personnel',fields:[['position','Position'],['startsOn','Season starts','date'],['endsOn','Season ends','date'],['notes','Employment notes']]},
  ATTENDANCE:{title:'Attendance & rest',group:'personnel',fields:[['date','Date','date'],['type','Record type','select',['PRESENT','REST','PAID_LEAVE','UNPAID_LEAVE','ABSENT','AVAILABLE_NO_JOB']],['substituteId','Substitute employee','employee-optional'],['notes','Reason / arrangement']]},
  PAYROLL:{title:'Payroll drafts',group:'payroll',fields:[['startsOn','Period starts','date'],['endsOn','Period ends','date'],['baseAmount','Base wage (THB)','money'],['basis','Base wage basis / reason'],['items','Additions and deductions','items']]},
@@ -8,16 +10,17 @@ export const personnelFinanceKinds = {
  SALARY_ADVANCE:{title:'Salary advances',group:'payroll',fields:[['date','Requested date','date'],['dueOn','Clearance due','date'],['amount','Amount (THB)','money'],['notes','Agreed repayment arrangement']]},
  SUPPLIER_PAYMENT:{title:'Supplier payments',group:'expenses',fields:[['sourcePurchaseId','Received purchase order','purchase'],['date','Payment request date','date'],['amount','Amount (THB)','money'],['evidence','Invoice reference'],['notes','Payment details']]},
 }
+for(const spec of Object.values(personnelFinanceKinds))if(spec.group!=='personnel')spec.fields.push(['plannedPaymentOn','Planned payment date','date-optional'])
 export function cents(value){if(!/^(0|[1-9]\d{0,9})(\.\d{1,2})?$/.test(String(value)))throw new Error('INVALID_AMOUNT');const [a,b='']=String(value).split('.');return Number(a)*100+Number(b.padEnd(2,'0'))}
 export function payrollTotal(items,baseAmount='0'){if(!Array.isArray(items)||items.length>100)throw new Error('INVALID_PAYROLL_ITEMS');let total=cents(baseAmount);for(const item of items){if(!item||Object.keys(item).some(k=>!['label','reason','type','amount'].includes(k))||typeof item.label!=='string'||!item.label.trim()||item.label.length>200||typeof item.reason!=='string'||!item.reason.trim()||item.reason.length>1000||!['EARNING','DEDUCTION'].includes(item.type))throw new Error('INVALID_PAYROLL_ITEMS');total+=(item.type==='DEDUCTION'?-1:1)*cents(item.amount)}if(total<=0)throw new Error('INVALID_PAYROLL_TOTAL');return total}
 export function financialTotal(kind,payload){return kind==='PAYROLL'?payrollTotal(payload.items,payload.baseAmount):['EMPLOYMENT','ATTENDANCE'].includes(kind)?null:cents(payload.amount)}
 export function personnelFinanceErrors(kind,values){
  const errors={};if(!values.title?.trim())errors.title='Enter a record name.';if(!values.employeeId)errors.employeeId='Choose an employee.'
- for(const [key,,type,options] of personnelFinanceKinds[kind].fields){const value=values.payload[key];if(type==='employee-optional')continue
+ for(const [key,,type,options] of personnelFinanceKinds[kind].fields){const value=values.payload[key];if(type==='employee-optional'||type==='date-optional'&&!value)continue
   if(type==='items'){try{payrollTotal(value,values.payload.baseAmount)}catch{errors[key]='Enter valid additions and deductions with reasons and a positive total.'}}
   else if(type==='money'){try{if(cents(value)<=0)throw new Error()}catch{errors[key]='Enter an amount greater than zero, with up to two decimals.'}}
   else if(!value||!String(value).trim())errors[key]='Complete this field.'
-  else if(type==='date'&&(!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(+new Date(value))||new Date(value).toISOString().slice(0,10)!==value))errors[key]='Enter a valid date.'
+  else if(['date','date-optional'].includes(type)&&(!/^\d{4}-\d{2}-\d{2}$/.test(value)||!Number.isFinite(+new Date(value))||new Date(value).toISOString().slice(0,10)!==value))errors[key]='Enter a valid date.'
   else if(type==='select'&&!options.includes(value))errors[key]='Choose an available option.'
  }
  if(values.payload.endsOn<values.payload.startsOn)errors.endsOn='End date must follow start date.'
@@ -26,7 +29,7 @@ export function personnelFinanceErrors(kind,values){
 }
 export function recordActions(row,access,actorId){
  const group=personnelFinanceKinds[row.kind].group,own=row.createdBy===actorId
- const beneficiary=group!=='personnel'&&row.kind!=='SUPPLIER_PAYMENT'&&row.employeeId===actorId
+ const beneficiary=group!=='personnel'&&!['SUPPLIER_PAYMENT','AGENT_REFUND'].includes(row.kind)&&row.employeeId===actorId
  const actions=[]
  if(row.status==='DRAFT'&&access.edit&&own)actions.push('SUBMIT','CANCEL')
  if(row.status==='REJECTED'&&access.edit&&own)actions.push('REVISE')

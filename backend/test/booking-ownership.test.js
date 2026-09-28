@@ -55,14 +55,15 @@ test('assignee lookup is manager-only and paged without contact details', async 
  assert.deepEqual(query.select, { id: true, displayName: true })
 })
 
-test('Booking roles read all customers but cannot read manager request workflow; deny overrides prevail', async () => {
+test('Booking Manager handles customer requests; Assistant remains read-only; deny overrides prevail', async () => {
  const { listCustomers } = await import('../src/modules/commerce/service.js')
  for (const role of ['BOOKING', 'HEAD_BOOKING']) {
   const f = fixture(profile(1, role)), seen = []
   f.prisma.customerProfile = { count: async args => { seen.push(args); return 1 }, findMany: async args => { seen.push(args); return [{ id: id(50), displayName: 'Customer' }] } }
   const result = await listCustomers(f.prisma, id(1), new URLSearchParams())
   assert.equal(result.rows.length, 1); assert.deepEqual(seen[0].where, {})
-  await assert.rejects(listCustomers(f.prisma, id(1), new URLSearchParams('kind=requests')), { code: 'PERMISSION_DENIED' })
+  if(role==='BOOKING')await assert.rejects(listCustomers(f.prisma, id(1), new URLSearchParams('kind=requests')), { code: 'PERMISSION_DENIED' })
+  else {f.prisma.customerRequest={count:async()=>0,findMany:async()=>[]};assert.deepEqual((await listCustomers(f.prisma,id(1),new URLSearchParams('kind=requests'))).rows,[])}
  }
  for (const actor of [profile(1, 'GUIDE'), profile(1, 'BOOKING', { permissionOverrides: [{ permissionCode: 'operations.booking', effect: 'DENY' }] }), profile(1, 'BOOKING', { status: 'SUSPENDED' })]) {
   await assert.rejects(listCustomers(fixture(actor).prisma, id(1), new URLSearchParams()), { code: 'PERMISSION_DENIED' })

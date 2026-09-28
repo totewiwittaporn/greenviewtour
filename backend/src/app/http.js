@@ -1,3 +1,6 @@
+import {listNotifications} from '../modules/notifications/service.js'
+import {recordApiFailure} from '../platform/monitoring/api-status.js'
+import {recordBookingCollection,reconcileAgentMargin} from '../modules/receivables/collections.js'
 import {listCapacityPools,saveCapacityPool,bookingCapacityPreview,bindLegacyBookingWindow} from '../modules/operations/capacity-service.js'
 import {publicQuoteAvailability,parseCapacitySelections,staffCustomerCapacity,answerCustomerDate} from '../modules/commerce/service.js'
 import {moveBoatGroup} from '../modules/operations/dispatch.js'
@@ -221,6 +224,13 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401)
         return send(200,await exportPayroll(prisma,user.id,url.searchParams))
       }
+      if(path==='/api/notifications'&&req.method==='GET'){const {user,entry}=await sessions.authenticated(req,provider,pool);if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401);return send(200,await listNotifications(prisma,user.id,url.searchParams))}
+      if(path==='/api/agent-margin-offset'&&req.method==='POST'){const {user,entry}=await sessions.authenticated(req,provider,pool);if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401);return send(200,await reconcileAgentMargin(prisma,user.id,await body(req,32768)))}
+      if(path==='/api/booking-collections'&&req.method==='POST'){
+        const {user,entry}=await sessions.authenticated(req,provider,pool)
+        if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401)
+        return send(200,await recordBookingCollection(prisma,user.id,await body(req,32768)))
+      }
       if(path==='/api/receivables'){
         const {user,entry}=await sessions.authenticated(req,provider,pool)
         if(entry.purpose!=='workspace')throw new AccessError('LOGIN_REQUIRED',401)
@@ -320,6 +330,7 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
       return send(200, { ...directory, canChangeDepartment: scope.company, canInvite: canInvite(profile), database: 'UP', environment: 'preview' })
     } catch (error) {
       if (error instanceof AccessError) return send(error.status, { code: error.code, ...(operationMessages[error.code] ? { message: operationMessages[error.code] } : {}) }, error.status === 401 ? '' : undefined)
+      recordApiFailure(error,req.method)
       // Do not log messages, SQL, headers, bodies or query strings containing user data.
       console.error(JSON.stringify({ event: 'API_REQUEST_FAILED', method: req.method,
         path: String(req.url || '').split('?')[0].slice(0, 120),

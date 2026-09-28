@@ -1,3 +1,5 @@
+import {bookingReceived} from './collections.js'
+import {billingDueDate,validateBillingPolicy} from '../../../../packages/contracts/agent-billing.js'
 import {billDocument,billSignatures,signBill} from './signatures.js'
 import {effectiveAccess} from '../../../../packages/contracts/access.js'
 import {bookingQuote} from '../../../../packages/contracts/booking-plan.js'
@@ -26,7 +28,7 @@ export async function listReceivables(prisma,actorId,params){
   where.attendance={none:{financeStatus:{notIn:['NONE','RETAIN_CHARGES']}}}
   const total=await prisma.tourBooking.count({where}),page=Math.min(requested,Math.max(1,Math.ceil(total/25)))
   const rows=await prisma.tourBooking.findMany({where,select:{id:true,code:true,name:true,agentId:true,agentName:true,adultPrice:true,childPrice:true,adults:true,children:true,lines:{select:{id:true,selected:true,included:true,quantity:true,unitPrice:true,snapshot:true}}},orderBy:[{createdAt:'desc'},{id:'asc'}],take:25,skip:(page-1)*25})
-  return {rows:rows.map(row=>({id:row.id,code:row.code,agentId:row.agentId,agentName:row.agentName,name:row.name,total:bookingQuote(row).total})),total,page}
+  return {rows:await Promise.all(rows.map(async row=>{const quoted=bookingQuote(row).total;return {id:row.id,code:row.code,agentId:row.agentId,agentName:row.agentName,name:row.name,total:quoted===null?null:amount(Math.max(0,cents(quoted)-await bookingReceived(prisma,row)))}})),total,page}
  }
  const where=q?{OR:[{title:{contains:q,mode:'insensitive'}},{agentName:{contains:q,mode:'insensitive'}}]}:{}
  const total=await prisma.agentBill.count({where}),page=Math.min(requested,Math.max(1,Math.ceil(total/25)))
@@ -34,12 +36,13 @@ export async function listReceivables(prisma,actorId,params){
  return {rows,total,page}
 }
 export async function commandReceivable(prisma,actorId,input){
- keys(input,['id','action','billId','version','title','bookingIds','dueOn','amount','receivedOn','reference','reason','side','signerName','strokes','documentHash']);uuid(input.id)
- if(!['CREATE','PAY','VOID','SIGN'].includes(input.action))fail('INVALID_INPUT',400)
+ keys(input,['id','action','billId','version','title','bookingIds','dueOn','amount','receivedOn','reference','reason','side','signerName','strokes','documentHash','cycleCloseOn','issuedOn','billReceivedOn','rescheduleKind']);uuid(input.id)
+ if(!['CREATE','PAY','VOID','SIGN','RESCHEDULE'].includes(input.action))fail('INVALID_INPUT',400)
  const requestHash=hash(input)
  return prisma.$transaction(async tx=>{
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
   await receivableAccess(tx,actorId)
+  if(input.action==='RESCHEDULE'&&input.rescheduleKind!=='REQUEST'){const actor=await tx.userProfile.findUnique({where:{id:actorId},select:accessProfileSelect});if(!effectiveAccess(actor,'expenses.approve').allowed)fail('PERMISSION_DENIED',403)}
   const prior=await tx.financePersonnelCommand.findUnique({where:{id:input.id}})
   if(prior){if(prior.actorId!==actorId||prior.requestHash!==requestHash)fail('COMMAND_CONFLICT');return prior.result}
   let row
@@ -50,14 +53,26 @@ export async function commandReceivable(prisma,actorId,input){
    if(bookings.length!==input.bookingIds.length||bookings.some(b=>b.status!=='COMPLETED'||b.paymentTerms!=='AGENT_CREDIT'||!b.agentId)||new Set(bookings.map(b=>b.agentId)).size!==1)fail('BOOKINGS_NOT_BILLABLE')
    if(await tx.bookingAttendance.count({where:{bookingId:{in:input.bookingIds},financeStatus:{notIn:['NONE','RETAIN_CHARGES']}}}))fail('NO_SHOW_FINANCE_REVIEW_REQUIRED')
    if(await tx.agentBillLine.count({where:{bookingId:{in:input.bookingIds}}}))fail('BOOKINGS_ALREADY_BILLED')
-   const snapshot=bookings.map(b=>({bookingId:b.id,code:b.code,name:b.name,version:b.version,total:bookingQuote(b).total}))
+   const snapshot=await Promise.all(bookings.map(async b=>{const quoted=bookingQuote(b).total;if(quoted===null)fail('INVALID_AMOUNT',400);const received=await bookingReceived(tx,b);return {bookingId:b.id,code:b.code,name:b.name,version:b.version,originalTotal:quoted,previouslySettled:amount(received),total:amount(cents(quoted)-received)}}))
    const total=snapshot.reduce((n,b)=>n+positiveAmount(b.total),0);if(total>999999999999||!Number.isSafeInteger(total))fail('INVALID_AMOUNT',400)
-   row=await tx.agentBill.create({data:{id:input.id,title:string(input.title,160),agentId:bookings[0].agentId,agentName:bookings[0].agent.name,total:amount(total),dueOn:dateOnly(input.dueOn),snapshot,createdBy:actorId,lines:{create:input.bookingIds.map(bookingId=>({bookingId}))}}})
+   const agent=bookings[0].agent
+   const policy=agent.billingMode?validateBillingPolicy({mode:agent.billingMode,cycleCount:agent.billingCycleCount,cycleUnit:agent.billingCycleUnit,cycleAnchor:agent.billingCycleAnchor?.toISOString().slice(0,10),creditCount:agent.creditCount,creditUnit:agent.creditUnit,creditAnchor:agent.creditAnchor}):null
+   const anchors={cycleCloseOn:input.cycleCloseOn||null,issuedOn:input.issuedOn||null,receivedOn:input.billReceivedOn||null}
+   for(const day of Object.values(anchors))if(day)dateOnly(day)
+   const calculated=billingDueDate(policy,anchors),dueOn=input.dueOn||calculated
+   if(!dueOn)fail('BILLING_DUE_DATE_REQUIRED',400)
+   if(calculated&&input.dueOn&&input.dueOn!==calculated)string(input.reason,1000)
+   row=await tx.agentBill.create({data:{id:input.id,title:string(input.title,160),agentId:bookings[0].agentId,agentName:bookings[0].agent.name,total:amount(total),dueOn:dateOnly(dueOn),originalDueOn:dateOnly(dueOn),billingPolicySnapshot:{policy,anchors,calculatedDueOn:calculated,overrideReason:input.reason||null},snapshot,createdBy:actorId,lines:{create:input.bookingIds.map(bookingId=>({bookingId}))}}})
   }else{
    uuid(input.billId);int(input.version)
    const old=await tx.agentBill.findUnique({where:{id:input.billId}});if(!old)fail('NOT_FOUND',404)
    if(old.version!==input.version||(input.action==='SIGN'?old.status==='VOID':old.status!=='OPEN'))fail('RECORD_CONFLICT')
-   if(input.action==='SIGN'){
+   if(input.action==='RESCHEDULE'){
+    if(!['REQUEST','PROMISE','EXTEND'].includes(input.rescheduleKind))fail('INVALID_INPUT',400)
+    const next=dateOnly(input.dueOn),reason=string(input.reason,1000)
+    const history=[...(old.rescheduleHistory||[]),{kind:input.rescheduleKind,previousDueOn:old.dueOn.toISOString().slice(0,10),previousPromisedOn:old.promisedOn?.toISOString().slice(0,10)||null,newOn:input.dueOn,reason,actorId,approvedBy:input.rescheduleKind==='REQUEST'?null:actorId,at:new Date().toISOString()}]
+    row=await tx.agentBill.update({where:{id:old.id},data:{originalDueOn:old.originalDueOn||old.dueOn,rescheduleHistory:history,...(input.rescheduleKind==='REQUEST'?{}:input.rescheduleKind==='PROMISE'?{promisedOn:next}:{dueOn:next,promisedOn:next}),version:{increment:1}}})
+   }else if(input.action==='SIGN'){
     await signBill(tx,actorId,old,input)
     row=await tx.agentBill.update({where:{id:old.id},data:{version:{increment:1}}})
    }else if(input.action==='VOID'){

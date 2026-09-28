@@ -1,3 +1,5 @@
+import {cashSummary} from './cash-summary.js'
+import {apiStatus} from '../../../platform/monitoring/api-status.js'
 import {managerWidgetCounts} from './manager-widgets.js'
 import { workSummary } from './work-summary.js'
 import { bookingSummary } from './booking-summary.js'
@@ -46,7 +48,7 @@ export async function dashboardOverview(prisma, actorId, now = new Date(), {surf
   const scope = dashboardScope(actor), allowed = code => effectiveAccess(actor, code, { now }).allowed
   const today = thailandDay(now), end = addDays(today, 14), date = dateOnly(today)
   const pageMode=surface==='page', pageManager=pageMode&&scope.company
-  if(pageMode&&actor.roles.some(role=>role.roleCode==='ADMIN_MANAGER'&&role.scope==='COMPANY'))return {today,timezone:'Asia/Bangkok',generatedAt:now.toISOString(),scope:'Company',widgets:[],calendar:null,managementOverview:null,workOverview:null}
+  if(pageMode&&actor.roles.some(role=>role.roleCode==='ADMIN_MANAGER'&&role.scope==='COMPANY'))return {today,timezone:'Asia/Bangkok',generatedAt:now.toISOString(),scope:'Company',systemOverview:apiStatus(now),widgets:[],calendar:null,managementOverview:null,workOverview:null}
   const gmWidgetIds=new Set(['guide','driver','guide-crew','driver-crew','guide-allocation','driver-allocation'])
   const bookingRole=actor.roles.some(g=>['SELF','COMPANY'].includes(g.scope)&&['BOOKING','HEAD_BOOKING'].includes(g.roleCode||g.code))
   if(!scope.company&&bookingRole&&allowed('operations.booking')&&allowed('operations.islandBooking'))return {today,through:addDays(today,29),timezone:'Asia/Bangkok',generatedAt:now.toISOString(),bookingOverview:await bookingSummary(tx,actor,today,customerCalendar,{lean:pageMode})}
@@ -132,6 +134,7 @@ export async function dashboardOverview(prisma, actorId, now = new Date(), {surf
   const [calendar, managementOverview] = await Promise.all([calendarTask, summaryTask, ...tasks])
   widgets.sort((a, b) => (b.overdue || 0) - (a.overdue || 0) || b.pending - a.pending || a.id.localeCompare(b.id))
   const workOverview = scope.company ? null : await workSummary(tx, actor, today, sources, now,{lean:pageMode})
-  return { workOverview, today, through: addDays(today, 13), timezone: 'Asia/Bangkok', generatedAt: now.toISOString(), scope: scopeLabel, calendar, widgets, managementOverview }
+  const cashOverview=pageManager?await cashSummary(tx,actor,today):null
+  return { cashOverview, workOverview, today, through: addDays(today, 13), timezone: 'Asia/Bangkok', generatedAt: now.toISOString(), scope: scopeLabel, calendar, widgets, managementOverview }
  }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
 }

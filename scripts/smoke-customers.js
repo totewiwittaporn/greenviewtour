@@ -114,7 +114,7 @@ try {
   await page.reload();await bookingAction.waitFor();assert.equal(await page.getByRole('dialog').count(),0)
   await page.goto(origin+'/customers');await requestAction.waitFor();assert.equal(new URL(page.url()).pathname,'/operations/bookings')
   await page.goto(origin+'/customers?tab=customers');await customerAction.waitFor();assert.equal(new URL(page.url()).pathname,'/settings/customers')
-  for(role of ['BOOKING','HEAD_BOOKING']){
+  for(role of ['BOOKING']){
    await page.goto(origin+'/settings/customers');await table.getByText('Fixture Customer',{exact:true}).waitFor()
    assert.equal(await customerAction.count(),0);assert.equal(await page.getByRole('tab').count(),0)
    await nav(bookingLink);await bookingAction.waitFor();assert.equal(await requestsTab.count(),0)
@@ -123,6 +123,7 @@ try {
    assert.equal(reads.filter(x=>x.startsWith('/api/customers?')&&x.includes('kind=requests')).length,count)
    await page.goto(origin+'/customers');await table.getByText('Fixture Customer',{exact:true}).waitFor();assert.equal(new URL(page.url()).pathname,'/settings/customers')
   }
+  role='HEAD_BOOKING';await page.goto(origin+'/settings/customers');await customerAction.waitFor();await page.goto(origin+'/operations/bookings?tab=requests');await requestAction.waitFor();assert.equal(await requestsTab.count(),1)
   role='CAPTAIN';await page.goto(origin+'/settings/customers');await page.locator('main').getByText(/Access restricted|ไม่มีสิทธิ์เข้าถึง/).waitFor();assert.equal(await customersLink.count(),0)
   role='MANAGER';deniedBookings=true;await page.goto(origin+'/operations/bookings?tab=requests');await requestAction.waitFor()
   assert.equal(await page.getByRole('tab').count(),1)

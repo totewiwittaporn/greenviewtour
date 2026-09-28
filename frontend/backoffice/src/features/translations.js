@@ -2,6 +2,18 @@ import jobOrder from './operations/job-order-translations.js'
 // Presentation copy only. Values from bookings and customer records are not translated.
 import dashboard from './dashboard/overview/translations.js'
 export default {
+ 'Actual money received':'เงินรับจริง', 'Actual money paid':'เงินจ่ายจริง', 'Cash forecast · next 30 days':'ประมาณการเงินรับจ่าย 30 วัน', 'Expected receipts':'คาดว่าจะรับ', 'Approved planned payments':'แผนจ่ายที่อนุมัติแล้ว', 'Payment timing':'ช่วงกำหนดชำระ', 'NEXT_30_DAYS':'ภายใน 30 วัน', 'OVERDUE':'เกินกำหนด', 'UNSCHEDULED':'ยังไม่ระบุวัน', 'LATER':'ภายหลัง 30 วัน',
+ 'GREENVIEW_NET':'ส่วนของกรีนวิว', 'AGENT_MONEY_HELD':'เงินส่วนต่างที่ถือแทนเอเย่นต์', 'AGENT_BILL_PAYMENT':'เงินรับชำระบิลเอเย่นต์', 'CUSTOMER_PAYMENT':'เงินรับจากลูกค้า', 'BILLED':'ออกบิลแล้ว', 'UNBILLED':'จบทริปรอออกบิล', 'FUTURE_TRIP':'ประมาณการทริปในอนาคต', 'AGENT_REFUND':'คืนส่วนต่างเอเย่นต์', 'BOOKING_COMMISSION':'คอมมิชชันพนักงาน Booking', 'AWAITING_PLAN':'รอกำหนดแผนจ่าย',
+ 'Error / Bug':'ข้อผิดพลาด / บั๊ก', 'API status':'สถานะ API', 'Responding':'ตอบสนองแล้ว', 'Status unavailable':'ยังไม่ทราบสถานะ',
+ 'Booking updated':'มีการปรับปรุงงานจอง', 'Customer request updated':'มีการปรับปรุงคำขอลูกค้า', 'Agent payment or statement updated':'มีการปรับปรุงบิลหรือการรับเงินเอเย่นต์', 'Personnel or finance record updated':'มีการปรับปรุงงานบุคลากรหรือการเงิน', 'Purchase updated':'มีการปรับปรุงงานจัดซื้อ', 'Assigned company work updated':'มีการปรับปรุงงานที่มอบหมาย', 'Job Order updated':'มีการปรับปรุงใบงาน',
+ 'Apply held margin to Agent debt':'นำส่วนต่างที่ถือไว้หักหนี้เอเย่นต์', 'Apply offset':'บันทึกหักกลบ', 'Issued date':'วันออกบิล', 'Cycle close date':'วันตัดบิล', 'Agent received bill date':'วันที่เอเย่นต์รับบิล', 'Due date override reason':'เหตุผลที่ปรับวันครบกำหนด',
+ 'Agent margin refunds':'คืนส่วนต่างเอเย่นต์', 'Source receipt':'รายการรับเงินต้นทาง', 'Refund amount (THB)':'ยอดคืนเงิน (บาท)', 'Refund details':'รายละเอียดการคืนเงิน',
+ 'Cycle close':'วันตัดบิล',
+ 'Booking commissions':'คอมมิชชันพนักงาน Booking', 'Payment period starts':'วันเริ่มรอบจ่าย', 'Payment period ends':'วันสิ้นสุดรอบจ่าย', 'Commission amount (THB)':'ยอดคอมมิชชัน (บาท)', 'Payment period notes':'หมายเหตุรอบจ่าย',
+ 'Billing mode':'รูปแบบการวางบิล', 'Billing cycle length':'ความยาวรอบบิล', 'Billing cycle unit':'หน่วยรอบบิล', 'Billing cycle anchor':'วันเริ่มรอบบิล', 'Credit term length':'ระยะเวลาเครดิต', 'Credit term unit':'หน่วยระยะเวลาเครดิต', 'Credit starts from':'เริ่มนับเครดิตจาก', 'IMMEDIATE':'ชำระทันที', 'BILLING':'ชำระตามบิล', 'DAY':'วัน', 'WEEK':'สัปดาห์', 'MONTH':'เดือนปฏิทิน', 'CYCLE_CLOSE':'วันตัดบิล', 'Bill issued':'วันออกบิล', 'Bill received':'วันที่รับบิล',
+ 'Planned payment date':'วันนัดจ่ายเงิน', 'Reschedule payment':'เลื่อนกำหนดชำระ', 'Payment schedule history':'ประวัติกำหนดชำระ', 'Original due date':'วันครบกำหนดเดิม', 'Confirmed payment date':'วันนัดชำระที่ยืนยันแล้ว', 'Previous due date':'วันครบกำหนดก่อนหน้า', 'New date':'วันใหม่', 'Record request':'บันทึกคำขอ', 'Confirm payment promise':'ยืนยันวันนัดชำระ', 'Approve due date extension':'อนุมัติขยายกำหนดชำระ', 'New payment date':'วันนัดชำระใหม่', 'REQUEST':'คำขอ', 'PROMISE':'วันนัดชำระ', 'EXTEND':'ขยายกำหนด',
+ 'Payer':'ผู้ชำระเงินจริง', 'Collection basis':'รูปแบบยอดรับ', 'Greenview net only':'เฉพาะราคาเน็ตกรีนวิว', 'Full amount including Agent margin':'ยอดเต็มรวมส่วนต่างเอเย่นต์',
+
   ...dashboard,
   ...jobOrder,
   "(Bangkok)": "(กรุงเทพฯ)",

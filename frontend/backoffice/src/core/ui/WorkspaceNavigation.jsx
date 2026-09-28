@@ -1,4 +1,4 @@
-import {canReadCustomers} from '../../../../../packages/contracts/access.js'
+import {canReadCustomers,canManageBookingTeam} from '../../../../../packages/contracts/access.js'
 import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
 import {useLocale} from '../i18n/locale.jsx'
 import { workspaceRoute, canUseOperation } from '../navigation/workspaceRoutes.js'
@@ -26,7 +26,7 @@ export function WorkspaceNavigation({user,canReadUsers,pageTitle}) {
  return <nav aria-label={bilingualLabel("Main navigation")}><a className={`nav-item ${route?.kind==='dashboard'?'selected':''}`} aria-current={route?.kind==='dashboard'?'page':undefined} href="/dashboard"><Icon name="grid"/>{bilingualLabel("Dashboard")}</a>{sections.map(section=>{
   const operations=operationGroups.filter(group=>section.operations.includes(group.id)&&canUseOperation(user,group)&&(group.id!=='daily-summary'||user?.management?.company))
   const customers=section.customers&&canReadCustomers(user)
-  const settings=user?.management?.company?settingsGroups.filter(group=>section.settings.includes(group.id)):[]
+  const settings=settingsGroups.filter(group=>section.settings.includes(group.id)&&(user?.management?.company||group.id==='partners-sales'&&canManageBookingTeam(user)))
   const company=Object.entries(companyRoutes).filter(([,r])=>r.section===section.label&&canUseCompany(user,r))
   if(!customers&&!operations.length&&!settings.length&&!company.length&&!(section.users&&canReadUsers))return null
   return <div key={section.label}><div className="nav-section-label">{bilingualLabel(section.label)}</div>{operations.map(group=>link('operations',group))}{customers&&<a href={navigation.hrefFor('/settings/customers')} aria-current={route?.kind==='customers'?'page':undefined} className={`nav-item ${route?.kind==='customers'?'selected':''}`}><Icon name="users"/>{bilingualLabel('Customers')}</a>}{settings.map(group=>link('settings',group))}

@@ -5,11 +5,11 @@ import {workspaceRoute,canUseOperation} from '../src/core/navigation/workspaceRo
 import {operationGroups} from '../src/features/operations/operationGroups.js'
 import {canReadCustomers} from '../../../packages/contracts/access.js'
 const actor=(code,company=false,operations={booking:true,islandBooking:true})=>({status:'ACTIVE',roles:[{code,scope:company?'COMPANY':'SELF'}],management:company?{company:true}:null,operations})
-test('Manager has four Booking tabs; Booking staff retain directory access without request access',()=>{
+test('Booking Manager and company managers handle requests; assistants keep three booking tabs',()=>{
  for(const role of ['MANAGER','ADMIN_MANAGER'])assert.deepEqual(bookingTabs(actor(role,true)).map(t=>t.id),['','DIRECT','AGENT','requests'])
  for(const role of ['BOOKING','HEAD_BOOKING']){
   const user=actor(role);assert.equal(canReadCustomers(user),true)
-  assert.deepEqual(bookingTabs(user).map(t=>t.id),['','DIRECT','AGENT'])
+  assert.deepEqual(bookingTabs(user).map(t=>t.id),role==='HEAD_BOOKING'?['','DIRECT','AGENT','requests']:['','DIRECT','AGENT'])
  }
  assert.equal(canReadCustomers(actor('GUIDE')),false)
  assert.deepEqual(bookingTabs(actor('CAPTAIN',false,{})),[])

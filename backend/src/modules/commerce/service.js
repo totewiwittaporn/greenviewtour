@@ -144,6 +144,7 @@ export async function submitCustomerRequest(db,user,input,now=new Date()) {
   if(!availability.canConfirm&&input.allowWaitlist!==true)fail('CAPACITY_CHANGED',409)
   const status=availability.canConfirm?'REQUESTED':'WAITING_TEAM'
   const row=await tx.customerRequest.create({data:{holdUntil,id:input.id,customerId:customer.id,tourId:input.tourId,promotionId:input.promotionId||null,serviceDate:new Date(input.serviceDate+'T00:00:00Z'),adults:input.adults,children:input.children,requestHash,status,snapshot:{...snapshot,capacitySelections:availability.selections,capacityAvailability:availability},details}})
+  await tx.auditEvent.create({data:{actorId:null,targetId:row.id,action:'customer-request.created',details:{}}})
   const seatHoldUntil=await holdRequestCapacity(tx,row.id,availability,now,holdUntil)
   return {id:row.id,status:row.status,seatHoldUntil,availability,confirmed:false}
  })
@@ -153,7 +154,7 @@ export async function listCustomers(db,actorId,params) {
  return readCustomers(db,actorId,params)
 }
 async function readCustomers(db,actorId,params) {
- if(params.get('kind')==='requests')await authorize(db,actorId)
+ if(params.get('kind')==='requests')await authorize(db,actorId,'customer')
  else {const {actor}=await authorize(db,actorId,'active');if(!canReadCustomers(actor))fail('PERMISSION_DENIED',403)}
  const kind=params.get('kind')==='requests'?'requests':'customers',model=kind==='requests'?'customerRequest':'customerProfile',page=int(params.get('page')||1,1,100000),q=string(params.get('q')||'',100,false)||''
  const where=q?(kind==='requests'?{customer:{displayName:{contains:q,mode:'insensitive'}}}:{displayName:{contains:q,mode:'insensitive'}}):{}
@@ -171,7 +172,7 @@ export async function commandCustomerRequest(db,actorId,input) {
  if(!['ACCEPT','REJECT','VERIFY_PAYMENT','RETURN_PROOF','PROPOSE_DATE'].includes(input.action))fail('INVALID_ACTION',400)
  return db.$transaction(async tx=>{
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
-  const {actor}=await authorize(tx,actorId)
+  const {actor}=await authorize(tx,actorId,'customer')
   const requestHash=hash({...input,actorId}),prior=await tx.operationCommand.findUnique({where:{id:input.id}})
   if(prior){if(prior.requestHash!==requestHash)fail('COMMAND_CONFLICT');return prior.result}
   const row=await tx.customerRequest.findUnique({where:{id:input.requestId}})
@@ -284,7 +285,7 @@ export async function saveCustomer(db,actorId,input){
  const data={displayName:string(input.displayName,200),phone:string(input.phone||'',32,false),email:string(input.email||'',254,false),status:input.status}
  if(data.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))fail('INVALID_EMAIL',400)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;await authorize(tx,actorId)
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;await authorize(tx,actorId,'customer')
   const old=await tx.customerProfile.findUnique({where:{id:input.id}})
   if(old?.authUserId&&data.email!==old.email)fail('CUSTOMER_EMAIL_LOCKED',409)
   if(old&&input.version===0&&old.version===1&&!old.authUserId&&Object.entries(data).every(([key,value])=>old[key]===value))return {customer:old}
@@ -359,9 +360,9 @@ export async function publicQuoteAvailability(db,input,now=new Date()){
  },{isolationLevel:'RepeatableRead',timeout:30000})
 }
 export async function staffCustomerCapacity(db,actorId,params){
- await authorize(db,actorId)
+ await authorize(db,actorId,'customer')
  return db.$transaction(async tx=>{
-  await authorize(tx,actorId)
+  await authorize(tx,actorId,'customer')
   const row=await tx.customerRequest.findUnique({where:{id:uuid(params.get('requestId'))}})
   if(!row)fail('NOT_FOUND',404)
   const chosen=params.get('capacitySelections')?parseCapacitySelections(params.get('capacitySelections')):row.snapshot.capacitySelections||[]

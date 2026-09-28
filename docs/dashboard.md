@@ -1,5 +1,7 @@
 # Dashboard workspace
 
+Current additions and superseding Programmer/GM behavior are documented in [Backoffice issue #24](backoffice-issue-24.md). Programmer now exposes only Error/Bug and API status; GM has actual cash categories and a dated 30-day forecast. The historical baseline below describes the earlier dashboard rollout.
+
 Baseline: `mint/mac-work-checkpoint-2026-09-20`, `12e2bc65d2732ff8e7557778ac7efa4ce3aaa499`. Before edits, origin was fetched and both local and remote baseline refs matched, with a clean working tree. Implementation branch: `mint/role-aware-dashboard-2026-09-21`. No production action, schema migration, seed, staff grant or business write is part of this change.
 
 ## Audited owners and boundary
