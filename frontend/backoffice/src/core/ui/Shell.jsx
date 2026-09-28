@@ -1,4 +1,4 @@
-import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
+import {NotificationInbox} from './NotificationInbox.jsx'
 import {useLocale} from '../i18n/locale.jsx'
 import {roleNames} from '../../../../../packages/contracts/access.js'
 import { WorkspaceNavigation } from './WorkspaceNavigation.jsx'
@@ -48,7 +48,7 @@ export function Shell({ children, user, onLogout, signingOut, canReadUsers, logo
         <button type="button" className="icon-button workspace-help" aria-label={t('Dashboard help')} title={t('Dashboard help')} onClick={() => setHelpOpen(true)}><span aria-hidden="true">?</span></button>
         {user && <div className="account-menu"><UserInfo user={user} onEdit={onEditProfile} onLogout={onLogout} signingOut={signingOut} subtitle={t(roleLabel)} /></div>}
       </div></header><main id="main" tabIndex={-1}><div className="workspace-page">{children}{logoutError && <p className="workspace-notice" role="alert">{t(logoutError)}</p>}</div><footer className="workspace-footer">{<>{brand}<span>{persona === 'programmer' ? '“ Stable System · Happy Team · Better Journeys ”' : '“ Clear Data · Better Decisions · Greater Journeys ”'}</span></>}</footer></main></div>
-    {notificationsOpen && <Dialog title={t('Notifications')} onClose={() => setNotificationsOpen(false)}><div className="workspace-help-copy"><p>{t('Notifications are not connected yet.')}</p><p>{t('Review the dashboard for available work summaries and items needing attention.')}</p><a href="/dashboard" onClick={() => setNotificationsOpen(false)}>{bilingualLabel('Dashboard')}</a></div></Dialog>}
+    {notificationsOpen && <NotificationInbox onClose={()=>setNotificationsOpen(false)}/>}
     {helpOpen && <Dialog title={t('Dashboard help')} onClose={() => setHelpOpen(false)}><div className="workspace-help-copy"><p>{t('Dashboard shows the work and summaries your account is allowed to access.')}</p><p>{t('Use the navigation to change work areas. Your profile, language and sign-out options are in the user menu.')}</p><a className="button" href="/manuals" onClick={()=>setHelpOpen(false)}>{t('User guides')}</a></div></Dialog>}
   </div>
 }

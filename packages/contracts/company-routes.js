@@ -1,5 +1,7 @@
 const route=(title,section,kind,permission,finance=false)=>({title,section,kind,permission,finance})
 export const companyRoutes={
+ 'agent-refunds':route('Agent margin refunds','Accounts & Finance','AGENT_REFUND','expenses.view',true),
+ 'booking-commissions':route('Booking commissions','Accounts & Finance','BOOKING_COMMISSION','expenses.view',true),
  'receivables':route('Agent receivables','Accounts & Finance','RECEIVABLES','finance.receive'),
  'cleaning-zones':route('Cleaning zones','Housekeeping','ZONE','housekeeping.view'),
  'work-schedules':route('Cleaning & count schedules','Housekeeping','SCHEDULE','housekeeping.view'),

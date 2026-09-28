@@ -15,7 +15,7 @@ function fixture(){
  const bills=new Map(),payments=new Map(),commands=new Map(),attachments=new Map(),links=new Map(),events=[]
  let profile={id:id(9),status:'ACTIVE',roles:[{roleCode:'ACCOUNT',scope:'COMPANY'}]}
  const bookings=[{id:id(3),code:'DEMO-3',name:'Test',status:'COMPLETED',paymentTerms:'AGENT_CREDIT',agentId:id(4),agent:{name:'Test Agent'},adultPrice:'100.01',childPrice:'0',adults:1,children:0,lines:[],version:2}]
- const tx={serviceDayClose:{count:async()=>0},bookingAttendance:{findMany:async()=>[],findUnique:async()=>null,count:async()=>0},$executeRaw:async()=>{},userProfile:{findUnique:async()=>profile},tourBooking:{findMany:async()=>bookings},auditEvent:{create:async({data})=>events.push({...data,createdAt:new Date()}),findMany:async({where})=>events.filter(e=>e.targetId===where.targetId&&e.action===where.action)},financePersonnelCommand:{findUnique:async({where})=>commands.get(where.id),create:async({data})=>commands.set(data.id,data)},agentBillLine:{count:async()=>links.size,deleteMany:async()=>links.clear()},agentBill:{findUnique:async({where})=>bills.get(where.id),create:async({data})=>{const {lines,...rest}=data;for(const l of lines.create)links.set(l.bookingId,data.id);const row={...rest,paid:'0',status:'OPEN',version:1};bills.set(row.id,row);return row},update:async({where,data})=>{const row={...bills.get(where.id),...data,version:bills.get(where.id).version+1};bills.set(row.id,row);return row}},agentPayment:{findUnique:async({where})=>payments.get(where.id),create:async({data})=>payments.set(data.id,data)},evidenceAttachment:{findUnique:async({where})=>attachments.get(where.id),create:async({data})=>{attachments.set(data.id,data);return data}}}
+ const tx={bookingReceipt:{findMany:async()=>[]},agentMarginOffset:{findMany:async()=>[]},serviceDayClose:{count:async()=>0},bookingAttendance:{findMany:async()=>[],findUnique:async()=>null,count:async()=>0},$executeRaw:async()=>{},userProfile:{findUnique:async()=>profile},tourBooking:{findMany:async()=>bookings},auditEvent:{create:async({data})=>events.push({...data,createdAt:new Date()}),findMany:async({where})=>events.filter(e=>e.targetId===where.targetId&&e.action===where.action)},financePersonnelCommand:{findUnique:async({where})=>commands.get(where.id),create:async({data})=>commands.set(data.id,data)},agentBillLine:{count:async()=>links.size,deleteMany:async()=>links.clear()},agentBill:{findUnique:async({where})=>bills.get(where.id),create:async({data})=>{const {lines,...rest}=data;for(const l of lines.create)links.set(l.bookingId,data.id);const row={...rest,paid:'0',status:'OPEN',version:1};bills.set(row.id,row);return row},update:async({where,data})=>{const row={...bills.get(where.id),...data,version:bills.get(where.id).version+1};bills.set(row.id,row);return row}},agentPayment:{findUnique:async({where})=>payments.get(where.id),create:async({data})=>payments.set(data.id,data)},evidenceAttachment:{findUnique:async({where})=>attachments.get(where.id),create:async({data})=>{attachments.set(data.id,data);return data}}}
  return {tx,prisma:{$transaction:fn=>fn(tx)},bills,payments,commands,events,bookings,attachments,revoke:()=>{profile={...profile,status:'INACTIVE'}}}
 }
 const create=()=>({id:id(10),action:'CREATE',bookingIds:[id(3)],title:'DEMO internal',dueOn:'2026-09-30'})
@@ -91,3 +91,22 @@ test('Agent ticket and booking document categories use the same private evidence
 })
 
 test('no-show financial hold prevents new billing until review is resolved',async()=>{const f=fixture();f.tx.bookingAttendance.count=async()=>1;await assert.rejects(()=>commandReceivable(f.prisma,id(9),create()),{code:'NO_SHOW_FINANCE_REVIEW_REQUIRED'});assert.equal(f.bills.size,0)})
+
+test('reschedule requests preserve dates; authorized confirmations retain every revision',async()=>{
+ const f=fixture();await commandReceivable(f.prisma,id(9),create())
+ const request={id:id(31),billId:id(10),version:1,action:'RESCHEDULE',rescheduleKind:'REQUEST',dueOn:'2026-10-07',reason:'Agent requested next week'}
+ await commandReceivable(f.prisma,id(9),request);await commandReceivable(f.prisma,id(9),request)
+ assert.equal(f.bills.get(id(10)).dueOn.toISOString().slice(0,10),'2026-09-30')
+ assert.equal(f.bills.get(id(10)).rescheduleHistory.length,1)
+ await assert.rejects(commandReceivable(f.prisma,id(9),{...request,id:id(32),version:2,rescheduleKind:'PROMISE'}),{code:'PERMISSION_DENIED'})
+ f.tx.userProfile.findUnique=async()=>({id:id(9),status:'ACTIVE',roles:[{roleCode:'MANAGER',scope:'COMPANY'}]})
+ await commandReceivable(f.prisma,id(9),{...request,id:id(33),version:2,rescheduleKind:'PROMISE'})
+ assert.equal(f.bills.get(id(10)).promisedOn.toISOString().slice(0,10),'2026-10-07')
+ assert.equal(f.bills.get(id(10)).dueOn.toISOString().slice(0,10),'2026-09-30')
+ await commandReceivable(f.prisma,id(9),{...request,id:id(34),version:3,rescheduleKind:'EXTEND',dueOn:'2026-10-15'})
+ assert.equal(f.bills.get(id(10)).originalDueOn.toISOString().slice(0,10),'2026-09-30')
+ assert.equal(f.bills.get(id(10)).dueOn.toISOString().slice(0,10),'2026-10-15')
+ assert.equal(f.bills.get(id(10)).rescheduleHistory.length,3)
+ await commandReceivable(f.prisma,id(9),pay(35,4,'100.01'))
+ await assert.rejects(commandReceivable(f.prisma,id(9),{...request,id:id(36),version:5}),{code:'RECORD_CONFLICT'})
+})

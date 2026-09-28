@@ -29,7 +29,7 @@ export default function DashboardPage({user}) {
  const title='Dashboard'
  return <div className={`dashboard${persona?' dashboard-reference':''}`}>{persona?<DashboardHero persona={persona} data={data} refresh={<RefreshButton onClick={reload} disabled={state.loading}/>}/>:<div className="page-heading dashboard-heading"><h1 tabIndex="-1">{bilingualLabel(title)}</h1></div>}
  {!persona?<section className="panel dashboard-state dashboard-coming-soon"><h2>{bilingualLabel('Your new dashboard is being prepared')}</h2><p>{t('The previous dashboard has been removed. Use the navigation to open your work areas while your role’s new dashboard is being designed.')}</p></section>:state.loading?<section className="panel dashboard-state" role="status">{t('Loading your work…')}</section>:state.error?<section className="panel dashboard-state" role="alert"><p>{t(state.error)}</p><Button onClick={reload}>{t('Retry')}</Button></section>:<>
- {persona==='programmer'&&<ProgrammerDashboard user={user} requestDuration={state.requestDuration}/>}
+ {persona==='programmer'&&<ProgrammerDashboard data={data} requestDuration={state.requestDuration}/>}
  {persona==='gm'&&<ManagementDashboard data={data} onSelect={setSelected}/>}
  {persona.startsWith('booking-')&&<BookingDashboard data={data} persona={persona} onSelect={setSelected}/>}
  {!['programmer','gm'].includes(persona)&&!persona.startsWith('booking-')&&<RoleDashboard data={data} persona={persona}/>}

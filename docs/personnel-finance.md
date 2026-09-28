@@ -1,5 +1,7 @@
 # Personnel and finance workflows
 
+See [Backoffice issue #24](backoffice-issue-24.md) for separate Booking commission and Agent refund workflows, planned payment dates, Agent terms, reschedules and customer-on-behalf collections. They retain the existing independent finance review and manual external-payment recording boundary.
+
 Personnel records are separate from User profiles. `EMPLOYMENT` stores position and seasonal dates without compensation; `ATTENDANCE` records present, rest, paid leave, unpaid leave, absence or available without a job. No dispatch assignment creates an absence or salary deduction. Substitute staff are validated active and cannot substitute themselves.
 
 The owner-approved payroll policy uses an explicit period, base wage and its reason/basis, then itemized additions and deductions with a reason for every line. Net payable is base wage plus additions minus deductions; an independent reviewer approves each period. Amounts use decimal strings and integer cents; no calendar divisor, automatic deduction, tax, social security or statutory leave formula is assumed. Trip allowances require a real Job Order staff assignment. Reimbursements require evidence references. Work advances and salary advances remain distinct from payroll and are not automatically deducted.

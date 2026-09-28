@@ -1,3 +1,5 @@
+import {validateAgentRefund} from './agent-refund.js'
+import {validateCommission} from './booking-commission.js'
 import {financeListSelect,financeListPayloads} from './read-models.js'
 import {csvDocument} from '../../../../packages/contracts/csv.js'
 import { effectiveAccess } from '../../../../packages/contracts/access.js'
@@ -16,12 +18,13 @@ function assert(value,code='INVALID_INPUT'){if(!value)fail(code,400)}
 export function validatePayload(kind,payload){
  const spec=personnelFinanceKinds[kind];assert(spec,'INVALID_KIND');keys(payload,spec.fields.map(f=>f[0]));const result={}
  for(const [key,,type,options] of spec.fields){const value=payload[key]
+  if(type==='date-optional'){if(value)dateOnly(value);result[key]=value||null;continue}
   if(type==='employee-optional'){result[key]=value?uuid(value):null;continue}
   if(type==='items'){try{financialTotal(kind,payload)}catch(e){fail(e.message,400)}result[key]=value.map(i=>({...i,label:i.label.trim(),amount:String(i.amount)}));continue}
   if(type==='date'){dateOnly(value);result[key]=value}
   else if(type==='money'){try{assert(cents(value)>0,'INVALID_AMOUNT')}catch{fail('INVALID_AMOUNT',400)}result[key]=String(value)}
   else if(type==='select'){assert(options.includes(value));result[key]=value}
-  else if(type==='run'||type==='purchase')result[key]=uuid(value)
+  else if(type==='run'||type==='purchase'||type==='booking'||type==='receipt')result[key]=uuid(value)
   else result[key]=string(value,2000)
  }
  if(result.startsOn&&result.endsOn)assert(result.endsOn>=result.startsOn,'INVALID_DATE_RANGE')
@@ -45,8 +48,10 @@ async function readPersonnelFinance(prisma,actorId,params){
  const kind=params.get('kind')||'EMPLOYMENT',access=await personnelFinancePermission(prisma,actorId,kind)
  const page=Math.max(1,Math.min(10000,Number(params.get('page'))||1)),q=(params.get('q')||'').trim().slice(0,100)
  if(params.get('lookup')){
-  const lookup=params.get('lookup');if(!['employees','runs','purchases'].includes(lookup))fail('INVALID_LOOKUP',400)
+  const lookup=params.get('lookup');if(!['employees','runs','purchases','bookings','receipts'].includes(lookup))fail('INVALID_LOOKUP',400)
   if(lookup==='runs'&&kind!=='ALLOWANCE'||lookup==='purchases'&&kind!=='SUPPLIER_PAYMENT')fail('INVALID_LOOKUP',400)
+  if(lookup==='receipts'){if(kind!=='AGENT_REFUND')fail('INVALID_LOOKUP',400);const where={margin:{gt:0},...(q?{reference:{contains:q,mode:'insensitive'}}:{})};const total=await prisma.bookingReceipt.count({where});const rows=await prisma.bookingReceipt.findMany({where,select:{id:true,reference:true},orderBy:[{createdAt:'desc'},{id:'asc'}],take:25,skip:(page-1)*25});return {rows:rows.map(row=>({id:row.id,name:row.reference})),total,page,pages:Math.max(1,Math.ceil(total/25))}}
+  if(lookup==='bookings'){if(kind!=='BOOKING_COMMISSION')fail('INVALID_LOOKUP',400);const where={status:'COMPLETED',...(q?{OR:[{code:{contains:q,mode:'insensitive'}},{name:{contains:q,mode:'insensitive'}}]}:{})};const total=await prisma.tourBooking.count({where});const rows=await prisma.tourBooking.findMany({where,select:{id:true,code:true,name:true},orderBy:{code:'asc'},take:25,skip:(page-1)*25});return {rows:rows.map(row=>({id:row.id,name:row.code+' · '+row.name})),total,page,pages:Math.max(1,Math.ceil(total/25))}}
   const model=lookup==='employees'?'userProfile':lookup==='runs'?'dispatchRun':'purchaseOrder',field=lookup==='employees'?'displayName':'name'
   const where={status:lookup==='employees'?'ACTIVE':lookup==='runs'?'OPEN':{in:['PART_RECEIVED','RECEIVED']},...(q?{[field]:{contains:q,mode:'insensitive'}}:{})}
   const total=await prisma[model].count({where});const rows=await prisma[model].findMany({where,select:{id:true,[field]:true},orderBy:{[field]:'asc'},take:25,skip:(page-1)*25})
@@ -82,11 +87,15 @@ export async function savePersonnelFinance(prisma,actorId,input){
   if(payload.substituteId){assert(payload.substituteId!==input.employeeId,'INVALID_SUBSTITUTE');await employee(tx,payload.substituteId)}
   if(input.kind==='ALLOWANCE'){const assigned=await tx.dispatchStaff.findFirst({where:{runId:payload.runId,userId:input.employeeId}});if(!assigned)fail('EMPLOYEE_NOT_ASSIGNED')}
   if(input.kind==='SUPPLIER_PAYMENT')await supplierBalance(tx,{id:input.id,payload})
+  if(input.kind==='AGENT_REFUND'){if(old&&old.payload.receiptId!==payload.receiptId)fail('REFUND_RECEIPT_IMMUTABLE');await validateAgentRefund(tx,{id:input.id,payload})}
+  if(input.kind==='BOOKING_COMMISSION'){if(old&&old.payload.bookingId!==payload.bookingId)fail('COMMISSION_BOOKING_IMMUTABLE');await validateCommission(tx,{id:input.id,employeeId:input.employeeId,payload})}
   if(input.kind==='ATTENDANCE'){
    const duplicate=await tx.financePersonnelRecord.findFirst({where:{kind:'ATTENDANCE',employeeId:input.employeeId,id:{not:input.id},status:{notIn:['CANCELLED','REJECTED']},payload:{path:['date'],equals:payload.date}}});if(duplicate)fail('ATTENDANCE_ALREADY_RECORDED')
   }
   const data={title:string(input.title,160),employeeId:input.employeeId,payload}
   const row=old?await tx.financePersonnelRecord.update({where:{id:old.id},data:{...data,version:{increment:1}}}):await tx.financePersonnelRecord.create({data:{...data,id:input.id,kind:input.kind,createdBy:actorId}})
+  if(input.kind==='AGENT_REFUND'&&!old)await tx.agentRefundClaim.create({data:{receiptId:payload.receiptId,recordId:row.id}})
+  if(input.kind==='BOOKING_COMMISSION'&&!old)await tx.bookingCommissionClaim.create({data:{bookingId:payload.bookingId,recordId:row.id}})
   await audit(tx,actorId,row,old?'EDIT':'CREATE')
   const result=JSON.parse(JSON.stringify({row}));await tx.financePersonnelCommand.create({data:{id:commandId,actorId,requestHash:fingerprint,result}});return result
  })
@@ -103,14 +112,17 @@ export async function commandPersonnelFinance(prisma,actorId,input){
   if(prior){if(prior.requestHash!==requestHash||prior.actorId!==actorId)fail('COMMAND_CONFLICT');return prior.result}
   if(old.version!==input.version)fail('RECORD_CONFLICT')
   if(!recordActions(old,access,actorId).includes(input.action))fail('TRANSITION_NOT_ALLOWED',403)
+  if(old.kind==='AGENT_REFUND'&&['SUBMIT','APPROVE','PAY'].includes(input.action))await validateAgentRefund(tx,old)
+  if(old.kind==='BOOKING_COMMISSION'&&['SUBMIT','APPROVE','PAY'].includes(input.action))await validateCommission(tx,old)
   const data={version:{increment:1}},note=string(input.note||'',2000,['REJECT','REJECT_CLEARANCE'].includes(input.action))
   if(input.action==='SUBMIT'){validatePayload(old.kind,old.payload);data.status='SUBMITTED'}
   if(input.action==='APPROVE'){if(old.kind==='SUPPLIER_PAYMENT')await supplierBalance(tx,old);data.status='APPROVED';data.approvedBy=actorId}
   if(input.action==='REJECT')data.status='REJECTED'
   if(input.action==='REVISE'){data.status='DRAFT';data.approvedBy=null}
-  if(input.action==='CANCEL')data.status='CANCELLED'
+  if(input.action==='CANCEL'){data.status='CANCELLED';if(old.kind==='AGENT_REFUND')await tx.agentRefundClaim.delete({where:{receiptId:old.payload.receiptId}});if(old.kind==='BOOKING_COMMISSION')await tx.bookingCommissionClaim.delete({where:{bookingId:old.payload.bookingId}})}
   if(input.action==='PAY'){
    dateOnly(input.paidOn);assert(input.paidOn<=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Bangkok'}),'PAYMENT_DATE_IN_FUTURE')
+   if(old.kind==='AGENT_REFUND')await tx.bookingReceipt.update({where:{id:old.payload.receiptId},data:{refunded:{increment:old.payload.amount}}})
    data.status='PAID';data.payment={paidOn:input.paidOn,reference:string(input.reference,300),recordedBy:actorId,amountCents:financialTotal(old.kind,old.payload)}
   }
   if(input.action==='CLEAR'){

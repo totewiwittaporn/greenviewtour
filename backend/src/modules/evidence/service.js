@@ -27,7 +27,7 @@ async function parentAccess(tx,actorId,kind,id){
   if(!await tx[kind==='AGENT_BILL'?'agentBill':'agentPayment'].findUnique({where:{id},select:{id:true}}))fail('NOT_FOUND',404)
   return {upload:true}
  }
- if(kind==='CUSTOMER_REQUEST'){const {actor}=await authorize(tx,actorId);if(!await tx.customerRequest.findUnique({where:{id},select:{id:true}}))fail('NOT_FOUND',404);return {upload:effectiveAccess(actor,'finance.receive').allowed}}
+ if(kind==='CUSTOMER_REQUEST'){const {actor}=await authorize(tx,actorId,'customer');if(!await tx.customerRequest.findUnique({where:{id},select:{id:true}}))fail('NOT_FOUND',404);return {upload:effectiveAccess(actor,'finance.receive').allowed}}
  if(kind==='BOOKING'){
   const {actor}=await authorize(tx,actorId,'booking')
   const booking=await tx.tourBooking.findUnique({where:{id},select:{id:true,createdById:true,assigneeId:true}})

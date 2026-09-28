@@ -169,6 +169,13 @@ model CompanySettings {
 }
 
 model BusinessPartner {
+ billingMode String? @db.VarChar(20)
+ billingCycleCount Int?
+ billingCycleUnit String? @db.VarChar(10)
+ billingCycleAnchor DateTime? @db.Date
+ creditCount Int?
+ creditUnit String? @db.VarChar(10)
+ creditAnchor String? @db.VarChar(20)
  shortName String? @db.VarChar(10)
  bookingCommissionEligible Boolean @default(false)
  allowedPaymentTerms String[] @default(["PREPAID", "PAID", "COUNTER", "AGENT_CREDIT"])
@@ -820,6 +827,10 @@ model EvidenceAttachment {
 }
 
 model AgentBill {
+ billingPolicySnapshot Json?
+ originalDueOn DateTime? @db.Date
+ promisedOn DateTime? @db.Date
+ rescheduleHistory Json @default("[]")
  id String @id @db.Uuid
  version Int @default(1)
  title String @db.VarChar(160)
@@ -1087,5 +1098,62 @@ model CapacityHold {
  @@unique([poolId,requestId])
  @@index([poolId,expiresAt])
  @@index([requestId])
+ @@schema("app_private")
+}
+
+// Verified external receipts: source remains on TourBooking; payer is independent.
+model BookingReceipt {
+ id String @id @db.Uuid
+ bookingId String @db.Uuid
+ agentId String? @db.Uuid
+ payer String @db.VarChar(20)
+ basis String @db.VarChar(20)
+ received Decimal @db.Decimal(14,2)
+ net Decimal @db.Decimal(14,2)
+ margin Decimal @db.Decimal(14,2)
+ refunded Decimal @default(0) @db.Decimal(14,2)
+ receivedOn DateTime @db.Date
+ reference String @db.VarChar(300)
+ recordedBy String @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ @@index([bookingId])
+ @@index([agentId])
+ @@schema("app_private")
+}
+model AgentMarginOffset {
+ bookingId String? @db.Uuid
+ id String @id @db.Uuid
+ receiptId String @db.Uuid
+ billId String? @db.Uuid
+ amount Decimal @db.Decimal(14,2)
+ recordedBy String @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ @@unique([receiptId,billId])
+ @@schema("app_private")
+}
+
+model BookingCommissionClaim {
+ bookingId String @id @db.Uuid
+ recordId String @unique @db.Uuid
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ @@schema("app_private")
+}
+
+model PersonalLineDelivery {
+ id String @id @db.Uuid
+ eventId String @db.Uuid
+ userId String @db.Uuid
+ mode String @db.VarChar(20)
+ recipient String @db.VarChar(33)
+ status String @db.VarChar(20)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ @@unique([eventId,userId,mode])
+ @@schema("app_private")
+}
+
+model AgentRefundClaim {
+ receiptId String @id @db.Uuid
+ recordId String @unique @db.Uuid
  @@schema("app_private")
 }
