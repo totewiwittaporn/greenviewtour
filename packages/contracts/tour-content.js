@@ -5,7 +5,7 @@ export const tourContentLimits = {
   name:200, summary:1000, introduction:5000, longDescription:20000,
   departureTimes:1000, childPolicy:2000, cancellationTerms:3000, bookingCutoff:1000,
   meals:3000, fees:3000, inclusions:4000, exclusions:4000, preparationNotes:4000,
-  specialConditions:5000, seoTitle:120, metaDescription:320, ogTitle:120, ogDescription:320,
+  specialConditions:5000, suitableFor:1500, meetingPoint:1000, weatherNotes:2000, seoTitle:120, metaDescription:320, ogTitle:120, ogDescription:320,
 }
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const clean=(value,max)=>{

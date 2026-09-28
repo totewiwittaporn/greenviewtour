@@ -1,5 +1,7 @@
 import {capacityText} from '../../../../../packages/contracts/capacity-copy.js'
 import TourAvailability from './TourAvailability.jsx'
+import TourDetail from './TourDetail.jsx'
+import {tourContent,tourCover} from './tourPresentation.js'
 import {useLocale} from '../../core/useLocale.js'
 import {useEffect,useState} from 'react'
 import {Button} from '../../core/ui/Controls.jsx'
@@ -9,14 +11,15 @@ const memberOrigin=()=>['localhost','127.0.0.1'].includes(location.hostname)?'ht
 function LegacyCatalog({pathname,search}){const {t,label,number,money,date,locale}=useLocale();const promotionPage=pathname==='/promotions',slug=new URLSearchParams(search).get('tour'),ownership=new URLSearchParams(search).get('ownership'),[page,setPage]=useState(1),[attempt,setAttempt]=useState(0),[state,setState]=useState({loading:true});useEffect(()=>{const c=new AbortController();setState({loading:true});fetch('/api/public/tours?'+new URLSearchParams({page,view:slug?'detail':'cards',...(promotionPage?{promotionsOnly:'true'}:{}),...(slug?{slug}:{}),...(['GREENVIEW','PARTNER'].includes(ownership)?{ownership}:{})}),{signal:c.signal}).then(async r=>{if(!r.ok)throw Error();return r.json()}).then(r=>{if(!c.signal.aborted)setState(r)}).catch(()=>{if(!c.signal.aborted)setState({error:true})});return()=>c.abort()},[page,slug,attempt,promotionPage,ownership]);return <><main id="content" className="public-catalog"><p className="section-eyebrow">GREENVIEW TOUR</p><h1>{promotionPage?label("โปรโมชั่นทัวร์"):label("โปรแกรมทัวร์")}</h1>{state.loading?<p role="status">{t("กำลังโหลด…")}</p>:state.error?<section role="alert"><p>{t("โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง")}</p><Button onClick={()=>setAttempt(n=>n+1)}>{t("ลองอีกครั้ง")}</Button></section>:<>{!state.rows.length&&<p>{t("ยังไม่มีทัวร์เปิดเผยแพร่ กรุณาติดต่อบริษัทเพื่อสอบถาม")}</p>}<div className={slug?'tour-detail':'tour-grid'}>{state.rows.map(tour=><article className="tour-card" key={tour.id}>{tour.imageUrls&&<img className="catalog-cover" src={tour.imageUrls.split('\n')[0]} alt={tour.name}/>}<div className="tour-content"><p>{tour.durationDays ? number(tour.durationDays) : '—'} {t("วัน")} · {tour.ownership==='GREENVIEW'?t("จัดโดย Greenview Tour"):t("ทัวร์พันธมิตร")}</p><h2>{tour.name}</h2><p>{tour.description}</p><p>{t("ผู้ใหญ่")} {money(tour.adultPrice)} · {t("เด็ก")} {money(tour.childPrice)}</p>{tour.promotions.map(p=><section className="promotion-offer" key={p.id}><h3>{p.name}</h3><p>{t("ราคาพิเศษผู้ใหญ่")} {money(p.adultPrice)} · {t("เด็ก")} {money(p.childPrice)}</p><p>{t("รับจอง")} {date(p.startsOn)} {t("ถึง")} {date(p.endsOn)}</p><p>{t("เดินทาง")} {date(p.serviceStartsOn)} {t("ถึง")} {date(p.serviceEndsOn)}</p><p>{capacityText('promotionQuota',locale)}: {p.remaining===null?t("ไม่จำกัดโควตาโปรโมชั่น"):`${t("เหลือ")} ${number(p.remaining)} ${p.quotaUnit==='SEAT'?t("ที่นั่ง"):t("การจอง")}`} · {t("รอทีมงานยืนยันที่ว่าง")}</p>{p.terms&&<p>{p.terms}</p>}{p.remaining!==0&&<a className="public-button" href={`${memberOrigin()}/tours?tour=${encodeURIComponent(tour.slug)}&promotion=${p.id}`}>{label("เลือกโปรโมชั่นนี้")}</a>}</section>)}{slug?<>{[[label("จุดเด่น"),tour.highlights],[label("โปรแกรมเดินทาง"),tour.route],[label("เวลาออกเดินทาง"),tour.departureTimes],[label("อาหาร"),tour.meals],[label("ค่าธรรมเนียม"),tour.fees],[label("รวมในราคา"),tour.inclusions],[label("ไม่รวมในราคา"),tour.exclusions],[label("เงื่อนไขเด็ก"),tour.childPolicy],[label("สิ่งที่ต้องเตรียม"),tour.preparationNotes],[label("การยกเลิก"),tour.cancellationTerms]].map(([label,value])=>value&&<section key={label}><h3>{label}</h3><p className="preserve-lines">{value}</p></section>)}<div className="tour-grid">{(tour.imageUrls||'').split('\n').slice(1).filter(Boolean).map((src,i)=><img className="catalog-cover" key={src} src={src} alt={`${tour.name} ${t("ภาพ")} ${number(i+2)}`} loading="lazy"/>)}</div><h3>{label("ช่วงวันเดินทางที่รับจองออนไลน์")}</h3>{tour.seasons.length?tour.seasons.map((s,i)=><p key={i}>{date(s.onlineStartsOn)} {t("ถึง")} {date(s.onlineEndsOn)} · {t("ปิดรับก่อนเดินทาง")} {number(s.cutoffDays)} {t("วัน")}</p>):<p>{t("ยังไม่เปิดรับจองออนไลน์ กรุณาติดต่อบริษัท")}</p>}<TourAvailability tour={tour} memberOrigin={memberOrigin()}/></>:<a href={'/tours?tour='+encodeURIComponent(tour.slug)}>{label("รายละเอียดทัวร์ →")}</a>}</div></article>)}</div><div className="catalog-pages"><Button disabled={page<=1} onClick={()=>setPage(p=>p-1)}>{t("ก่อนหน้า")}</Button><span>{t("หน้า")} {number(state.page)}</span><Button disabled={page*12>=state.total} onClick={()=>setPage(p=>p+1)}>{t("ถัดไป")}</Button></div></>}</main></>}
 
 export default function Catalog({pathname,search}) {
-  const params = new URLSearchParams(search)
-  return pathname === '/promotions' || params.get('tour')
+  const params = new URLSearchParams(search),slug=params.get('tour')
+  if(slug)return <TourDetail key={slug+search} slug={slug} search={search}/>
+  return pathname === '/promotions'
     ? <LegacyCatalog key={pathname + search} pathname={pathname} search={search}/>
     : <TourList key={search} search={search}/>
 }
 
 function TourList({search}) {
-  const {t,label,number,money} = useLocale()
+  const {locale,t,label,number,money} = useLocale()
   const params = new URLSearchParams(search)
   const ownership = params.get('ownership') === 'PARTNER' ? 'PARTNER' : 'GREENVIEW'
   const duration = ['day','overnight'].includes(params.get('duration')) ? params.get('duration') : ''
@@ -65,14 +68,14 @@ function TourList({search}) {
           {!state.rows.length && <div className="catalog-message"><p>{t('ยังไม่มีทัวร์เปิดเผยแพร่ กรุณาติดต่อบริษัทเพื่อสอบถาม')}</p><a className="catalog-outline-link" href="/#company">{t('ติดต่อเรา')} <span aria-hidden="true">→</span></a></div>}
           <div className="catalog-tour-grid">
             {state.rows.map(tour => {
-              const cover = tour.imageUrls?.split('\n').map(value=>value.trim()).find(Boolean)
-              const href = '/tours?tour=' + encodeURIComponent(tour.slug)
+              const content=tourContent(tour,locale),cover=tourCover(tour,locale)
+              const href='/tours?'+new URLSearchParams({tour:tour.slug,...(params.get('date')?{date:params.get('date')} : {}),...(params.get('pax')?{pax:params.get('pax')} : {})})
               return <article className="catalog-trip" key={tour.id}>
-                <a className="catalog-trip-photo" href={href} aria-label={tour.name}>{cover ? <img src={cover} alt="" loading="lazy" width="640" height="380"/> : <div className="catalog-photo-placeholder">{t('ภาพโปรแกรมทัวร์')}</div>}</a>
+                <a className="catalog-trip-photo" href={href} aria-label={content.name}>{cover ? <img src={cover.url} alt={cover.alt||content.name} loading="lazy" width="640" height="380"/> : <div className="catalog-photo-placeholder">{t('ภาพโปรแกรมทัวร์')}</div>}</a>
                 <div className="catalog-trip-content">
-                  <h2><a href={href}>{tour.name}</a></h2>
+                  <h2><a href={href}>{content.name}</a></h2>
                   {tour.durationDays != null && <p className="catalog-trip-duration"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>{number(tour.durationDays)} {t('วัน')}</p>}
-                  {(tour.highlights || tour.description) && <p className="catalog-trip-description">{tour.highlights || tour.description}</p>}
+                  {content.summary && <p className="catalog-trip-description">{content.summary}</p>}
                   <div className="catalog-trip-bottom"><p className="catalog-trip-provider">{tour.ownership==='GREENVIEW' ? t('จัดโดย Greenview Tour') : t('ทัวร์พันธมิตร')}</p>
                     {tour.adultPrice != null && <p className="catalog-trip-price">{t('ผู้ใหญ่')} <strong>{money(tour.adultPrice)}</strong></p>}
                     <a className="catalog-outline-link" href={href}>{label('รายละเอียดทัวร์ →')}</a>

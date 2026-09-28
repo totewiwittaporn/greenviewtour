@@ -14,7 +14,7 @@ const editorInclude={
  publicMedia:{orderBy:[{sortOrder:'asc'},{id:'asc'}]},seasons:{select:seasonSelect,orderBy:{startsOn:'asc'}},
  promotions:{select:promotionSelect,orderBy:{startsOn:'desc'}},components:{select:componentSelect,orderBy:[{day:'asc'},{createdAt:'asc'}]},
 }
-const contentKeys=['name','summary','introduction','longDescription','departureTimes','childPolicy','cancellationTerms','bookingCutoff','meals','fees','inclusions','exclusions','preparationNotes','specialConditions','seoTitle','metaDescription','ogTitle','ogDescription']
+const contentKeys=['name','summary','introduction','longDescription','departureTimes','childPolicy','cancellationTerms','bookingCutoff','meals','fees','inclusions','exclusions','preparationNotes','specialConditions','suitableFor','meetingPoint','weatherNotes','seoTitle','metaDescription','ogTitle','ogDescription']
 function blankContent(){return Object.fromEntries(contentKeys.map(key=>[key,'']).concat([['contentReviewedAt','']]))}
 function legacyThai(tour){return {...blankContent(),name:tour.name||'',summary:tour.description||'',departureTimes:tour.departureTimes||'',childPolicy:tour.childPolicy||'',cancellationTerms:tour.cancellationTerms||'',bookingCutoff:tour.bookingCutoff||'',meals:tour.meals||'',fees:tour.fees||'',inclusions:tour.inclusions||'',exclusions:tour.exclusions||'',preparationNotes:tour.preparationNotes||''}}
 function contentRecord(row){

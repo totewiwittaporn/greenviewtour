@@ -1,5 +1,18 @@
 import {capacityErrorCodes,capacityText} from '../../../../../packages/contracts/capacity-copy.js'
 export default {
+  "Show on Home": "แสดงบนหน้าแรก",
+  "Home display order": "ลำดับการแสดงหน้าแรก",
+  "Home badge": "ป้ายบนหน้าแรก",
+  "Best seller": "ขายดี",
+  "Recommended": "แนะนำ",
+  "Signature": "ซิกเนเจอร์",
+  "Suitable for": "เหมาะสำหรับ",
+  "Meeting point": "จุดนัดพบ",
+  "Weather notes": "ข้อมูลสภาพอากาศ",
+  "Do not feature": "ไม่แสดงเป็นโปรแกรมเด่น",
+  "Feature on Home": "แสดงเป็นโปรแกรมเด่นบนหน้าแรก",
+  "No badge": "ไม่มีป้าย",
+  "Set the Home display order for a featured program.": "กำหนดลำดับการแสดงบนหน้าแรกสำหรับโปรแกรมเด่น",
   "Partner source / reference URL": "แหล่งอ้างอิงของพันธมิตร",
   "Partner terms verified": "วันที่ตรวจเงื่อนไขพันธมิตร",
   "Partner content verified": "วันที่ตรวจเนื้อหาพันธมิตร",

@@ -24,7 +24,7 @@ test('content URLs reject executable and credential-bearing URLs',()=>{
  assert.ok(commerceErrors('promotions',{adultPrice:null,childPrice:null}).adultPrice)
 })
 test('money handles zero without treating it as absent',()=>{assert.equal(cents('0'),0);assert.equal(cents(null),null);assert.equal(cents('12.34'),1234);assert.equal(cents('12.345'),null)})
-test('public tour allowlist contains no procurement or Agent fields',()=>{for(const key of ['supplierAdultNet','supplierChildNet','supplierPricing','agentPrices','operator','operatorId'])assert.equal(publicTourSelect[key],undefined)})
+test('public tour allowlist exposes only safe operator identity and no procurement or Agent fields',()=>{for(const key of ['supplierAdultNet','supplierChildNet','supplierPricing','agentPrices','operatorId','partnerSourceUrl','partnerTermsVerifiedAt','partnerContentVerifiedAt','homeFeaturedOrder'])assert.equal(publicTourSelect[key],undefined);assert.deepEqual(publicTourSelect.operator,{select:{name:true}});for(const key of ['contactName','phone','email','paymentTerms','address'])assert.equal(publicTourSelect.operator.select[key],undefined);assert.equal(publicTourSelect.components.select.notes,undefined);assert.equal(publicTourSelect.components.select.resource.select.costPrice,undefined);assert.equal(publicTourSelect.components.select.resource.select.ownership,undefined)})
 test('customer ownership requires confirmed identity and active exact auth link',async()=>{
  let where
  const db={customerProfile:{findUnique:async input=>{where=input.where;return {id:tourId,status:'ACTIVE'}}}}
@@ -133,4 +133,12 @@ test('member nickname rejects invalid values and preserves stale-write protectio
  assert.equal(stale.writes.length,0)
  const concurrent=profileDb();concurrent.customerProfile.updateMany=async()=>({count:0})
  await assert.rejects(()=>saveCustomerProfile(concurrent,memberUser,{version:3,displayName:'Customer',nickname:'New'}),{message:'SETTINGS_CONFLICT'})
+})
+
+test('Home highlights use explicit featured flag and marketing order',async()=>{
+ let query
+ await publicCatalog({tourProgram:{count:async()=>3,findMany:async input=>{query=input;return []}}},new URLSearchParams({view:'highlights',featuredOnly:'true',pageSize:'3'}),now)
+ assert.equal(query.where.homeFeatured,true)
+ assert.deepEqual(query.orderBy[0],{homeFeaturedOrder:'asc'})
+ assert.equal(query.take,3)
 })

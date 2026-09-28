@@ -1,39 +1,46 @@
 import {useLocale} from '../../core/useLocale.js'
 import {useEffect,useState} from 'react'
 import {Button} from '../../core/ui/Controls.jsx'
+import {badgeText,tourContent,tourCover,typeText} from './tourPresentation.js'
 import './PublishedHighlights.css'
-function HighlightGroup({ownership, title}) {
-  const {t,number}=useLocale()
+
+export default function PublishedHighlights() {
+  const {locale,t,number,money}=useLocale()
   const [state,setState]=useState({loading:true}),[attempt,setAttempt]=useState(0)
   useEffect(()=>{
     const controller=new AbortController()
     const timeout=setTimeout(()=>{setState({error:true});controller.abort()},15000)
     setState({loading:true})
-    fetch(`/api/public/tours?view=highlights&pageSize=2&page=1&ownership=${ownership}`,{signal:controller.signal}).then(async response=>{
-      if(!response.ok)throw Error()
-      return response.json()
-    }).then(data=>{if(!controller.signal.aborted)setState(data)}).catch(()=>{if(!controller.signal.aborted)setState({error:true})}).finally(()=>clearTimeout(timeout))
+    fetch('/api/public/tours?'+new URLSearchParams({view:'highlights',pageSize:'3',page:'1',featuredOnly:'true'}),{signal:controller.signal})
+      .then(async response=>{if(!response.ok)throw Error();return response.json()})
+      .then(data=>{if(!controller.signal.aborted)setState(data)})
+      .catch(()=>{if(!controller.signal.aborted)setState({error:true})})
+      .finally(()=>clearTimeout(timeout))
     return()=>{clearTimeout(timeout);controller.abort()}
-  },[ownership,attempt])
-  return <section className="home-tour-group published-highlight-group" aria-labelledby={`tours-${ownership}`} aria-busy={!!state.loading}>
-    <h3 id={`tours-${ownership}`} className="home-tour-group-title">{t(title)}</h3>
-    {state.loading?<p role="status">{t('กำลังโหลดโปรแกรมทัวร์…')}</p>:state.error?<div><p role="alert">{t('ยังโหลดโปรแกรมทัวร์ไม่ได้')}</p><Button onClick={()=>setAttempt(value=>value+1)}>{t('ลองอีกครั้ง')}</Button></div>:!state.rows?.length?<p className="home-empty">{t('ยังไม่มีโปรแกรมเผยแพร่ในหมวดนี้')}</p>:<div className="tour-grid">{state.rows.slice(0,2).map(tour=><article className="tour-card" key={tour.id}>
-      <a className="tour-image-link" href={'/tours?tour='+encodeURIComponent(tour.slug)} aria-label={t('ดูรายละเอียด')+' '+tour.name}>
-        {tour.imageUrls?<img src={tour.imageUrls.split('\n')[0]} alt={tour.name} loading="lazy" width="600" height="400"/>:<div className="home-tour-no-image">Greenview Tour</div>}
-        {tour.durationDays!=null&&<span className="duration">{number(tour.durationDays)} {t('วัน')}</span>}
-      </a><div className="tour-content"><h4>{tour.name}</h4>{tour.description&&<p>{tour.description}</p>}<a href={'/tours?tour='+encodeURIComponent(tour.slug)}>{t('ดูรายละเอียด')} <span aria-hidden="true">→</span></a></div>
-    </article>)}</div>}
-    <a className="home-text-link" href={`/tours?ownership=${ownership}`}>{t('ดูโปรแกรมในหมวดนี้')} <span aria-hidden="true">→</span></a>
-  </section>
-}
-export default function PublishedHighlights() {
-  const {t}=useLocale()
-  const [ownership,setOwnership]=useState('GREENVIEW')
-  const categories=[['GREENVIEW','ทัวร์ของกรีนวิว'],['PARTNER','ทัวร์จากพันธมิตร']]
-  return <>
-    <div className="published-highlight-options" role="group" aria-label={t('โปรแกรมทัวร์')}>
-      {categories.map(([value,title])=><button key={value} type="button" aria-pressed={ownership===value} onClick={()=>setOwnership(value)}>{t(title)}</button>)}
-    </div>
-    <HighlightGroup key={ownership} ownership={ownership} title={categories.find(([value])=>value===ownership)[1]}/>
-  </>
+  },[attempt])
+  if(state.loading)return <p role="status">{t('กำลังโหลดโปรแกรมทัวร์…')}</p>
+  if(state.error)return <div><p role="alert">{t('ยังโหลดโปรแกรมทัวร์ไม่ได้')}</p><Button onClick={()=>setAttempt(value=>value+1)}>{t('ลองอีกครั้ง')}</Button></div>
+  if(!state.rows?.length)return <p className="home-empty">{t('ยังไม่มีโปรแกรมแนะนำสำหรับหน้าแรก')}</p>
+  return <div className="featured-tour-grid">{state.rows.slice(0,3).map(tour=>{
+    const content=tourContent(tour,locale),cover=tourCover(tour,locale)
+    const href='/tours?tour='+encodeURIComponent(tour.slug),badge=badgeText(tour.homeBadge,t)
+    return <article className="featured-tour-card" key={tour.id}>
+      <a className="featured-tour-image" href={href} aria-label={t('ดูรายละเอียด')+' '+content.name}>
+        {cover?<img src={cover.url} alt={cover.alt||content.name} loading="lazy" width="720" height="480"/>:<div className="home-tour-no-image">Greenview Tour</div>}
+        {badge&&<span className={'featured-tour-badge badge-'+tour.homeBadge.toLowerCase()}>{badge}</span>}
+      </a>
+      <div className="featured-tour-body"><h3><a href={href}>{content.name}</a></h3>
+        <div className="featured-tour-meta">
+          {tour.durationDays!=null&&<span>◷ {number(tour.durationDays)} {t('วัน')}</span>}
+          {typeText(tour.tourType,t)&&<span>◎ {typeText(tour.tourType,t)}</span>}
+          <span>⌖ {t('คุระบุรี')}</span>
+        </div>
+        {content.summary&&<p>{content.summary}</p>}
+        <div className="featured-tour-bottom">
+          <div><small>{t('เริ่มต้น')}</small><strong>{money(tour.adultPrice)}</strong><span> / {t('ผู้ใหญ่')}</span></div>
+          <a className="featured-tour-cta" href={href}>{t('ดูรายละเอียด')} <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+    </article>
+  })}</div>
 }

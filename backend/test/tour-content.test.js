@@ -33,11 +33,20 @@ test('partner verification stays internal and Greenview ownership clears stale p
  assert.ok(validateCatalog('tours',{...partner,partnerSourceUrl:'javascript:alert(1)'}).errors.partnerSourceUrl)
  const own=validateCatalog('tours',{...partner,ownership:'GREENVIEW'})
  assert.equal(own.data.operatorId,null);assert.equal(own.data.partnerSourceUrl,null);assert.equal(own.data.partnerTermsVerifiedAt,null);assert.equal(own.data.partnerContentVerifiedAt,null)
- for(const key of ['partnerSourceUrl','partnerTermsVerifiedAt','partnerContentVerifiedAt','publicContent','publicHighlights','itinerarySteps','publicFaqs','publicMedia'])assert.equal(publicTourSelect[key],undefined)
+ for(const key of ['partnerSourceUrl','partnerTermsVerifiedAt','partnerContentVerifiedAt'])assert.equal(publicTourSelect[key],undefined)
+ assert.ok(publicTourSelect.publicContent?.select?.summary);assert.ok(publicTourSelect.publicHighlights?.select?.titleTh);assert.ok(publicTourSelect.itinerarySteps?.select?.timeLabel);assert.ok(publicTourSelect.publicFaqs?.select?.questionEn);assert.ok(publicTourSelect.publicMedia?.select?.url)
 })
 test('tour editor read authorizes before touching Tour content records',async()=>{
  let touched=false
  const prisma={userProfile:{findUnique:async()=>({status:'SUSPENDED',roles:[]})},tourProgram:{findUnique:async()=>{touched=true;return null}}}
  await assert.rejects(()=>readTourEditor(prisma,'actor',id()),{code:'PERMISSION_DENIED'})
  assert.equal(touched,false)
+})
+
+test('Home feature flag requires a display order and clears hidden marketing fields when disabled',()=>{
+ const base={...initialValues('tours'),id:id(),version:0,code:'HOME',name:'Home tour',homeFeatured:'true',homeFeaturedOrder:'',homeBadge:'BEST_SELLER'}
+ assert.ok(validateCatalog('tours',base).errors.homeFeaturedOrder)
+ const featured=validateCatalog('tours',{...base,homeFeaturedOrder:'2'});assert.deepEqual(featured.errors,{});assert.equal(featured.data.homeBadge,'BEST_SELLER')
+ const hidden=validateCatalog('tours',{...base,homeFeatured:'false',homeFeaturedOrder:'2',homeBadge:'BEST_SELLER'})
+ assert.equal(hidden.data.homeFeaturedOrder,null);assert.equal(hidden.data.homeBadge,null)
 })
