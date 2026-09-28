@@ -1,0 +1,29 @@
+.role-dashboard-content .reference-panel > p:not(.reference-range){font-size:12px;line-height:1.7;margin:6px 13px 12px}
+.role-dashboard-content .reference-panel > a{font-size:12px;margin:6px 13px 16px;align-self:flex-start}
+.role-work-table h3{font-size:12px;margin:10px 13px 8px;line-height:1.5}
+.role-secondary{display:block;font-size:10px;line-height:1.6;color:var(--reference-muted);white-space:normal;overflow-wrap:anywhere;margin-top:3px}
+.role-dashboard-content .core-tabs{margin-inline:12px}
+.role-dashboard-content .table-scroll{max-height:400px}
+.role-dashboard-content td a{overflow-wrap:anywhere}
+.role-dashboard-content .table-scroll:has(th:nth-child(6)) table{min-width:620px}
+.role-dashboard-content .table-scroll:has(th:nth-child(5)) table{min-width:500px}
+.role-handover{display:grid;gap:10px;padding:0 13px 13px;max-height:380px;overflow:auto;overscroll-behavior:contain}
+.role-handover article{padding:10px;border:1px solid var(--reference-line);border-radius:8px;min-width:0;overflow-wrap:anywhere}
+.role-handover article > a{font-size:12px;font-weight:650}
+.role-handover p,.role-handover ul{font-size:11px;line-height:1.65;margin:5px 0}
+.role-handover ul{padding-left:18px}
+.role-handover li{margin:4px 0}
+.role-handover small{display:block;color:var(--reference-muted);font-size:10px}
+.role-follow-ups a{min-height:48px;font-size:12px;line-height:1.6}
+.role-follow-ups small{font-size:10px}
+.role-notice{padding:16px;font-size:13px;line-height:1.75;margin-bottom:12px}
+.role-dashboard-content > .reference-panel{margin-bottom:12px}
+.role-dashboard-content .reference-badge.done{background:#fff1df;color:#975400}
+.role-dashboard-content .reference-badge.accepted,.role-dashboard-content .reference-badge.closed{background:#e6f7ed;color:#08703e}
+@media(max-width:520px){.role-handover{max-height:360px}.role-dashboard-content .core-tabs button{min-height:44px}.role-work-table table{min-width:340px}.role-dashboard-content .reference-panel > a{min-height:44px;display:flex;align-items:center}}
+.role-dashboard-content .table-cell-copy:has(>.role-secondary){display:block}
+.role-preparation-links{display:flex;flex-wrap:wrap;gap:8px;margin:0 13px 12px}
+.role-preparation-links>div{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:8px 10px;border:1px solid var(--reference-line);border-radius:7px;font-size:11px}
+.role-preparation-links strong{width:100%;overflow-wrap:anywhere}
+.role-preparation-links a{display:flex;align-items:center;min-height:36px}
+@media(max-width:520px){.role-preparation-links a{min-height:44px}}

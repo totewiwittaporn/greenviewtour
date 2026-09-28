@@ -45,3 +45,6 @@ export function formatDate(date, options = {}, locale = activeLocale) {
 export function formatNumber(number, options = {}, locale = activeLocale) {
   return new Intl.NumberFormat(locale === 'th' ? 'th-TH' : 'en-GB', options).format(number)
 }
+
+// Column labels remain English; other interface copy follows the selected locale.
+export function tableHeading(source, params = {}) { return translate(source, params, 'en') }

@@ -129,3 +129,119 @@ test('return-only drafts use our return date for today/overdue, without double-c
  const drafts = data.widgets.find(widget => widget.id === 'bookings')
  assert.equal(drafts.pending, 5); assert.equal(drafts.today, 2); assert.equal(drafts.overdue, 1)
 })
+
+test('management summary uses arrival dates, real statuses, bounded non-PII rows and explicit ranges', async () => {
+ const { db } = database(actor())
+ const rows = [
+  ...Array.from({ length: 7 }, (_, i) => booking('b' + i, { code: 'B' + i, name: 'PRIVATE GUEST', contactPhone: 'SECRET', agent: { id: 'a', name: 'Agent A' } })),
+  booking('draft', { code: 'D1', status: 'DRAFT' }),
+  booking('cancel', { code: 'C1', status: 'CANCELLED' }),
+  booking('return', { code: 'R1', outboundDate: null }),
+  booking('not-ours', { code: 'N1', outboundDate: null, returnStatus: 'OTHER' }),
+  booking('last-day', { code: 'L1', outboundDate: '2026-10-20' }),
+  booking('outside', { code: 'O1', outboundDate: '2026-10-21' }),
+  booking('past', { code: 'P1', outboundDate: '2026-04-05', status: 'COMPLETED' }),
+ ]
+ db.tourBooking = { count: async () => 0, findMany: async () => rows }
+ const result = await dashboardOverview(db, 'actor', now)
+ const summary = result.managementOverview
+ assert.equal(result.calendar.length, 14)
+ assert.equal(summary.calendar30.length, 30)
+ assert.equal(summary.through, '2026-10-20')
+ assert.equal(summary.calendar30[0].pax, 35)
+ assert.equal(summary.calendar30[1].pax, 5)
+ assert.equal(summary.calendar30.at(-1).pax, 5)
+ assert.deepEqual(Object.fromEntries(Object.entries(summary.bookingDays[0]).filter(([key]) => key !== 'rows')), { date: '2026-09-21', total: 9, confirmed: 7, draft: 1, completed: 0, cancelled: 1 })
+ assert.equal(summary.bookingDays[0].rows.length, 5)
+ assert.equal(summary.topAgents.rows[0].name, 'Agent A')
+ assert.equal(summary.topAgents.rows[0].pax, 35)
+ assert.equal(summary.topAgents.rows[0].share, 77.8)
+ assert.equal(summary.monthly.from, '2026-04-01')
+ assert.equal(summary.monthly.rows[0].bookings, 1)
+ assert.equal(summary.monthly.rows.at(-1).bookings, 7)
+ assert.equal(summary.revenue, null)
+ assert.doesNotMatch(JSON.stringify(summary), /PRIVATE GUEST|SECRET|contactPhone|adultPrice/)
+})
+
+test('management queries require company scope and each effective booking permission', async () => {
+ for (const profile of [actor('MANAGER', 'SELF'), ...['operations.booking', 'operations.islandBooking'].map(permissionCode => actor('MANAGER', 'COMPANY', { permissionOverrides: [{ permissionCode, effect: 'DENY' }] }))]) {
+  const { db, calls } = database(profile)
+  assert.equal((await dashboardOverview(db, 'actor', now)).managementOverview, null)
+  assert.equal(calls.some(([model, args]) => model === 'tourBooking' && args.select?.agent), false)
+ }
+})
+
+test('management periods cross years without month overflow and query remains date bounded', async () => {
+ const { db, calls } = database(actor())
+ const result = await dashboardOverview(db, 'actor', new Date('2027-01-30T18:00:00Z'))
+ const summary = result.managementOverview
+ assert.equal(summary.from, '2027-01-31')
+ assert.equal(summary.through, '2027-03-01')
+ assert.deepEqual(summary.monthly.rows.map(row => row.month), ['2026-08', '2026-09', '2026-10', '2026-11', '2026-12', '2027-01'])
+ assert.equal(summary.monthly.through, '2027-01-31')
+ const query = calls.find(([model, args]) => model === 'tourBooking' && args.select?.agent)[1]
+ assert.equal(query.where.OR[0].outboundDate.gte.toISOString().slice(0, 10), '2026-08-01')
+ assert.equal(query.where.OR[0].outboundDate.lt.toISOString().slice(0, 10), '2027-03-02')
+ assert.equal(query.where.OR[1].outboundDate, null)
+ assert.equal(query.where.OR[1].returnStatus, 'OUR')
+ assert.deepEqual(Object.keys(query.select).sort(), ['adults', 'agent', 'children', 'code', 'id', 'outboundDate', 'programSnapshot', 'returnDate', 'returnStatus', 'status', 'trip'])
+ assert.deepEqual(query.select.agent, { select: { id: true, name: true } })
+})
+
+test('both Booking roles share all 30-day arrivals while work uses owner and manager scope', async () => {
+ const source = [
+  booking('own', { code: 'B1', createdById: 'actor' }),
+  booking('assigned', { code: 'B2', createdById: 'other', assigneeId: 'actor', status: 'DRAFT' }),
+  booking('reassigned', { code: 'B3', createdById: 'actor', assigneeId: 'other' }),
+  booking('return', { code: 'B4', createdById: 'other', outboundDate: null }),
+  booking('last', { code: 'B5', createdById: 'other', outboundDate: '2026-10-20', status: 'COMPLETED' }),
+  booking('cancelled', { code: 'B6', createdById: 'other', status: 'CANCELLED' }),
+  booking('outside', { code: 'B7', createdById: 'actor', outboundDate: '2026-10-21' }),
+  booking('past', { code: 'B8', createdById: 'actor', outboundDate: '2026-09-20' }),
+  booking('not-ours', { code: 'B9', createdById: 'actor', outboundDate: null, returnStatus: 'OTHER' }),
+ ]
+ const results = []
+ for (const role of ['BOOKING', 'HEAD_BOOKING']) {
+  const { db, calls } = database(actor(role, 'SELF', { department: 'BOOKING' }))
+  db.tourBooking = { findMany: async args => {
+   calls.push(['bookingSummary', args])
+   const range = args.where.OR[0].outboundDate
+   const filtered = source.filter(row => {
+    const value = row.outboundDate || (row.returnStatus === 'OUR' ? row.returnDate : null)
+    return value && +new Date(value) >= +range.gte && +new Date(value) < +range.lt
+   })
+   return [...filtered, filtered[0]] // Duplicate joined records must not inflate totals.
+  } }
+  db.userProfile.findMany = async () => [{ id: 'actor', displayName: 'My Name' }, { id: 'other', displayName: 'Colleague' }]
+  const result = await dashboardOverview(db, 'actor', now)
+  results.push(result.bookingOverview)
+  assert.equal(result.widgets, undefined)
+  assert.equal(result.managementOverview, undefined)
+  assert.equal(result.bookingOverview.calendar30.length, 30)
+  assert.equal(result.bookingOverview.through, '2026-10-20')
+  assert.equal(calls.filter(([model]) => model === 'bookingSummary').length, 1)
+  assert.equal(calls.some(([model]) => ['companyWorkRecord', 'agentBill', 'financePersonnelRecord'].includes(model)), false)
+  assert.doesNotMatch(JSON.stringify(result), /B7|B8|B9/)
+ }
+ assert.deepEqual(results[0].calendar30, results[1].calendar30)
+ assert.equal(results[0].calendar30.reduce((sum, day) => sum + day.pax, 0), 20)
+ assert.equal(results[0].scope, 'own'); assert.equal(results[0].work.total, 2)
+ assert.equal(results[0].work.draft, 1); assert.equal(results[0].team.length, 0)
+ assert.deepEqual(results[0].rows.map(row => row.code), ['B1', 'B2'])
+ assert.equal(results[1].scope, 'team'); assert.equal(results[1].work.total, 6)
+ assert.equal(results[1].team.length, 2)
+ assert.equal(results[1].team.reduce((sum, member) => sum + member.total, 0), 6)
+})
+
+test('Booking dashboard rejects department-only roles, scoped grants, and effective denials', async () => {
+ for (const profile of [
+  actor('HEAD_BOOKING', 'TEAM', { department: 'BOOKING' }),
+  actor('BOOKING', 'TEAM', { permissionOverrides: [{ permissionCode: 'operations.booking', effect: 'ALLOW', scopeId: 'department' }, { permissionCode: 'operations.islandBooking', effect: 'ALLOW', scopeId: 'department' }] }),
+  ...['operations.booking', 'operations.islandBooking'].map(permissionCode => actor('BOOKING', 'SELF', { permissionOverrides: [{ permissionCode, effect: 'DENY' }] })),
+ ]) {
+  const { db, calls } = database(profile)
+  const result = await dashboardOverview(db, 'actor', now)
+  assert.equal(result.bookingOverview, undefined)
+  assert.equal(calls.some(([model, args]) => model === 'tourBooking' && args.select?.assigneeId), false)
+ }
+})

@@ -1,6 +1,7 @@
+import {Prisma} from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import { pushText, validatePush } from '../../platform/line/messaging.js'
-import { authorize, dateOnly, fail, hash, write } from './common.js'
+import { authorize, dateOnly, fail, hash, write, uuid } from './common.js'
 
 // Preparation never sends. Delivery requires runner opt-in and server configuration.
 export function bangkokSchedule(now = new Date()) {
@@ -57,14 +58,28 @@ export function summaryMessages(serviceDate, runs, baseUrl, revision = 1) {
   return texts.map(text => ({ type: 'text', text }))
 }
 
-export async function dailySummaryState(prisma, actorId, serviceDate, env = process.env, page = 1) {
+export async function dailySummaryState(prisma, actorId, serviceDate, env = process.env, page = 1, options = {}) {
+ if(options.view==='list'||options.snapshotId)return prisma.$transaction(tx=>readDailySummary(tx,actorId,serviceDate,env,page,options),{isolationLevel:'RepeatableRead',timeout:15000})
+ return readDailySummary(prisma,actorId,serviceDate,env,page,options)
+}
+async function readDailySummary(prisma, actorId, serviceDate, env, page, options) {
   dateOnly(serviceDate)
   if (!Number.isSafeInteger(page) || page < 1) fail('INVALID_INPUT',400)
   await authorize(prisma, actorId)
+  if(options.snapshotId){
+    const row=await prisma.operationDailySnapshot.findFirst({where:{id:uuid(options.snapshotId),serviceDate:dateOnly(serviceDate)}})
+    if(!row)fail('NOT_FOUND',404)
+    return {row}
+  }
+  const lean=options.view==='list'
   const total = await prisma.operationDailySnapshot.count({ where: { serviceDate: dateOnly(serviceDate) } })
   page = Math.min(page,Math.max(1,Math.ceil(total / 25)))
-  const snapshots = await prisma.operationDailySnapshot.findMany({ where: { serviceDate: dateOnly(serviceDate) }, orderBy: [{ kind: 'asc' }, { revision: 'desc' }], take: 25, skip: (page - 1) * 25 })
-  const outbox = await prisma.operationNotificationOutbox.findMany({ where: { serviceDate: dateOnly(serviceDate) }, orderBy: { createdAt: 'desc' }, take:25, select: { id: true, snapshotId: true, status: true, createdAt: true, revision: true } })
+  const snapshots = await prisma.operationDailySnapshot.findMany({ ...(lean?{select:{id:true,serviceDate:true,kind:true,revision:true,createdAt:true}}:{}),where: { serviceDate: dateOnly(serviceDate) }, orderBy: [{ kind: 'asc' }, { revision: 'desc' }], take: 25, skip: (page - 1) * 25 })
+  if(lean&&snapshots.length){
+    const counts=await prisma.$queryRaw(Prisma.sql`SELECT id,jsonb_array_length(runs)::int AS count FROM app_private."OperationDailySnapshot" WHERE id IN (${Prisma.join(snapshots.map(row=>Prisma.sql`${row.id}::uuid`))})`)
+    const byId=new Map(counts.map(row=>[row.id,row.count]));for(const row of snapshots)row.runCount=byId.get(row.id)
+  }
+  const outbox = lean?[]:await prisma.operationNotificationOutbox.findMany({ where: { serviceDate: dateOnly(serviceDate) }, orderBy: { createdAt: 'desc' }, take:25, select: { id: true, snapshotId: true, status: true, createdAt: true, revision: true } })
   return { serviceDate, readiness: notificationReadiness(env), snapshots, outbox, page, pageSize:25, total, assignmentCoverage: 'NOT_VERIFIED' }
 }
 

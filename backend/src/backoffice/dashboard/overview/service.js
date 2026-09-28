@@ -1,6 +1,10 @@
+import {managerWidgetCounts} from './manager-widgets.js'
+import { workSummary } from './work-summary.js'
+import { bookingSummary } from './booking-summary.js'
+import { managementSummary } from './management-summary.js'
 import { effectiveAccess, isManager } from '../../../../../packages/contracts/access.js'
 import { companyRoutes } from '../../../../../packages/contracts/company-routes.js'
-import { profileInclude } from '../../../modules/identity-access/policy.js'
+import { accessProfileSelect } from '../../../modules/identity-access/policy.js'
 import { managementScope } from '../../../modules/identity-access/user-management.js'
 import { fail, dateOnly } from '../../../modules/operations/common.js'
 import { pendingPassengers } from '../../../modules/operations/dispatch.js'
@@ -10,8 +14,8 @@ const dayKey = value => value ? new Date(value).toISOString().slice(0, 10) : nul
 const arrivalWhere = filter => ({ OR: [{ outboundDate: filter }, { outboundDate: null, returnStatus: 'OUR', returnDate: filter }] })
 const addDays = (day, n) => new Date(+dateOnly(day) + n * 86400000).toISOString().slice(0, 10)
 // Match Reception: arrivals once per booking, or our return leg for return-only bookings.
-export function customerCalendar(rows, start) {
- const days = Array.from({ length: 14 }, (_, i) => ({ date: addDays(start, i), bookings: 0, pax: 0, programs: [] }))
+export function customerCalendar(rows, start, length = 14) {
+ const days = Array.from({ length }, (_, i) => ({ date: addDays(start, i), bookings: 0, pax: 0, programs: [] }))
  const seen = new Set()
  for (const row of rows) {
   if (seen.has(row.id) || !['CONFIRMED', 'COMPLETED'].includes(row.status)) continue
@@ -36,19 +40,30 @@ export function dashboardScope(actor) {
 }
 
 // Counts are computed over complete authorized sets, never a paginated list response.
-export async function dashboardOverview(prisma, actorId, now = new Date()) {
+export async function dashboardOverview(prisma, actorId, now = new Date(), {surface='legacy'} = {}) {
  return prisma.$transaction(async tx => {
-  const actor = await tx.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
+  const actor = await tx.userProfile.findUnique({ where: { id: actorId }, select: accessProfileSelect })
   const scope = dashboardScope(actor), allowed = code => effectiveAccess(actor, code, { now }).allowed
   const today = thailandDay(now), end = addDays(today, 14), date = dateOnly(today)
+  const pageMode=surface==='page', pageManager=pageMode&&scope.company
+  if(pageMode&&actor.roles.some(role=>role.roleCode==='ADMIN_MANAGER'&&role.scope==='COMPANY'))return {today,timezone:'Asia/Bangkok',generatedAt:now.toISOString(),scope:'Company',widgets:[],calendar:null,managementOverview:null,workOverview:null}
+  const gmWidgetIds=new Set(['guide','driver','guide-crew','driver-crew','guide-allocation','driver-allocation'])
+  const bookingRole=actor.roles.some(g=>['SELF','COMPANY'].includes(g.scope)&&['BOOKING','HEAD_BOOKING'].includes(g.roleCode||g.code))
+  if(!scope.company&&bookingRole&&allowed('operations.booking')&&allowed('operations.islandBooking'))return {today,through:addDays(today,29),timezone:'Asia/Bangkok',generatedAt:now.toISOString(),bookingOverview:await bookingSummary(tx,actor,today,customerCalendar,{lean:pageMode})}
   const startTime = new Date(today + 'T00:00:00+07:00'), endTime = new Date(end + 'T00:00:00+07:00')
   const tomorrowTime = new Date(addDays(today, 1) + 'T00:00:00+07:00')
-  const widgets = [], tasks = []
+  const widgets = [], tasks = [], sources = [], runWidgets=[], allocationWidgets=[]
   const team = scope.department ? await tx.userProfile.findMany({ where: { department: scope.department, roles: { none: { roleCode: { in: ['ADMIN_MANAGER', 'MANAGER'] } } } }, select: { id: true } }) : []
   const ids = [...new Set([actorId, ...team.map(u => u.id)])]
   const owned = field => scope.company ? {} : { [field]: { in: ids } }
   const scopeLabel = scope.company ? 'Company' : scope.department ? `${scope.department.toLowerCase()} department` : 'My work'
   async function countWidget({ id, title, href, model, base = {}, pending, overdue, todayWhere, review, detail, visibility = scopeLabel }) {
+   if(pageManager&&!gmWidgetIds.has(id)){
+    if(href.startsWith('/company/'))widgets.push({id,title,href,pending:null,overdue:null,today:null,review:null,scope:visibility})
+    return
+   }
+   sources.push({ id, title, href, model, base, pending, visibility })
+   if(pageManager&&model==='dispatchRun'){runWidgets.push({id,title,href,base,detail,visibility});return}
    const [pendingCount, overdueCount, todayCount, reviewCount] = await Promise.all([
     tx[model].count({ where: { AND: [base, pending] } }),
     overdue ? tx[model].count({ where: { AND: [base, pending, overdue] } }) : null,
@@ -58,7 +73,7 @@ export async function dashboardOverview(prisma, actorId, now = new Date()) {
    widgets.push({ id, title, href, pending: pendingCount, overdue: overdueCount, today: todayCount, review: reviewCount, detail, scope: visibility })
   }
   const calendarAllowed = scope.company && allowed('operations.booking') && allowed('operations.islandBooking')
-  const calendarTask = calendarAllowed ? tx.tourBooking.findMany({
+  const calendarTask = !pageMode&&calendarAllowed ? tx.tourBooking.findMany({
    where: { status: { in: ['CONFIRMED', 'COMPLETED'] }, OR: [{ outboundDate: { gte: date, lt: dateOnly(end) } }, { outboundDate: null, returnStatus: 'OUR', returnDate: { gte: date, lt: dateOnly(end) } }] },
    select: { id: true, status: true, outboundDate: true, returnDate: true, returnStatus: true, adults: true, children: true, programSnapshot: true, trip: { select: { tourId: true, name: true } } },
   }).then(rows => customerCalendar(rows, today)) : Promise.resolve(null)
@@ -78,6 +93,7 @@ export async function dashboardOverview(prisma, actorId, now = new Date()) {
    ['operations.manageDriver', 'operations.driver', ['TRANSFER'], 'driver', 'Bookings awaiting vehicle allocation'],
   ]) {
    if (!scope.company || !allowed(permission) || !allowed(read)) continue
+   if(pageManager){allocationWidgets.push({categories,route,title});continue}
    tasks.push((async () => {
     const lines = await tx.bookingComponent.findMany({ where: { selected: true, resource: { category: { in: categories } }, booking: { status: 'CONFIRMED', OR: [{ outboundDate: { gte: date, lt: dateOnly(end) } }, { returnStatus: 'OUR', returnDate: { gte: date, lt: dateOnly(end) } }] } },
      select: { quantity: true, dispatchDirection: true, resource: { select: { baseUnit: true } }, booking: { select: { id: true, adults: true, children: true, outboundDate: true, returnDate: true, returnStatus: true, attendance: { select: { direction: true, serviceDate: true, noShowAdults: true, noShowChildren: true } } } }, dispatchAssignments: { select: { status: true, adults: true, children: true, run: { select: { direction: true } } } } } })
@@ -90,7 +106,7 @@ export async function dashboardOverview(prisma, actorId, now = new Date()) {
     widgets.push({ id: route + '-allocation', title, href: '/operations/' + route, pending: pending.size, today: dueToday.size, overdue: null, review: null, scope: 'Company', detail: 'Unique bookings with passengers still unallocated in the next 14 days, excluding recorded no-shows.' })
    })())
   }
-  const duties = allowed('inventory.request') && effectiveAccess(actor, 'operations.stock', { now }).source !== 'User restriction' ? await tx.warehouseResponsibility.findMany({ where: { OR: [{ primaryUserId: actorId }, { deputyUserIds: { has: actorId } }] }, select: { storeId: true } }) : []
+  const duties = !pageManager&&allowed('inventory.request') && effectiveAccess(actor, 'operations.stock', { now }).source !== 'User restriction' ? await tx.warehouseResponsibility.findMany({ where: { OR: [{ primaryUserId: actorId }, { deputyUserIds: { has: actorId } }] }, select: { storeId: true } }) : []
   for (const [route, definition] of Object.entries(companyRoutes)) {
    if (!(definition.anyPermissions || [definition.permission]).some(allowed)) continue
    const { kind, title, finance } = definition
@@ -111,8 +127,11 @@ export async function dashboardOverview(prisma, actorId, now = new Date()) {
    } else if (kind === 'PURCHASE') tasks.push(countWidget({ id: route, title, href: '/company/' + route, model: 'purchaseOrder', pending: { status: { in: ['DRAFT', 'SUBMITTED', 'REJECTED', 'APPROVED', 'PART_RECEIVED'] } }, detail: 'Purchases awaiting review or receiving.', visibility: 'Authorized purchasing records' }))
   }
   if (allowed('operations.stock')) tasks.push(countWidget({ id: 'damaged-stock', title: 'Stock awaiting repair or cleaning', href: '/operations/inventory', model: 'stockBalance', pending: { quantity: { gt: 0 }, condition: { in: ['DAMAGED', 'CLEANING'] } }, detail: 'Stock balance rows, not item quantities. Excludes ready stock.', visibility: 'Authorized inventory records' }))
-  const [calendar] = await Promise.all([calendarTask, ...tasks])
+  if(pageManager)tasks.push(managerWidgetCounts(tx,runWidgets,allocationWidgets,{today,end,now,startTime,endTime,tomorrowTime}).then(rows=>widgets.push(...rows)))
+  const summaryTask = calendarAllowed ? managementSummary(tx, today, customerCalendar,{lean:pageMode}) : Promise.resolve(null)
+  const [calendar, managementOverview] = await Promise.all([calendarTask, summaryTask, ...tasks])
   widgets.sort((a, b) => (b.overdue || 0) - (a.overdue || 0) || b.pending - a.pending || a.id.localeCompare(b.id))
-  return { today, through: addDays(today, 13), timezone: 'Asia/Bangkok', generatedAt: now.toISOString(), scope: scopeLabel, calendar, widgets }
+  const workOverview = scope.company ? null : await workSummary(tx, actor, today, sources, now,{lean:pageMode})
+  return { workOverview, today, through: addDays(today, 13), timezone: 'Asia/Bangkok', generatedAt: now.toISOString(), scope: scopeLabel, calendar, widgets, managementOverview }
  }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
 }

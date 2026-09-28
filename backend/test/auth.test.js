@@ -13,7 +13,9 @@ async function request({ headers = {}, method = 'GET', url = '/api/users', input
   Object.assign(req, { method, url, headers: { host: '127.0.0.1:5000', 'x-greenview-local-token': token, ...(method === 'POST' ? { origin: 'http://localhost:5174', 'content-type': 'application/json' } : {}), ...headers } })
   const sessions = new SessionStore()
   sessions.authenticated = async () => { if (!session) sessions.get(req); return { user: { id: 'user', email: 'qa@example.invalid' }, entry: { purpose } } }
-  await createHandler({ pool: {}, prisma: { userProfile: { findUnique: async () => profile } }, token, users, sessions, provider })(req, {
+  const prisma={userProfile:{findUnique:async()=>profile}}
+  prisma.$transaction=fn=>fn(prisma)
+  await createHandler({ pool: {}, prisma, token, users, sessions, provider })(req, {
     writeHead(code, headers) { status = code; responseHeaders = headers }, end(body) { data = JSON.parse(body) },
   })
   return { status, data, headers: responseHeaders }

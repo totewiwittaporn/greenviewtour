@@ -156,3 +156,27 @@ test('return-only blueprint handles the absent outbound date',async()=>{
  assert.equal(result.journey.returnDate,'2026-11-10')
  assert.equal(checked.where.serviceDate.in.length,1)
 })
+
+test('saveBooking persists commission rules and keeps them after catalog edits and owner transfer',async()=>{
+ const {saveBooking}=await import('../src/modules/operations/bookings.js')
+ const {assignBooking}=await import('../src/modules/operations/booking-ownership.js')
+ const f=saveFixture()
+ Object.assign(f.program,{bookingCommissionEligible:true,bookingAdultCommission:'12.35',bookingChildCommission:'2.10'})
+ Object.assign(f.agent,{bookingCommissionEligible:true})
+ f.tx.userProfile.findUnique=async({where})=>({id:where.id,status:'ACTIVE',roles:[{roleCode:where.id===id(30)?'HEAD_BOOKING':'BOOKING',scope:where.id===id(30)?'COMPANY':'SELF'}]})
+ f.tx.operationTrip.update=async()=>({})
+ f.tx.bookingComponent={deleteMany:async()=>{}}
+ const update=f.tx.tourBooking.update
+ f.tx.tourBooking.update=async args=>{const result=await update(args);if(args.data.lines)result.lines=args.data.lines.create.map(l=>({...l,resource:f.program.components[0].resource,issuedQty:0}));return result}
+ const input={...f.input,agentId:f.agent.id}
+ const first=(await saveBooking(f.prisma,id(20),input)).row
+ assert.equal(first.commissionSnapshot.amount,'26.80');assert.equal(first.commissionSnapshot.agentEligible,true);assert.equal(first.commissionSnapshot.beneficiaryId,id(20))
+ f.program.bookingCommissionEligible=false;f.program.bookingAdultCommission='900';f.agent.bookingCommissionEligible=false
+ const original=structuredClone(first.commissionSnapshot)
+ await assignBooking(f.prisma,id(30),{id:id(31),bookingId:first.id,version:first.version,assigneeId:id(21)})
+ assert.deepEqual(first.commissionSnapshot,original)
+ const edited=(await saveBooking(f.prisma,id(21),{...input,version:first.version,name:'Edited after assignment'})).row
+ assert.deepEqual(edited.commissionSnapshot,original)
+ const fresh=(await saveBooking(f.prisma,id(21),{...input,id:id(12),version:0})).row
+ assert.equal(fresh.commissionSnapshot.status,'NO_COMMISSION');assert.equal(fresh.commissionSnapshot.amount,'0.00')
+})

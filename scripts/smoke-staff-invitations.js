@@ -61,6 +61,8 @@ try {
   await page.getByRole('button', { name: '+ Add employee', exact: true }).click()
   await page.getByRole('button', { name: 'Create invitation link', exact: true }).click()
   await page.getByText('Enter the employee’s name.', { exact: true }).waitFor()
+  // Validation moves focus on requestAnimationFrame after the error commit.
+  await page.waitForFunction(el=>el===document.activeElement,await page.getByLabel('Full name').elementHandle())
   assert.equal(await page.getByLabel('Full name').evaluate(el => el === document.activeElement), true)
   await page.getByLabel('Full name').fill('New Staff')
   await page.getByLabel('Email address').fill('new-staff@example.invalid')
@@ -137,7 +139,7 @@ try {
   await page.screenshot({ path: fileURLToPath(new URL('user-dropdown-mobile.png', output)), fullPage: true })
   await page.keyboard.press('Escape')
   assert.equal(await trigger.evaluate(el => el === document.activeElement), true)
-  await trigger.click(); await page.getByRole('heading', { name: 'Users', exact: true }).click()
+  await trigger.click(); await page.mouse.click(2, 2) // Visible Navbar edge outside the account popup.
   await page.getByRole('menu').waitFor({ state: 'hidden' })
   await page.getByRole('button', { name: '+ Add employee', exact: true }).click()
   const mobileHandle = await page.getByRole('combobox', { name: 'Department', exact: true }).elementHandle()

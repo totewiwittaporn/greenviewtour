@@ -295,3 +295,50 @@ Staff login is separate from navigation lists, centered in the bottom footer bar
 Shared Core Shell now uses a216px deep-teal sidebar and56px white header,60px on phone, with the same original boat logo as Public. Existing navigation permission filtering, UserInfo, language controls and leave protection remain canonical. The question-mark before UserInfo opens a Core Dialog with Dashboard help; it does not claim to be the planned comprehensive illustrated manual. Shell.css owns only shared chrome, leaving other feature layouts unchanged.
 
 Dashboard uses the existing authenticated aggregate. A14-day arrival calendar has7weekday columns and2rows, today outlined teal, weekends tinted, and Core Dialog program summaries. It remains a rolling window starting today, not a Monday-aligned month calendar. No unsupported previous/next-period controls. Core DataTable replaces attention cards; rows show work area, actual scope, today, pending, overdue and awaiting acceptance with existing deep links. Core SelectField filters available scope and positive today/overdue/review measures. Null measures remain em dashes. Never sum overlapping queues into a fabricated total. Head/staff titles use the authorized response scope, not client role guesses; no invented assignee/task data. Narrow tables/calendar own horizontal scrolling; page itself does not overflow.
+
+
+## GM and Programmer reference Dashboard (22 September 2026)
+
+Owner-selected reference supersedes the previous teal-only dashboard treatment for these two personas. Active COMPANY ADMIN_MANAGER uses Programmer / System Administrator; COMPANY MANAGER uses General Manager. Role selection is presentation only, not an authorization grant. Other roles show a clean redesign-pending page with their existing work navigation; the old dashboard has been removed for every role. The original boat logo is retained without replacement.
+
+Core Shell.css owns `workspace-reference`: full-width 64px navbar, 196px near-black teal sidebar (#112c35), pale sea-blue canvas and white compact data panels. Search, bell, help and UserInfo follow that order. The reference shell persists across internal destinations for those users. Mobile retains the canonical inline, non-modal navigation; search wraps to its own header row.
+
+Dashboard reference-dashboard.css owns --reference-blue #0781ec, --reference-ink #082b45, --reference-line #d7edf8, --reference-muted #48667a. Existing Manrope/Inter/Noto Sans Thai families remain; semantic red, orange, blue, green and purple accents follow the supplied reference. The extracted/reconstructed island landscape is a project-local image at public/images/dashboard/island-hero.png, produced from the owner's supplied image using imagegen; it is not a pixel-identical crop. Hero retains the approved position, duties and Thai introduction; real headings and controls overlay the image. White panels use 11px radii and compact tables/charts.
+
+GM uses four KPIs, 30-day customer bars, agent ranking, booking day tabs, transport summaries and lower monthly/expense/report panels. Programmer uses the requested monitoring panel arrangement with explicit disconnected sources, rather than fabricated charts and health figures. A measured browser dashboard-request duration is labeled narrowly. The old 14-day calendar and generic attention table are removed from every role; they are not hidden or moved below the new panels.
+
+
+## Owner correction — remove legacy dashboards and scope manuals (22 September 2026)
+
+This supersedes earlier dashboard layout descriptions above. Remove the old calendar14 and generic work-attention table from every role, not merely below the new content. GM and Programmer show only the new reference layout; all other roles show a clean redesign-pending page and keep domain navigation. This changes the presentation, not persisted business records or domain permissions. The server may retain backward-compatible aggregate fields used by existing domain tests; the retired panels are not mounted.
+
+Manuals are served through authenticated role-aware routes and an API, not a combined public document. ACTIVE COMPANY Admin Manager may select every role manual. Other users may open only manuals for their assigned roles, including multiple roles; direct URLs are checked server-side. The previous public manual URL redirects to the authenticated manual index without containing any manual body. GM and Programmer manuals explain their own new panels; pending-role manuals explain current navigation and redesign status without resurrecting old widgets.
+
+
+## Booking responsibility and commission — owner update 22 September 2026
+
+Existing role codes remain stable: HEAD_BOOKING is Booking Manager and BOOKING is Booking Assistant. Both roles with effective booking access read all bookings and the customer directory. Customer account edits, customer-request fulfillment and finance approvals retain existing separate permissions. Assistant mutations require the effective responsible person (assigneeId, falling back to immutable createdById for legacy rows); Booking Manager may manage and assign all Booking work. Every mutation, including status, details, return amendments, price requests and evidence writes, rechecks ownership on the server. Assignment is versioned and audited. It changes responsibility without changing creator or recorded commission beneficiary.
+
+Agent and Tour Program each explicitly enable Booking staff commission; either disabled takes precedence. Defaults are disabled, including previously unconfigured catalog records. Direct bookings have no Agent condition and use the program condition; standalone services without a program have no Booking commission. Program adult/child rates are independently configured in THB per passenger, separate from supplier commission. Missing rates are unconfigured, not zero. No rates are seeded.
+
+New Booking saves capture eligibility, catalog versions, rates and beneficiary in commissionSnapshot. Ordinary edits preserve those conditions and update the passenger-based estimate; changing Agent or program captures the new conditions while retaining an existing beneficiary. Legacy bookings with no snapshot do not gain inferred historical commission. Reassignments do not transfer commission. This is an estimate, not a payroll posting, approval or payment.
+
+Booking dashboards share the reference sky header and dark rail. Both see confirmed/completed arrivals for today through day29 (Thailand dates), with30 selectable daily bars. Booking Manager sees the whole team’s work; Assistant sees only responsible work counts and rows, while the Bookings list still shows all records with server-derived edit actions. Work tables show up to10 active bookings; domain lists retain pagination. Other non-GM/non-Programmer roles remain redesign-pending. Per-role manuals describe this workflow.
+
+Shared UserInfo owns its name and role subtitle inside the button, with the account group aligned right. Navbar uses natural grid height and separate mobile rows to avoid overlapping content. Hero date text is white with a contrasting backing.
+
+
+## Compact persistent Navbar — 22 September 2026
+Owner refinement: UserInfo has a maximum width of180px. Name and role each use one-line ellipsis with full-value title; profile menu retains full identity. Shared Navbar stays sticky at viewport top during document scrolling, above page content and below dialogs.
+
+
+## One shared shell — owner correction 22 September 2026
+Every authenticated role uses the same sky Navbar and dark Sidebar. Role selection affects dashboard content and labels only; WorkspaceNavigation continues to filter links by existing permissions. Removed legacy sidebar branding, breadcrumb Navbar and alternate footer branches. Startup waits for verified identity without selecting a role layout.
+
+## Viewport-owned Backoffice Shell — 27 September 2026
+
+Owner correction replaces the prior document-scroll/sticky-Navbar model for Backoffice only. `Shell.jsx` and `Shell.css` own one viewport-fixed grid: natural-height Navbar above independently scrollable Sidebar and `#main`. The Sidebar starts below the actual Navbar and uses the remaining height, never `100dvh` plus a separate header. Content and its footer scroll inside `#main`; nested datasets keep their existing table scrollers. Core navigation resets only Content on route changes. Do not add screen-local offsets or scroll handlers.
+
+Mobile navigation is a bounded non-modal rail in the row below Navbar. Opening it does not push Content down or resize the document. Toggle/Escape and native modal focus behavior remain shared. Dialog stacks lock both underlying workspace scrollers until the final modal closes. Print media restores natural document flow independently of the screen-only viewport frame.
+
+The regression must use wheel/touch input over each actual region, not just `window.scrollTo`. See the corresponding UX-CONTRACT section and `scripts/smoke-shell-scroll.js`.

@@ -284,3 +284,50 @@ Owner instruction (2026-09-21): Public/Member retain Navbar/Footer; Backoffice r
 Business authority: docs/dashboard.md and the approved21September2026 mockup. Dashboard remains one authenticated aggregate request with existing permissions, cancellation, timeout and refresh behavior. Calendar summaries use Core Dialog; attention uses Core DataTable(content layout) and Core SelectField. The finite server-defined queue set is displayed without pagination. Scope/status filters are transient overview presentation state and reset on explicit refresh, avoiding stored links to scopes that may disappear with permission changes. Null metrics are distinct from zero; overlapping queue categories are not summed. The real work-area destination owns record-level filters/CRUD.
 
 Shell chrome is shared across routes, while feature restyling is limited to Dashboard. The question-mark help uses Core Dialog focus/escape semantics. Complete illustrated User Guide remains a separate future delivery.
+
+
+## Reference dashboard controls (22 September 2026)
+
+Sources: owner confirmation maps Admin Manager to Programmer and Manager to GM; backend dashboard service and docs/dashboard.md remain authoritative for aggregate visibility. Core dashboardPersona only selects presentation from ACTIVE COMPANY grants. Core Shell owns navigation and SearchField; search derives links from canonical WorkspaceNavigation, is transient, case-insensitive and local, with clear, Tab/ArrowDown, IME-safe Enter and Escape. No query is sent remotely or stored. Core Dialog owns bell/help overlays and feature note/day dialogs. Bell explicitly reports an unconnected notification source without fake badge counts. Help links the served Thai HTML guide at /manuals/dashboard-guide.html.
+
+Core Tabs/TabPanel own Today/Tomorrow switching. DataTable owns bounded summary tables (max 5 bookings, max 6 agent rows), with no legacy calendar or attention table rendered for any role. Thirty-day bars open the existing program-summary Dialog. Business destinations are existing routes and do not claim unsupported date filtering. Notes are transient component state with an explicit clear-on-leave notice; no backend storage or external writes. The latest dashboard request time measures one client round trip, not server CPU/DB timing or uptime. Disconnected telemetry/revenue/expense sources remain unknown, never zero.
+
+
+## Owner correction — remove legacy dashboards and scope manuals (22 September 2026)
+
+This supersedes earlier dashboard layout descriptions above. Remove the old calendar14 and generic work-attention table from every role, not merely below the new content. GM and Programmer show only the new reference layout; all other roles show a clean redesign-pending page and keep domain navigation. This changes the presentation, not persisted business records or domain permissions. The server may retain backward-compatible aggregate fields used by existing domain tests; the retired panels are not mounted.
+
+Manuals are served through authenticated role-aware routes and an API, not a combined public document. ACTIVE COMPANY Admin Manager may select every role manual. Other users may open only manuals for their assigned roles, including multiple roles; direct URLs are checked server-side. The previous public manual URL redirects to the authenticated manual index without containing any manual body. GM and Programmer manuals explain their own new panels; pending-role manuals explain current navigation and redesign status without resurrecting old widgets.
+
+
+## Booking responsibility and commission — owner update 22 September 2026
+
+Existing role codes remain stable: HEAD_BOOKING is Booking Manager and BOOKING is Booking Assistant. Both roles with effective booking access read all bookings and the customer directory. Customer account edits, customer-request fulfillment and finance approvals retain existing separate permissions. Assistant mutations require the effective responsible person (assigneeId, falling back to immutable createdById for legacy rows); Booking Manager may manage and assign all Booking work. Every mutation, including status, details, return amendments, price requests and evidence writes, rechecks ownership on the server. Assignment is versioned and audited. It changes responsibility without changing creator or recorded commission beneficiary.
+
+Agent and Tour Program each explicitly enable Booking staff commission; either disabled takes precedence. Defaults are disabled, including previously unconfigured catalog records. Direct bookings have no Agent condition and use the program condition; standalone services without a program have no Booking commission. Program adult/child rates are independently configured in THB per passenger, separate from supplier commission. Missing rates are unconfigured, not zero. No rates are seeded.
+
+New Booking saves capture eligibility, catalog versions, rates and beneficiary in commissionSnapshot. Ordinary edits preserve those conditions and update the passenger-based estimate; changing Agent or program captures the new conditions while retaining an existing beneficiary. Legacy bookings with no snapshot do not gain inferred historical commission. Reassignments do not transfer commission. This is an estimate, not a payroll posting, approval or payment.
+
+Booking dashboards share the reference sky header and dark rail. Both see confirmed/completed arrivals for today through day29 (Thailand dates), with30 selectable daily bars. Booking Manager sees the whole team’s work; Assistant sees only responsible work counts and rows, while the Bookings list still shows all records with server-derived edit actions. Work tables show up to10 active bookings; domain lists retain pagination. Other non-GM/non-Programmer roles remain redesign-pending. Per-role manuals describe this workflow.
+
+Shared UserInfo owns its name and role subtitle inside the button, with the account group aligned right. Navbar uses natural grid height and separate mobile rows to avoid overlapping content. Hero date text is white with a contrasting backing.
+
+
+## Compact persistent Navbar — 22 September 2026
+Owner refinement: UserInfo has a maximum width of180px. Name and role each use one-line ellipsis with full-value title; profile menu retains full identity. Shared Navbar stays sticky at viewport top during document scrolling, above page content and below dialogs.
+
+
+## One shared shell — owner correction 22 September 2026
+Every authenticated role uses the same sky Navbar and dark Sidebar. Role selection affects dashboard content and labels only; WorkspaceNavigation continues to filter links by existing permissions. Removed legacy sidebar branding, breadcrumb Navbar and alternate footer branches. Startup waits for verified identity without selecting a role layout.
+
+## Independent Backoffice scroll regions — owner correction 27 September 2026
+
+This supersedes earlier Backoffice “natural document scrolling”, sticky Navbar and inline expanding mobile-rail descriptions. Public and Member scroll ownership is unchanged.
+
+- Core Shell owns a viewport-fixed grid: the intrinsic-height Navbar occupies its own first row; Sidebar and Content occupy the remaining bounded row. No hardcoded header offset.
+- Navbar remains visible and does not scroll either sibling region. Sidebar and `#main` scroll independently with overscroll containment; neither moves the document or renders behind Navbar. The content footer belongs to `#main`.
+- At mobile widths, the collapsible navigation rail occupies the same bounded row below Navbar without pushing content down. Its own scrolling, toggle and Escape remain available.
+- Navigation changes reset the content scroller, not Sidebar. Core native Dialog still isolates background interaction; both workspace scrollers lock until the final modal closes. Only the frontmost modal content scrolls.
+- Regression evidence must include actual wheel input, touch gestures, both scroll boundaries, viewport geometry after scrolling, same-document navigation, and stacked-modal lock—not only `window.scrollTo` against a sticky header.
+
+`scripts/smoke-shell-scroll.js` covers 1376×1032 (the owner's recording viewport), 1440×900, 834×900, 390×844 and 320×640. Test data and stress-height content are isolated fixtures; no business records are written.

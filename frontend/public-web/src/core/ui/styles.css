@@ -82,3 +82,6 @@
 /* Staff entry is separate from footer menus, centered in the bottom bar. */
 .public-footer-bottom{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:12px;padding-right:0}.public-footer-bottom>.staff-login{grid-column:2;justify-self:center;display:flex;align-items:center;justify-content:center;min-height:44px;font-size:11px;color:#d6e9ed;text-decoration:none}.public-footer-bottom>.staff-login:hover{text-decoration:underline;color:white}.public-footer-bottom>small{grid-column:1}
 @media(max-width:600px){.public-footer-bottom{grid-template-columns:1fr;gap:2px;padding-right:0}.public-footer-bottom>small{grid-column:1;text-align:center}.public-footer-bottom>.staff-login{grid-column:1;font-size:12px}}
+
+/* Canonical form controls inherit the existing Public palette and touch geometry. */
+.public-field{display:flex;flex-direction:column;gap:6px;min-width:0;margin:12px 0;font-size:13px}.public-field input,.public-field select{min-height:44px;width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:inherit;font-size:16px;background:var(--white);color:var(--text)}.public-field input:focus-visible,.public-field select:focus-visible{outline:2px solid var(--brand);outline-offset:2px}.public-field input:disabled,.public-field select:disabled{opacity:.6}

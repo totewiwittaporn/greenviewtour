@@ -318,3 +318,8 @@ td small { font-size:11px; }
 .user-info-details dt { color:var(--muted); }
 .user-info-details dd { margin:0; white-space:normal; overflow-wrap:anywhere; }
 .core-dropdown [role="menuitemradio"] .menu-check { margin-left:auto; }
+
+/* Content tables size to their records; dataset workspaces keep their fixed viewport. */
+.table-scroll[data-layout="content"],.table-panel .table-scroll[data-layout="content"]{height:auto;min-height:0;max-height:none}
+.table-scroll[data-layout="content"] .empty-state{min-height:112px;padding:16px}
+.filterbar.has-fields{align-items:center;flex-wrap:wrap}.filterbar.has-fields>.button{flex:0 0 auto;align-self:center}

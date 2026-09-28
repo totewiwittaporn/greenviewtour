@@ -169,6 +169,8 @@ model CompanySettings {
 }
 
 model BusinessPartner {
+ shortName String? @db.VarChar(10)
+ bookingCommissionEligible Boolean @default(false)
  allowedPaymentTerms String[] @default(["PREPAID", "PAID", "COUNTER", "AGENT_CREDIT"])
  defaultPaymentTerms String @default("COUNTER") @db.VarChar(30)
  agreements AgentAgreement[]
@@ -206,6 +208,10 @@ model BusinessPartner {
 }
 
 model TourProgram {
+ printCode String? @db.VarChar(10)
+ bookingCommissionEligible Boolean @default(false)
+ bookingAdultCommission Decimal? @db.Decimal(10,2)
+ bookingChildCommission Decimal? @db.Decimal(10,2)
  publicStatus String @default("DRAFT") @db.VarChar(20)
  slug String? @unique @db.VarChar(100)
  tourType String? @db.VarChar(30)
@@ -301,6 +307,7 @@ model PickupLocation {
 }
 
 model FleetVehicle {
+ capacityOffers CapacityOffer[]
  id String @id @db.Uuid
  version Int @default(1)
  createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -439,6 +446,9 @@ model OperationTrip {
  @@schema("app_private")
 }
 model TourBooking {
+ assigneeId String? @db.Uuid
+ @@index([assigneeId])
+ commissionSnapshot Json?
  attendance BookingAttendance[]
  guideAssignments GuideAssignment[]
  customerRequest CustomerRequest?
@@ -931,6 +941,7 @@ model CustomerProfile {
  @@schema("app_private")
 }
 model CustomerRequest {
+ capacityHolds CapacityHold[]
  holdUntil DateTime? @db.Timestamptz(6)
  tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
  promotion TourPromotion? @relation(fields:[promotionId],references:[id],onDelete:Restrict)
@@ -1023,5 +1034,58 @@ model ServiceDayClose {
  updatedBy String @db.Uuid
  createdAt DateTime @default(now()) @db.Timestamptz(6)
  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ @@schema("app_private")
+}
+
+// Physical readiness is configured per service window, never inferred from ACTIVE alone.
+model CapacityPool {
+ id String @id @db.Uuid
+ version Int @default(1)
+ code String @unique @db.VarChar(40)
+ name String @db.VarChar(200)
+ kind String @db.VarChar(20)
+ serviceDate DateTime @db.Date
+ direction String @db.VarChar(20)
+ startsAt DateTime @db.Timestamptz(6)
+ endsAt DateTime @db.Timestamptz(6)
+ resourceIds String[] @db.Uuid
+ status String @default("ACTIVE") @db.VarChar(20)
+ holdMinutes Int
+ overnightLoadTenths Int @default(12)
+ notes String? @db.VarChar(1000)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ offers CapacityOffer[]
+ holds CapacityHold[]
+ @@index([serviceDate,direction,status])
+ @@index([resourceIds],type: Gin)
+ @@schema("app_private")
+}
+model CapacityOffer {
+ id String @id @db.Uuid
+ poolId String @db.Uuid
+ vehicleId String @db.Uuid
+ capacity Int
+ status String @db.VarChar(20)
+ pool CapacityPool @relation(fields:[poolId],references:[id],onDelete:Restrict)
+ vehicle FleetVehicle @relation(fields:[vehicleId],references:[id],onDelete:Restrict)
+ @@unique([poolId,vehicleId])
+ @@index([vehicleId])
+ @@schema("app_private")
+}
+// Confirmed occupancy comes from TourBooking itself; these rows are temporary request holds only.
+model CapacityHold {
+ id String @id @db.Uuid
+ poolId String @db.Uuid
+ requestId String @db.Uuid
+ passengers Int
+ exclusive Boolean @default(false)
+ expiresAt DateTime @db.Timestamptz(6)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ pool CapacityPool @relation(fields:[poolId],references:[id],onDelete:Restrict)
+ request CustomerRequest @relation(fields:[requestId],references:[id],onDelete:Restrict)
+ @@unique([poolId,requestId])
+ @@index([poolId,expiresAt])
+ @@index([requestId])
  @@schema("app_private")
 }

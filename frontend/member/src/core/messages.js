@@ -1,5 +1,6 @@
 // App-owned interface copy only; catalogue and customer content remain unchanged.
 export const messages = {
+  "แบ่งหน้า": "Pagination",
   "แก้ไขข้อมูลส่วนตัว": "Edit profile",
   "ติดต่อสอบถาม": "Contact us",
   "กรุณากรอกชื่อ": "Enter your name",

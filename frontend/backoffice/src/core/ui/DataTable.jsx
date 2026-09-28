@@ -1,4 +1,4 @@
-import {translateLabel as bilingualLabel} from '../i18n/runtime.js'
+import {tableHeading, translateLabel as bilingualLabel} from '../i18n/runtime.js'
 import {useLocale} from '../i18n/locale.jsx'
 import {Children,cloneElement,isValidElement} from 'react'
 import { Button } from './Button.jsx'
@@ -18,5 +18,5 @@ export function DataTable({ columns, children, busy, label = 'Data table', error
   const state = busy ? <div className="empty-state" role="status"><span className="spinner" />{t(loadingLabel)}</div>
     : error ? <div className="empty-state" role="alert"><Icon name="globe" /><h3>{bilingualLabel("Records are temporarily unavailable")}</h3><p>{t(error)}</p>{onRetry && <Button onClick={onRetry}>Retry</Button>}</div>
     : isEmpty ? <div className="empty-state"><span className="empty-icon"><Icon name="users" width="30" height="30" /></span>{(typeof empty === 'string' ? t(empty) : empty) || <><h3>{bilingualLabel("No records yet")}</h3><p>{t("Add a record to get started.")}</p></>}</div> : null
-  return <div className="table-scroll" data-layout={layout} data-columns={columns.length} tabIndex="0" role="region" aria-label={t(label)} aria-busy={busy}><table><colgroup>{columns.map((col,i)=><col key={typeof col==='string'?col:col.label} style={{width:`${weights[i]/totalWeight*100}%`}}/>)}</colgroup><caption className="sr-only">{t(label)}</caption><thead><tr>{columns.map(col => <th scope="col" key={typeof col==='string'?col:col.label}><span className="table-cell-copy">{bilingualLabel(typeof col==='string'?col:col.label)}</span></th>)}</tr></thead><tbody>{state ? <tr><td colSpan={columns.length}>{state}</td></tr> : compactRows(children)}</tbody></table></div>
+  return <div className="table-scroll" data-layout={layout} data-columns={columns.length} tabIndex="0" role="region" aria-label={t(label)} aria-busy={busy}><table><colgroup>{columns.map((col,i)=><col key={typeof col==='string'?col:col.label} style={{width:`${weights[i]/totalWeight*100}%`}}/>)}</colgroup><caption className="sr-only">{t(label)}</caption><thead><tr>{columns.map(col => <th lang="en" scope="col" key={typeof col==='string'?col:col.label}><span className="table-cell-copy" title={t(typeof col==='string'?col:col.label)}>{tableHeading(typeof col==='string'?col:col.label)}</span></th>)}</tr></thead><tbody>{state ? <tr><td colSpan={columns.length}>{state}</td></tr> : compactRows(children)}</tbody></table></div>
 }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { bookingPriceCommand,requirePriceApproval,priceActions } from '../src/modules/operations/booking-price.js'
 const id=n=>`a0000000-0000-4000-8000-${String(n).padStart(12,'0')}`
 function fixture(){
- let row={id:id(1),version:1,status:'DRAFT',agentId:id(8),adultPrice:'100',childPrice:'50',adults:2,children:1,programSnapshot:{name:'Tour'},lines:[]}
+ let row={id:id(1),createdById:id(1),version:1,status:'DRAFT',agentId:id(8),adultPrice:'100',childPrice:'50',adults:2,children:1,programSnapshot:{name:'Tour'},lines:[]}
  const commands=new Map(),events=[]
  const profiles={1:{status:'ACTIVE',displayName:'Sales',roles:[{roleCode:'BOOKING',scope:'COMPANY'}]},2:{status:'ACTIVE',displayName:'Manager',roles:[{roleCode:'MANAGER',scope:'COMPANY',role:{permissions:[{permissionCode:'users.read'}]}}]},3:{status:'ACTIVE',roles:[{roleCode:'DRIVER',scope:'SELF'}]}}
  const tx={$executeRaw:async()=>{},userProfile:{findUnique:async({where})=>profiles[Number(where.id.slice(-1))]},tourBooking:{findUnique:async()=>row,update:async({data})=>{row={...row,...data,version:row.version+1};return row}},operationCommand:{findUnique:async({where})=>commands.get(where.id),create:async({data})=>commands.set(data.id,data)},auditEvent:{create:async({data})=>events.push(data)}}

@@ -1,7 +1,7 @@
 import {receivableAccess} from '../receivables/service.js'
 import {createHash} from 'node:crypto'
 import {authorize,fail,uuid,keys,string,hash} from '../operations/common.js'
-import {effectiveAccess} from '../../../../packages/contracts/access.js'
+import {canEditBooking,effectiveAccess} from '../../../../packages/contracts/access.js'
 import {personnelFinancePermission} from '../personnel-finance/service.js'
 
 export const maxEvidenceBytes=5*1024*1024
@@ -27,11 +27,12 @@ async function parentAccess(tx,actorId,kind,id){
   if(!await tx[kind==='AGENT_BILL'?'agentBill':'agentPayment'].findUnique({where:{id},select:{id:true}}))fail('NOT_FOUND',404)
   return {upload:true}
  }
- if(kind==='CUSTOMER_REQUEST'){const {actor}=await authorize(tx,actorId);if(!await tx.customerRequest.findUnique({where:{id}}))fail('NOT_FOUND',404);return {upload:effectiveAccess(actor,'finance.receive').allowed}}
+ if(kind==='CUSTOMER_REQUEST'){const {actor}=await authorize(tx,actorId);if(!await tx.customerRequest.findUnique({where:{id},select:{id:true}}))fail('NOT_FOUND',404);return {upload:effectiveAccess(actor,'finance.receive').allowed}}
  if(kind==='BOOKING'){
   const {actor}=await authorize(tx,actorId,'booking')
-  if(!await tx.tourBooking.findUnique({where:{id},select:{id:true}}))fail('NOT_FOUND',404)
-  return {upload:effectiveAccess(actor,'finance.receive').allowed}
+  const booking=await tx.tourBooking.findUnique({where:{id},select:{id:true,createdById:true,assigneeId:true}})
+  if(!booking)fail('NOT_FOUND',404)
+  return {upload:effectiveAccess(actor,'finance.receive').allowed&&canEditBooking({...actor,id:actorId},booking)}
  }
  if(kind==='PERSONNEL_FINANCE'){
   const row=await tx.financePersonnelRecord.findUnique({where:{id},select:{kind:true}});if(!row)fail('NOT_FOUND',404)

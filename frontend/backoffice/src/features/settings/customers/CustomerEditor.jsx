@@ -1,12 +1,12 @@
-import {translateLabel as bilingualLabel} from '../../core/i18n/runtime.js'
-import { translate as t, useLocale } from '../../core/i18n/locale.jsx'
+import {translateLabel as bilingualLabel} from '../../../core/i18n/runtime.js'
+import { translate as t, useLocale } from '../../../core/i18n/locale.jsx'
 import {useRef,useState} from 'react'
-import {api} from '../../core/auth/api.js'
-import {Dialog} from '../../core/ui/Dialog.jsx'
-import {FormField} from '../../core/ui/FormField.jsx'
-import {SelectField} from '../../core/ui/SelectField.jsx'
-import {Button} from '../../core/ui/Button.jsx'
-import {useUnsavedChanges} from '../../core/navigation/Navigation.jsx'
+import {api} from '../../../core/auth/api.js'
+import {Dialog} from '../../../core/ui/Dialog.jsx'
+import {FormField} from '../../../core/ui/FormField.jsx'
+import {SelectField} from '../../../core/ui/SelectField.jsx'
+import {Button} from '../../../core/ui/Button.jsx'
+import {useUnsavedChanges} from '../../../core/navigation/Navigation.jsx'
 export default function CustomerEditor({row,onClose,onSaved}){
  useLocale();
  const [values,setValues]=useState({displayName:row?.displayName||'',phone:row?.phone||'',email:row?.email||'',status:row?.status||'ACTIVE'}),base=useRef(JSON.stringify(values)),id=useRef(row?.id||crypto.randomUUID()),lock=useRef(false)

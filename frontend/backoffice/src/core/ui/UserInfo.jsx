@@ -2,7 +2,7 @@ import {useLocale} from '../i18n/locale.jsx'
 import {translateLabel} from '../i18n/runtime.js'
 import {formatAddress, safeMapUrl} from '../../../../../packages/contracts/address.js'
 import {Dropdown} from './Dropdown.jsx'
-export function UserInfo({user, onEdit, onLogout, signingOut}) {
+export function UserInfo({user, onEdit, onLogout, signingOut, subtitle}) {
   const {t, locale, setLocale} = useLocale()
   const identity = user.nickname?.trim() || user.displayName
   const map = safeMapUrl(user.mapUrl)
@@ -25,5 +25,5 @@ export function UserInfo({user, onEdit, onLogout, signingOut}) {
     {label:'TH ไทย', literal:true, lang:'th', checked:locale === 'th', onSelect:() => setLocale('th')},
     {label:'EN English', literal:true, lang:'en', checked:locale === 'en', onSelect:() => setLocale('en')},
     {label:'Sign out', icon:'logout', onSelect:onLogout, danger:true},
-  ]}><span className="avatar">{Array.from(identity)[0]?.toUpperCase()}</span><span className="account-name">{signingOut ? t('Signing out…') : identity}</span><span aria-hidden="true">⌄</span></Dropdown>
+  ]}><span className="avatar">{Array.from(identity)[0]?.toUpperCase()}</span>{subtitle ? <span className="user-info-identity"><span className="account-name" title={identity}>{signingOut ? t('Signing out…') : identity}</span><small className="reference-account-role" title={subtitle}>{subtitle}</small></span> : <span className="account-name" title={identity}>{signingOut ? t('Signing out…') : identity}</span>}<span aria-hidden="true">⌄</span></Dropdown>
 }

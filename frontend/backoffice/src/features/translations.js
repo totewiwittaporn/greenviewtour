@@ -1,5 +1,9 @@
+import jobOrder from './operations/job-order-translations.js'
 // Presentation copy only. Values from bookings and customer records are not translated.
+import dashboard from './dashboard/overview/translations.js'
 export default {
+  ...dashboard,
+  ...jobOrder,
   "(Bangkok)": "(กรุงเทพฯ)",
   "(Thailand)": "(ประเทศไทย)",
   "+ Add": "+ เพิ่ม",
@@ -252,6 +256,17 @@ export default {
   "Destination / ปลายทาง": "ปลายทาง",
   "Destination:": "ปลายทาง:",
   "Direct customers": "ลูกค้าโดยตรง",
+  "Direct bookings": "การจองลูกค้าตรง",
+  "Booking workspace": "พื้นที่งานจอง",
+  "Open booking": "เปิดรายการจอง",
+  "Search customer requests": "ค้นหาคำขอลูกค้า",
+  "No matching customer requests.": "ไม่พบคำขอลูกค้าที่ตรงกับการค้นหา",
+  "No matching customers.": "ไม่พบลูกค้าที่ตรงกับการค้นหา",
+  "Unable to load customers. Please retry.": "โหลดข้อมูลลูกค้าไม่สำเร็จ กรุณาลองใหม่",
+  "Opening the customer workspace…": "กำลังเปิดหน้าจัดการลูกค้า…",
+  "Manage website customer profiles. Review booking requests in Booking → Customer requests.": "จัดการข้อมูลลูกค้าเว็บไซต์ ส่วนคำขอจองให้ตรวจใน Booking → Customer requests",
+  "Review website requests here. Accepted requests link to their existing Booking; do not create a duplicate.": "ตรวจคำขอจากเว็บไซต์ที่นี่ เมื่อรับคำขอแล้วให้เปิดรายการ Booking ที่เชื่อมอยู่ ไม่ต้องสร้างซ้ำ",
+
   "Direction": "ทิศทาง",
   "Discard and reload": "ทิ้งการแก้ไขและโหลดใหม่",
   "Discard attachment?": "ทิ้งไฟล์แนบหรือไม่?",

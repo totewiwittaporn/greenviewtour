@@ -1,3 +1,4 @@
+import { requireBookingEdit } from './booking-ownership.js'
 import { bookingQuote } from '../../../../packages/contracts/booking-plan.js'
 import { audit,authorize,fail,hash,int,keys,money,string,uuid,write } from './common.js'
 
@@ -20,6 +21,7 @@ export async function bookingPriceCommand(prisma,actorId,input){
   if(['APPROVE','REJECT'].includes(input.action))await authorize(tx,actorId,'manager')
   const booking=await tx.tourBooking.findUnique({where:{id:input.bookingId},include:{lines:true}})
   if(!booking)fail('NOT_FOUND',404)
+  await requireBookingEdit(tx,actorId,booking)
   const requestHash=hash({...input,actorId}),prior=await tx.operationCommand.findUnique({where:{id:input.id}})
   // Replay still checks current actor authority, but can return after a later lifecycle transition.
   if(prior){if(prior.requestHash!==requestHash)fail('COMMAND_CONFLICT');return prior.result}

@@ -5,7 +5,7 @@ import { createServer } from 'vite'
 import { mkdir, readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 const root=fileURLToPath(new URL('../frontend/backoffice/',import.meta.url))
-const out=fileURLToPath(new URL('../screenshots.local/',import.meta.url))
+const out=process.env.GREENVIEW_JOB_SCREENSHOTS || '/tmp/greenview-job-print-qa'
 const vite=await createServer({root,server:{port:5278,strictPort:true},configFile:`${root}vite.config.js`});await vite.listen()
 const browser=await chromium.launch({headless:true,...(process.env.GV_BROWSER_PATH?{executablePath:process.env.GV_BROWSER_PATH}:process.platform==='win32'?{channel:'msedge'}:{})})
 try {
@@ -40,30 +40,45 @@ try {
   await page.emulateMedia({media:'screen'})
  }
  await page.goto(`http://localhost:5278/operations/guide?date=2026-05-01&runId=${run.id}`)
- await page.getByRole('heading',{name:'BOAT JOB ORDER / ใบงานเรือ',exact:true}).waitFor()
+ await page.getByRole('heading',{name:'JOB ORDER',exact:true}).first().waitFor()
  await capture('boat-job-sample')
- assert.equal(await page.locator('.boat-daily-table').getByText('0/0',{exact:true}).count(),1)
- assert.equal(await page.locator('.boat-daily-table tbody tr td:last-child').getByText('—',{exact:true}).count(),2)
+ assert.match(await page.locator('.job-pages .compact-actual').innerText(),/Actual recorded: 0 pax.*1\/3 groups/)
+ assert.equal(await page.locator('.job-pages .compact-booking-row:not([data-continuation])').count(),3)
+ assert.match(await page.locator('.compact-boat-sheet').innerText(),/ALLERGY: Peanut allergy/)
  run={...run,direction:'RETURN',code:'SAMPLE-RETURN',assignments:[run.assignments[0]],passengers:3}
- await page.goto(`http://localhost:5278/operations/guide?date=2026-05-01&runId=${run.id}`);await page.getByRole('heading',{name:'BOAT JOB ORDER / ใบงานเรือ',exact:true}).waitFor();await capture('boat-return-sample')
+ await page.goto(`http://localhost:5278/operations/guide?date=2026-05-01&runId=${run.id}`);await page.getByRole('heading',{name:'JOB ORDER',exact:true}).first().waitFor();await capture('boat-return-sample')
  const baseRun={...run,kind:'BOAT',slot:{...run.slot,vehicle:{id:id(55),name:'Sample boat 5'}}}
  documentRuns=[{...baseRun,id:id(56),direction:'OUTBOUND',assignments:Array.from({length:15},(_,i)=>({...baseRun.assignments[0],id:id(300+i),booking:{...guest,code:`OUT-${i+1}`,name:`Sample group ${i+1}`},actualAdults:null,actualChildren:null,changeReason:''}))},{...baseRun,id:id(57),direction:'RETURN',assignments:Array.from({length:5},(_,i)=>({...baseRun.assignments[0],id:id(400+i),booking:{...guest,code:`BACK-${i+1}`,name:`Returning group ${i+1}`},actualAdults:null,actualChildren:null,changeReason:''}))}]
  await page.goto(`http://localhost:5278/operations/guide?date=2026-05-01&runId=${run.id}`)
- await page.getByRole('heading',{name:'BOAT JOB ORDER / ใบงานเรือ',exact:true}).waitFor()
- assert.equal(await page.locator('.boat-daily-table tbody tr:not(.job-section-row):not(.job-total-row)').count(),20)
+ await page.getByRole('heading',{name:'JOB ORDER',exact:true}).first().waitFor()
+ assert.equal(await page.locator('.job-pages .compact-booking-row:not([data-continuation])').count(),20)
  await capture('boat-daily-20-groups')
+ const sizes=[2,3,2,4,2,3,5,2,3,4,2,3,2,4,3,2,5,3,2,4,3,2]
+ documentRuns=[{...baseRun,capacity:65,direction:'OUTBOUND',code:'LAYOUT-22-GROUPS',assignments:sizes.map((pax,i)=>({...baseRun.assignments[0],id:id(600+i),adults:pax,children:0,actualAdults:null,actualChildren:null,changeReason:'',booking:{...guest,id:id(700+i),code:'LAYOUT-'+i,name:'Layout group '+i+' with a deliberately long name for ellipsis verification',agentShortName:'ABCDEFGHIJ',programId:'layout-daytrip',programPrintCode:'DT',programName:'Day Trip',allergyStatus:i===3?'HAS':'NONE',allergies:i===3?'Peanut allergy - keep instruction readable':null,assistance:null,printServices:{accommodation:'-',meals:'1:L',flags:[]}}}))}]
+ await page.goto(`http://localhost:5278/operations/guide?date=2026-05-01&runId=${run.id}`)
+ await page.getByRole('heading',{name:'JOB ORDER',exact:true}).first().waitFor()
+ assert.equal(await page.locator('.job-pages .compact-booking-row:not([data-continuation])').count(),22)
+ assert.equal(await page.locator('.job-pages .compact-total td').nth(2).innerText(),'65')
+ assert.ok((await page.locator('.job-pages .compact-group').first().innerText()).endsWith('…'))
+ await capture('boat-22-groups-65-pax')
+ await page.evaluate(()=>window.dispatchEvent(new CustomEvent('greenview:locale',{detail:'th'})))
+ await page.waitForFunction(()=>document.documentElement.lang==='th')
+ await page.locator('.job-pages').waitFor()
+ assert.deepEqual(await page.locator('.job-pages .compact-manifest-table thead tr').last().locator('th').allTextContents(),['No.','Agent / Group','Prg.','A','C','Pax','Accom.','Meal','Remarks'])
+ await capture('boat-22-groups-th')
+ await page.evaluate(()=>window.dispatchEvent(new CustomEvent('greenview:locale',{detail:'en'})))
  documentRuns=undefined
  run={...run,kind:'VEHICLE',code:'SAMPLE-VAN',slot:{...run.slot,vehicle:{name:'Sample van 1'}},staff:[{name:'Sample driver',role:'DRIVER'}]}
  await page.goto(`http://localhost:5278/operations/driver?date=2026-05-01&runId=${run.id}`)
- await page.getByRole('heading',{name:'TRANSFER JOB ORDER / ใบงานรถ',exact:true}).waitFor();await capture('vehicle-job-sample')
+ await page.getByRole('heading',{name:'TRANSFER JOB ORDER',exact:true}).waitFor();await capture('vehicle-job-sample')
  assert.equal(await page.locator('.job-sheet').getByText('Peanut allergy',{exact:true}).count(),0)
  assert.ok((await page.locator('.transfer-daily-sheet').textContent()).includes('Wheelchair assistance'))
  await page.goto('http://localhost:5278/operations/bookings')
  await page.getByRole('button',{name:'Daily job order',exact:true}).click()
- await page.getByRole('heading',{name:'DAILY BOOKING JOB ORDER / ใบงานบุ๊กกิ้งประจำวัน',exact:true}).waitFor();assert.equal(await page.locator('.booking-daily-table tbody tr').count(),11);await capture('booking-job-sample')
+ await page.getByRole('heading',{name:'DAILY BOOKING JOB ORDER',exact:true}).waitFor();assert.equal(await page.locator('.booking-daily-table tbody tr').count(),11);await capture('booking-job-sample')
  await page.keyboard.press('Escape')
  run={...run,assignments:Array.from({length:35},(_,i)=>({...run.assignments[0],id:id(200+i),booking:{...guest,name:`Long group ${i+1}`,code:`LONG-${i+1}`},notes:'Pickup assistance. '.repeat(8)}))}
- await page.goto(`http://localhost:5278/operations/driver?date=2026-05-01&runId=${run.id}`);await page.getByRole('heading',{name:'TRANSFER JOB ORDER / ใบงานรถ',exact:true}).waitFor();await capture('job-multipage')
+ await page.goto(`http://localhost:5278/operations/driver?date=2026-05-01&runId=${run.id}`);await page.getByRole('heading',{name:'TRANSFER JOB ORDER',exact:true}).waitFor();await capture('job-multipage')
  await page.keyboard.press('Escape');failed=true;await page.getByRole('button',{name:'Refresh',exact:true}).click();await page.getByRole('button',{name:'Retry',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Print A4 landscape',exact:true}).count(),0)
  assert.deepEqual(errors,[])
  console.log(JSON.stringify({result:'PASS',realDatabaseWrites:0,checks:['all three document types','independent outbound and return','zero vs unrecorded actual counts','daily booking contains all ten rows','driver assistance without dietary data','390px layout','print control removal','multipage output','failed refresh blocks print']}))

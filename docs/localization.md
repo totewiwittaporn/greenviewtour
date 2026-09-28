@@ -42,3 +42,7 @@ Authenticated User Info summaries hide locked account email/status/access fields
 Employee and customer profiles also support optional `nickname` (50 characters). User Info prefers it for compact identity display, with full display name fallback; full names remain separate in contact details. Both profile forms localize the Nickname label. Member content uses compact 26/24px headings and 14px labels/buttons while retaining 16px form values and 44px controls.
 
 Public tour-list filters, contact strip and banner copy support TH/EN. The compact phone Navbar exposes Login/Register from its account-icon disclosure; language stays directly available. Desktop/tablet retain visible account links. Owned labels translate while CMS descriptions remain authored content.
+
+## Owner update — 26 September 2026
+
+Backoffice table column headings remain English in both TH and EN modes, including Core DataTable, capacity tables and standalone Job Order tables. Localized header tooltips remain available in Core tables. This supersedes the earlier table-heading pairing rule only; page/navigation/form labels, status messages and all authored values keep their existing behavior. Member and Public application cores are unchanged.

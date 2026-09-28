@@ -23,15 +23,15 @@ export function NavigationProvider({children}){
   if(target.action){target.action();return}
   savedLocations.current.set(window.location.pathname, window.location.pathname+window.location.search)
   if(target.delta!==undefined){approved.current=true;window.history.go(target.delta);return}
-  index.current++
-  window.history.pushState({gvIndex:index.current},'',target.href)
-  setLocation(current());window.scrollTo(0,0)
+  if(target.replace)window.history.replaceState({...window.history.state,gvIndex:index.current},'',target.href)
+  else { index.current++; window.history.pushState({gvIndex:index.current},'',target.href) }
+  setLocation(current());document.getElementById('main')?.scrollTo({top:0,left:0,behavior:'instant'})
  },[])
  const request=useCallback(target=>{
   if([...guards.current.values()].some(Boolean)){setPending(target);return}
   commit(target)
  },[commit])
- const navigate=useCallback(href=>{const url=new URL(href,window.location.href);if(url.href===window.location.href)return;if(url.origin!==window.location.origin||url.hash||!workspaceRoute(url.pathname)){request({action:()=>window.location.assign(url.href)});return}request({href:operationHref(canonicalHref(url),window.location.href)})},[request])
+ const navigate=useCallback((href,{replace=false}={})=>{const url=new URL(href,window.location.href);if(url.href===window.location.href)return;if(url.origin!==window.location.origin||url.hash||!workspaceRoute(url.pathname)){request({action:()=>window.location.assign(url.href)});return}request({href:operationHref(canonicalHref(url),window.location.href),replace})},[request])
  const runAction=useCallback(action=>request({action}),[request])
  useEffect(()=>{
   const clicked=event=>{
@@ -56,6 +56,7 @@ export function NavigationProvider({children}){
   document.addEventListener('click',clicked);window.addEventListener('popstate',popped);window.addEventListener('beforeunload',unload)
   return()=>{document.removeEventListener('click',clicked);window.removeEventListener('popstate',popped);window.removeEventListener('beforeunload',unload)}
  },[navigate])
+ useLayoutEffect(()=>{document.getElementById('main')?.scrollTo({top:0,left:0,behavior:'instant'})},[location.pathname])
  useEffect(()=>{document.querySelector('#main h1')?.focus({preventScroll:true})},[location])
  const register=useCallback((id,dirty)=>{guards.current.set(id,dirty);return()=>guards.current.delete(id)},[])
  return <Context.Provider value={{location,navigate,runAction,register,hrefFor}}>{children}{pending&&<Dialog title={bilingualLabel("Unsaved changes")} onClose={()=>setPending(null)}><p>{t('Leave this page and discard your unsaved changes?')}</p><div className="dialog-actions"><Button autoFocus onClick={()=>setPending(null)}>Keep editing</Button><Button onClick={()=>{const target=pending;setPending(null);commit(target)}}>Discard and leave</Button></div></Dialog>}</Context.Provider>

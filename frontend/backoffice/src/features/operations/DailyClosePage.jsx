@@ -1,3 +1,4 @@
+import {RecordLoader} from '../../core/ui/RecordLoader.jsx'
 import {translateLabel as bilingualLabel} from '../../core/i18n/runtime.js'
 import { formatDate as displayDate } from '../../core/i18n/runtime.js'
 import { translate as t, useLocale } from '../../core/i18n/locale.jsx'
@@ -38,7 +39,7 @@ export default function DailyClosePage() {
  useEffect(() => {
   const controller = new AbortController()
   setLoading(true); setError('')
-  api(`/api/operations/daily-summary?${new URLSearchParams({ date: serviceDate, page })}`, undefined, { signal: controller.signal })
+  api(`/api/operations/daily-summary?${new URLSearchParams({ date: serviceDate, page, view:'list' })}`, undefined, { signal: controller.signal })
    .then(result => { if (!controller.signal.aborted) { setData(result); setLoading(false) } })
    .catch(e => { if (!controller.signal.aborted) { setError(message(e)); setLoading(false) } })
   return () => controller.abort()
@@ -69,8 +70,8 @@ export default function DailyClosePage() {
    </div>
    {notice && <p role="status">{t(notice)}</p>}
    <DataTable label={bilingualLabel("Daily summary history")} columns={['Snapshot', 'Revision', 'Captured (Thailand)', 'Runs', 'Actions']} busy={loading} error={t(error)} onRetry={() => setRefresh(n => n + 1)} isEmpty={!snapshots.length} empty={<p>{t("No snapshots for this service date. Capture the totals when the team is ready.")}</p>}>
-    {snapshots.map(snapshot => <tr key={snapshot.id}><td>{kindLabel(snapshot.kind)}</td><td>{snapshot.revision}</td><td>{stamp(snapshot.createdAt)}</td><td>{snapshot.runs?.length || 0}</td><td><Dropdown rowActions label={bilingualLabel("Actions for {value0} revision {value1}", {value0: snapshot.kind, value1: snapshot.revision})} items={[{label:'View',icon:'view',onSelect:() => setView(snapshot)}]}/></td></tr>)}
+    {snapshots.map(snapshot => <tr key={snapshot.id}><td>{kindLabel(snapshot.kind)}</td><td>{snapshot.revision}</td><td>{stamp(snapshot.createdAt)}</td><td>{snapshot.runCount ?? snapshot.runs?.length ?? 0}</td><td><Dropdown rowActions label={bilingualLabel("Actions for {value0} revision {value1}", {value0: snapshot.kind, value1: snapshot.revision})} items={[{label:'View',icon:'view',onSelect:() => setView(snapshot)}]}/></td></tr>)}
    </DataTable><Pagination page={data?.page || page} pageSize={data?.pageSize || 25} total={error ? undefined : data?.total ?? snapshots.length} busy={loading} onPageChange={setPage} />
-  </section>{view && <SnapshotView snapshot={view} onClose={() => setView(null)} />}
+  </section>{view && <RecordLoader recordId={view.id} url={'/api/operations/daily-summary?'+new URLSearchParams({date:String(view.serviceDate).slice(0,10),snapshotId:view.id})} onClose={()=>setView(null)}>{snapshot=><SnapshotView snapshot={snapshot} onClose={()=>setView(null)}/>}</RecordLoader>}
  </>
 }

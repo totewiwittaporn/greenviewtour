@@ -1,3 +1,4 @@
+import { preparationGroups } from '../src/backoffice/dashboard/overview/work-summary.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { preparationShare, projectBoatPreparation, boatPreparation, stockCommand } from '../src/modules/operations/stock.js'
@@ -145,4 +146,23 @@ test('equipment returns are ready in one step and reject retired cleaning withou
  assert.equal(settled,2)
  assert.equal(result.row.details.disposition,'RETURN_READY')
  await assert.rejects(stockCommand(prisma,id(6),{...input,disposition:'RETURN_READY',quantity:4}),{code:'RETURN_EXCEEDS_ISSUE'})
+})
+
+test('cancelled assignment links cannot consume a preparation share or display passengers',()=>{
+ const {stock,booking,transport,run}=fixture()
+ transport.dispatchAssignments[0].status='CANCELLED'
+ assert.equal(preparationShare(stock,booking,id(1)),0)
+ assert.equal(preparationShare(stock,booking,id(2)),3)
+ run.assignments[0].status='CANCELLED'
+ assert.equal(projectBoatPreparation(run).bookings.passengers,0)
+ assert.deepEqual(projectBoatPreparation(run).rows,[])
+})
+test('dashboard preparation keeps different item units separate',()=>{
+ const {run,stock,booking}=fixture()
+ booking.lines.push({...stock,id:id(88),resourceId:id(89),resource:{...stock.resource,id:id(89)},snapshot:{...stock.snapshot,baseUnit:'BOTTLE',name:'Water'}})
+ const result=preparationGroups(run)
+ assert.equal(result.items.length,2)
+ assert.deepEqual(result.items.map(row=>row.unit).sort(),['BOTTLE','PIECE'])
+ assert.equal(result.pendingLines,2)
+ assert.equal(result.quantity,undefined)
 })

@@ -23,7 +23,7 @@ const errorMessage = error => `Unable to save or load records: ${error.detail ||
 function Reference({ entity, label, value, onChange, onRows, disabled }) {
  useLocale();
  const load = useCallback(async ({ q, page, signal }) => {
-  const data = await api(`/api/operations/${entity}?${new URLSearchParams({ q, page, ...(entity === 'resources' ? {kind:'MATERIAL'} : {}), status: entity === 'bookings' ? 'CONFIRMED' : 'ACTIVE' })}`, undefined, { signal })
+  const data = await api(`/api/operations/${entity}?${new URLSearchParams({ q, page, view:'options', ...(entity === 'resources' ? {kind:'MATERIAL'} : {}), status: entity === 'bookings' ? 'CONFIRMED' : 'ACTIVE' })}`, undefined, { signal })
   onRows?.(data.rows)
   return { ...data, rows: data.rows.filter(row => entity !== 'resources' || row.kind !== 'SERVICE').map(row => ({ ...row, name: row.name || row.label })) }
  }, [entity, onRows])
@@ -94,7 +94,7 @@ export default function StockPage({ entity = 'stock' }) {
   const timer = setTimeout(() => {
    window.history.replaceState(window.history.state, '', `${window.location.pathname}?${new URLSearchParams({ q: query, page: String(page) })}`)
    setState(old => ({ ...old, loading: true, error: '' }))
-   api(`/api/operations/${entity}?${new URLSearchParams({ q: query, page, pageSize: 25 })}`, undefined, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) }).then(data => { if (!controller.signal.aborted) { setState({ ...data, loading: false }); if (data.page !== page) setPage(data.page) } }).catch(error => { if (!controller.signal.aborted) setState({ rows: [], loading: false, error: errorMessage(error) }) })
+   api(`/api/operations/${entity}?${new URLSearchParams({ q: query, page, pageSize: 25, view:'list' })}`, undefined, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) }).then(data => { if (!controller.signal.aborted) { setState({ ...data, loading: false }); if (data.page !== page) setPage(data.page) } }).catch(error => { if (!controller.signal.aborted) setState({ rows: [], loading: false, error: errorMessage(error) }) })
   }, query ? 300 : 0)
   return () => { clearTimeout(timer); controller.abort() }
  }, [entity, query, page, refresh, composing])

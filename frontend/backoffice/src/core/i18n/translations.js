@@ -1,4 +1,22 @@
+import {capacityErrorCodes,capacityText} from '../../../../../packages/contracts/capacity-copy.js'
 export default {
+  "Open to load options.": "เปิดช่องเพื่อโหลดตัวเลือก",
+  "Loading current record…": "กำลังโหลดข้อมูลรายการล่าสุด…",
+  "Unable to load this record. Refresh and retry before editing.": "โหลดข้อมูลรายการนี้ไม่สำเร็จ กรุณาลองใหม่ก่อนแก้ไข",
+  ...Object.fromEntries(capacityErrorCodes.map(code=>[capacityText(code,'en'),capacityText(code,'th')])),
+  "Vehicle & boat readiness": "ความพร้อมรถและเรือ",
+  "WAITING_TEAM": "รอทีมยืนยันความพร้อม",
+  "DATE_PROPOSED": "รอลูกค้าตอบรับวันใหม่",
+  "Move whole Booking": "ย้ายทั้ง Booking",
+  "This whole Booking does not fit. Choose another boat; do not split the group.": "เรือลำนี้รับทั้ง Booking ไม่ครบ ให้เลือกเรือลำอื่น ห้ามแยกกลุ่ม",
+  "Booking staff commission": "ค่าคอมมิชชั่นพนักงาน Booking",
+  "Booking staff commission per adult (THB)": "ค่าคอม Booking ต่อผู้ใหญ่ (บาท)",
+  "Booking staff commission per child (THB)": "ค่าคอม Booking ต่อเด็ก (บาท)",
+  "No commission": "ไม่มีค่าคอมมิชชั่น",
+  "Commission enabled": "มีค่าคอมมิชชั่น",
+  "No commission takes precedence if either the agent or tour program disables it.": "หาก Agent หรือโปรแกรมทัวร์ฝั่งใดฝั่งหนึ่งไม่มีค่าคอม ให้ไม่มีค่าคอมมิชชั่น Booking",
+  "Select commission eligibility.": "เลือกว่ามีค่าคอมมิชชั่นหรือไม่",
+
   "Dashboard help": "วิธีใช้ Dashboard",
   "Dashboard shows the work and summaries your account is allowed to access.": "Dashboard แสดงงานและข้อมูลสรุปตามสิทธิ์ของคุณ",
   "Select a calendar date to review customer totals, or open a work area to continue there.": "กดวันที่เพื่อดูยอดลูกค้า หรือเปิดหน้าทำงานจากตารางเพื่อดำเนินการต่อ",

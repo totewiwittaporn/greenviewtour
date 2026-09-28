@@ -9,7 +9,7 @@ function HighlightGroup({ownership, title}) {
     const controller=new AbortController()
     const timeout=setTimeout(()=>{setState({error:true});controller.abort()},15000)
     setState({loading:true})
-    fetch(`/api/public/tours?page=1&ownership=${ownership}`,{signal:controller.signal}).then(async response=>{
+    fetch(`/api/public/tours?view=highlights&pageSize=2&page=1&ownership=${ownership}`,{signal:controller.signal}).then(async response=>{
       if(!response.ok)throw Error()
       return response.json()
     }).then(data=>{if(!controller.signal.aborted)setState(data)}).catch(()=>{if(!controller.signal.aborted)setState({error:true})}).finally(()=>clearTimeout(timeout))

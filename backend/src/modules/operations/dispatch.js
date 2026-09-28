@@ -1,3 +1,7 @@
+import {runSelectorSelect} from './dispatch-read.js'
+import {loadRunDocuments} from './dispatch-document-read.js'
+import { bookingPrintDetails } from '../../../../packages/contracts/job-print.js'
+import {assertRunCapacity} from './capacity-service.js'
 import {requireOpenServiceDays} from './service-day.js'
 import {checkStaffAvailability} from './staff-availability.js'
 import { randomUUID } from 'node:crypto'
@@ -9,10 +13,11 @@ import { profileInclude } from '../identity-access/policy.js'
 export const dispatchCategories = ['TRANSFER', 'TOUR_BOAT', 'LONGTAIL_BOAT']
 const boatRoles = ['GUIDE', 'HEAD_GUIDE', 'ASSISTANT_TOUR_GUIDE', 'CAPTAIN', 'HEAD_CAPTAIN', 'ASSISTANT_CAPTAIN']
 const driverRoles = ['DRIVER', 'HEAD_DRIVER']
+const printBookingInclude = { trip: { include: { tour: { select: { printCode: true } } } }, agent: { select: { shortName: true } }, lines: { select: { selected: true, snapshot: true, resource: { select: { category: true, mealPeriod: true, accommodationType: true, ownership: true } } } } }
 const fullRun = {
   slot: { include: { resource: true, vehicle: true } },
   staff: { include: { user: true } },
-  assignments: { include: { bookingLine: { include: { booking: { include: { trip: true } }, resource: true } } } },
+  assignments: { include: { bookingLine: { include: { booking: { include: printBookingInclude }, resource: true } } } },
 }
 const categoryKind = category => category === 'TRANSFER' ? 'VEHICLE' : ['TOUR_BOAT', 'LONGTAIL_BOAT'].includes(category) ? 'BOAT' : null
 const liveAssignment = item => item.status !== 'CANCELLED' && ['CONFIRMED', 'COMPLETED'].includes(item.bookingLine.booking.status)
@@ -56,7 +61,7 @@ export function jobBooking(booking, runKind) {
     arrivalAt: journeyDate(booking, 'OUTBOUND'), departureAt: journeyDate(booking, 'RETURN'), returnStatus: booking.returnStatus,
     requestNotes: booking.requestNotes, programId: booking.programSnapshot?.tourId || booking.trip?.tourId, programName: booking.programSnapshot?.name || booking.trip?.name,
   }
-  if(runKind==='BOAT'){row.allergyStatus=booking.allergyStatus;row.specialRequirements=booking.specialRequirements||[];delete row.hotel;delete row.room;delete row.agentPhone;delete row.contactPhone;delete row.pickupPoint;delete row.dropoffPoint}
+  if(runKind==='BOAT'){row.agentShortName=booking.agent?.shortName||null;row.programPrintCode=booking.trip?.tour?.printCode||null;row.printServices=bookingPrintDetails(booking);row.demoDataset=booking.programSnapshot?.demoDataset||null;row.allergyStatus=booking.allergyStatus;row.specialRequirements=booking.specialRequirements||[];delete row.hotel;delete row.room;delete row.agentPhone;delete row.contactPhone;delete row.pickupPoint;delete row.dropoffPoint}
   if(runKind==='VEHICLE'){delete row.allergies;delete row.requestNotes}
   return row
 }
@@ -87,27 +92,43 @@ export async function listJobs(prisma, actorId, params) {
   const { access } = await authorize(prisma, actorId, duty(runKind))
   const canManage = access[duty(runKind, true)]
   const { page: requested, q } = paging(params)
+  const view=params.get('view'),lean=['list','options','workspace','detail'].includes(view)
+  if(view&&!lean)fail('INVALID_FILTER',400)
   const where = { kind: runKind, ...(canManage ? {} : { staff: { some: { userId: actorId } } }) }
   if (params.get('direction')) { if(!['OUTBOUND','RETURN'].includes(params.get('direction'))) fail('INVALID_FILTER',400); where.direction=params.get('direction') }
   if (params.get('runId')) where.id = uuid(params.get('runId'))
   if (params.get('date')) where.slot = { startsAt: serviceDay(params.get('date')) }
+  if(params.get('resourceId'))where.slot={...where.slot,resourceId:uuid(params.get('resourceId'))}
+  if(params.get('excludeRunId'))where.AND=[{id:{not:uuid(params.get('excludeRunId'))}}]
   if (q) where.OR = [{ code: { contains: q, mode: 'insensitive' } }, { name: { contains: q, mode: 'insensitive' } }]
   return prisma.$transaction(async tx => {
     const total = await tx.dispatchRun.count({ where }), page = Math.min(requested, Math.max(1, Math.ceil(total / 25)))
-    const rows = await tx.dispatchRun.findMany({ where, include: fullRun, skip: (page - 1) * 25, take: 25, orderBy: [{ slot: { startsAt: 'asc' } }, { id: 'asc' }] })
+    const rows = await tx.dispatchRun.findMany({ where, ...(lean?{select:runSelectorSelect}:{include:fullRun}), skip: (page - 1) * 25, take: 25, orderBy: [{ slot: { startsAt: 'asc' } }, { id: 'asc' }] })
+    let displayed=lean?rows.map(row=>{const {assignments,...summary}=row;return {...summary,passengers:assignments.reduce((sum,item)=>sum+item.adults+item.children,0)}}):rows.map(jobRun)
+    if(view==='options')return pageResult(displayed,total,page,{canManage})
     const summaryWhere={...where};delete summaryWhere.direction
-    const summaryRows=await tx.dispatchRun.findMany({where:summaryWhere,select:{direction:true,assignments:{where:{bookingLine:{booking:{status:{in:['CONFIRMED','COMPLETED']}}}},select:{adults:true,children:true}}}})
+    const summaryRows=await tx.dispatchRun.findMany({where:summaryWhere,select:{direction:true,assignments:{where:{status:{not:'CANCELLED'},bookingLine:{booking:{status:{in:['CONFIRMED','COMPLETED']}}}},select:{adults:true,children:true}}}})
     const summary={total:summaryRows.length,outbound:summaryRows.filter(r=>r.direction==='OUTBOUND').length,return:summaryRows.filter(r=>r.direction==='RETURN').length,passengers:summaryRows.reduce((n,r)=>n+r.assignments.reduce((sum,a)=>sum+a.adults+a.children,0),0)}
     let documentRuns
+    if(lean&&['workspace','detail'].includes(view)&&!params.get('document')){
+      const selectedId=params.get('selectedRunId');if(selectedId)uuid(selectedId)
+      const chosen=rows.find(row=>row.id===selectedId)||rows[0]
+      if(chosen){
+        const mapped=(await loadRunDocuments(tx,[chosen],runKind)).map(jobRun)
+        displayed=displayed.map(row=>mapped.find(item=>item.id===row.id)||row)
+      }
+    }
     if (['boat-day','vehicle-day'].includes(params.get('document')) && params.get('runId') && rows[0]?.slot.vehicleId) {
       // Keep the same per-run staff authorization when collecting the other direction.
       const anchor = rows[0]
-      documentRuns = (await tx.dispatchRun.findMany({
+      const documentRows = await tx.dispatchRun.findMany({
         where: { kind: runKind, ...(canManage ? {} : { staff: { some: { userId: actorId } } }), slot: { vehicleId: anchor.slot.vehicleId, startsAt: serviceDay(localStamp(anchor.slot.startsAt).slice(0, 10)) } },
-        include: fullRun, orderBy: [{ slot: { startsAt: 'asc' } }, { id: 'asc' }],
-      })).map(jobRun)
+        ...(lean?{select:runSelectorSelect}:{include:fullRun}), orderBy: [{ slot: { startsAt: 'asc' } }, { id: 'asc' }],
+      })
+      documentRuns=(lean?await loadRunDocuments(tx,documentRows,runKind):documentRows).map(jobRun)
+      if(lean)displayed=displayed.map(row=>documentRuns.find(item=>item.id===row.id)||row)
     }
-    return pageResult(rows.map(jobRun), total, page, { canManage, summary, ...(documentRuns ? { documentRuns } : {}) })
+    return pageResult(displayed, total, page, { canManage, summary, ...(documentRuns ? { documentRuns } : {}) })
   }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
 }
 
@@ -147,7 +168,7 @@ export async function dispatchOptions(prisma, actorId, params) {
     const dateField = direction === 'OUTBOUND' ? 'outboundDate' : 'returnDate'
     where.booking[dateField] = params.get('date') ? dateOnly(params.get('date')) : { not: null }
     if (direction === 'RETURN') where.booking.returnStatus = 'OUR'
-    include = { resource: true, booking: { include: { trip: true, attendance: true } }, dispatchAssignments: { include: { run: true } } }
+    select = { id:true,quantity:true,dispatchDirection:true,resource:{select:{id:true,name:true,baseUnit:true}},booking:{select:{id:true,code:true,name:true,adults:true,children:true,status:true,outboundDate:true,returnDate:true,returnStatus:true,attendance:{select:{direction:true,serviceDate:true,noShowAdults:true,noShowChildren:true}}}},dispatchAssignments:{select:{status:true,adults:true,children:true,run:{select:{direction:true}}}} }
   }
   if (q) {
     if (entity === 'staff') where.displayName = { contains: q, mode: 'insensitive' }
@@ -160,7 +181,7 @@ export async function dispatchOptions(prisma, actorId, params) {
     if (entity === 'staff') rows = rows.map(row => ({ id: row.id, name: row.displayName, roles: row.roles.filter(g => ['SELF', 'COMPANY'].includes(g.scope) && allowedRoles.includes(g.roleCode)).map(g => g.roleCode) }))
     if (entity === 'pending') rows = rows.map(row => {
       const { assignedAdults, assignedChildren, remainingAdults, remainingChildren, remainingPassengers } = pendingPassengers(row, direction)
-      return { id: row.id, name: row.booking.name+' · '+row.resource.name, code: row.booking.code, quantity: row.quantity, resource: { id: row.resource.id, name: row.resource.name }, booking: jobBooking(row.booking,runKind), assignedAdults, assignedChildren, remainingAdults, remainingChildren, remainingPassengers }
+      return { id: row.id, name: row.booking.name+' · '+row.resource.name, code: row.booking.code, quantity: row.quantity, resource: { id: row.resource.id, name: row.resource.name }, booking: {id:row.booking.id,code:row.booking.code,name:row.booking.name,adults:row.booking.adults,children:row.booking.children}, assignedAdults, assignedChildren, remainingAdults, remainingChildren, remainingPassengers }
     })
     return pageResult(rows, total, page)
   }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
@@ -212,6 +233,7 @@ export async function saveRun(prisma, actorId, input) {
     if (existing) await tx.dispatchStaff.deleteMany({ where: { runId: existing.id } })
     const staff = { create: data.staff.map(member => ({ id: randomUUID(), userId: member.userId, role: member.role })) }
     const row = existing ? await tx.dispatchRun.update({ where: { id: existing.id }, data: { ...runData, version: { increment: 1 }, staff }, include: fullRun }) : await tx.dispatchRun.create({ data: { id: input.id, ...runData, staff }, include: fullRun })
+    await assertRunCapacity(tx,row.id)
     await audit(tx, actorId, row.id, 'run.saved', { kind: row.kind, version: row.version })
     return { row: jobRun(row) }
   }, duty(input.kind, true))
@@ -250,17 +272,23 @@ export async function dispatchCommand(prisma, actorId, input) {
       if (journeyDay(line.booking, run.direction) !== localStamp(run.slot.startsAt).slice(0, 10)) fail('SERVICE_SLOT_UNAVAILABLE')
       const adults = int(input.adults, 0, 9999), children = int(input.children, 0, 9999)
       if (!adults && !children) fail('INVALID_QUANTITY', 400)
+
       const attendance = await tx.bookingAttendance.findUnique({where:{bookingId_serviceDate_direction:{bookingId:line.bookingId,serviceDate:dateOnly(localStamp(run.slot.startsAt).slice(0,10)),direction:run.direction}}})
       if (attendance?.noShowAdults || attendance?.noShowChildren) fail('CHECK_IN_DISPATCH_LOCKED')
       const existing = run.assignments.find(a => a.bookingLineId === line.id)
       if (existing?.actualAdults != null) fail('ACTUAL_ALREADY_RECORDED')
       if (existing && (adults < existing.adults || children < existing.children)) await protectPreparedGroup(tx, run, existing)
-      const other = line.dispatchAssignments.filter(a => a.run.direction === run.direction && a.runId !== run.id)
+      const other = line.dispatchAssignments.filter(a => a.status !== 'CANCELLED' && a.run.direction === run.direction && a.runId !== run.id)
       if (other.reduce((n, a) => n + a.adults, adults) > line.booking.adults || other.reduce((n, a) => n + a.children, children) > line.booking.children) fail('BOOKING_PASSENGERS_EXCEEDED')
       if (line.resource.baseUnit === 'PERSON' && other.reduce((n, a) => n + a.adults + a.children, adults + children) > line.quantity) fail('BOOKING_PASSENGERS_EXCEEDED')
       const others = run.assignments.filter(a => liveAssignment(a) && a.id !== existing?.id)
       if (others.reduce((n, a) => n + a.adults + a.children, adults + children) > run.capacity) fail('VEHICLE_CAPACITY_EXCEEDED')
       if (line.resource.serviceMode === 'CHARTER' && others.some(a => a.bookingLine.bookingId !== line.bookingId)) fail('CHARTER_ALREADY_ASSIGNED')
+      if(run.kind==='BOAT'){
+        if(adults!==line.booking.adults||children!==line.booking.children)fail('BOOKING_GROUP_MUST_STAY_TOGETHER')
+        const links=await tx.dispatchAssignment.findMany({where:{status:{not:'CANCELLED'},bookingLine:{bookingId:line.bookingId,resource:{category:line.resource.category}},run:{direction:run.direction}},include:{run:{include:{slot:true}}}})
+        if(links.some(a=>(a.runId!==run.id||a.bookingLineId!==line.id)&&localStamp(a.run.slot.startsAt).slice(0,10)===journeyDay(line.booking,run.direction)))fail('BOOKING_GROUP_ALREADY_ASSIGNED')
+      }
       const pickupAt = input.pickupAt ? stamp(input.pickupAt) : null
       if (run.kind === 'VEHICLE' && run.direction === 'OUTBOUND' && !pickupAt) fail('PICKUP_TIME_REQUIRED', 400)
       if (pickupAt && (pickupAt < run.slot.startsAt || pickupAt > run.slot.endsAt)) fail('INVALID_PICKUP_TIME', 400)
@@ -281,6 +309,7 @@ export async function dispatchCommand(prisma, actorId, input) {
         await tx.dispatchAssignment.update({ where: { id: assignment.id }, data: { actualAdults, actualChildren, changeReason } })
       }
     }
+    if(input.action==='ASSIGN')await assertRunCapacity(tx,run.id)
     await tx.dispatchRun.update({ where: { id: run.id }, data: { version: { increment: 1 } } })
     const result = { ok: true, version: run.version + 1 }
     await audit(tx, actorId, run.id, `dispatch.${input.action.toLowerCase()}`, { version: result.version, bookingLineId: input.bookingLineId || null, assignmentId: input.assignmentId || null })
@@ -317,4 +346,28 @@ export async function bookingOptions(prisma, actorId, params) {
     const rows = await tx[model].findMany({ where, select, skip: (page - 1) * 25, take: 25, orderBy: [{ name: 'asc' }, { id: 'asc' }] })
     return pageResult(rows, total, page)
   }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
+}
+
+// Move the whole Booking atomically. No interval exists where another channel can take its seats.
+export async function moveBoatGroup(db,actorId,input){
+ keys(input,['id','runId','version','assignmentId','targetRunId','targetVersion','reason'])
+ uuid(input.id);uuid(input.runId);uuid(input.assignmentId);uuid(input.targetRunId);int(input.version);int(input.targetVersion)
+ const reason=string(input.reason,1000)
+ return write(db,actorId,async tx=>{
+  const requestHash=hash({...input,actorId}),prior=await tx.operationCommand.findUnique({where:{id:input.id}})
+  if(prior){if(prior.requestHash!==requestHash)fail('COMMAND_CONFLICT');return prior.result}
+  const from=await tx.dispatchRun.findUnique({where:{id:input.runId},include:fullRun})
+  const to=await tx.dispatchRun.findUnique({where:{id:input.targetRunId},include:fullRun})
+  if(!from||!to||from.id===to.id||from.kind!=='BOAT'||to.kind!=='BOAT'||from.status!=='OPEN'||to.status!=='OPEN'||from.version!==input.version||to.version!==input.targetVersion)fail('SETTINGS_CONFLICT')
+  if(from.direction!==to.direction||from.slot.resourceId!==to.slot.resourceId||localStamp(from.slot.startsAt).slice(0,10)!==localStamp(to.slot.startsAt).slice(0,10))fail('INVALID_DISPATCH_BOOKING')
+  const assignment=from.assignments.find(a=>a.id===input.assignmentId&&liveAssignment(a))
+  if(!assignment)fail('NOT_FOUND',404)
+  if(assignment.adults!==assignment.bookingLine.booking.adults||assignment.children!==assignment.bookingLine.booking.children)fail('EXISTING_BOOKING_SPLIT')
+  const nested={$transaction:fn=>fn(tx),dispatchRun:tx.dispatchRun}
+  await dispatchCommand(nested,actorId,{id:randomUUID(),runId:from.id,version:from.version,action:'REMOVE',assignmentId:assignment.id})
+  await dispatchCommand(nested,actorId,{id:randomUUID(),runId:to.id,version:to.version,action:'ASSIGN',bookingLineId:assignment.bookingLineId,adults:assignment.adults,children:assignment.children,notes:assignment.notes||''})
+  const result={ok:true,sourceVersion:from.version+1,targetVersion:to.version+1}
+  await audit(tx,actorId,assignment.bookingLine.bookingId,'dispatch.group-moved',{fromRunId:from.id,toRunId:to.id,reason})
+  await tx.operationCommand.create({data:{id:input.id,requestHash,result}});return result
+ },'manageGuide')
 }

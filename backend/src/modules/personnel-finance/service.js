@@ -1,12 +1,13 @@
+import {financeListSelect,financeListPayloads} from './read-models.js'
 import {csvDocument} from '../../../../packages/contracts/csv.js'
 import { effectiveAccess } from '../../../../packages/contracts/access.js'
 import { personnelFinanceKinds, financialTotal, cents, recordActions } from '../../../../packages/contracts/personnel-finance.js'
-import { profileInclude } from '../identity-access/policy.js'
+import { accessProfileSelect } from '../identity-access/policy.js'
 import { fail,uuid,keys,string,dateOnly,hash,int } from '../operations/common.js'
 
 export async function personnelFinancePermission(tx,actorId,kind){
  const definition=personnelFinanceKinds[kind];if(!definition)fail('INVALID_KIND',400)
- const actor=await tx.userProfile.findUnique({where:{id:uuid(actorId)},include:profileInclude})
+ const actor=await tx.userProfile.findUnique({where:{id:uuid(actorId)},select:accessProfileSelect})
  const access=Object.fromEntries(['view','edit','approve','pay'].map(action=>[action,effectiveAccess(actor,`${definition.group}.${action}`).allowed]))
  if(!access.view)fail('PERMISSION_DENIED',403)
  return access
@@ -37,6 +38,10 @@ async function supplierBalance(tx,row){
  if(reserved.reduce((sum,r)=>sum+cents(r.payload.amount),0)+cents(row.payload.amount)>cents(String(order.receivedTotal)))fail('SUPPLIER_BALANCE_EXCEEDED')
 }
 export async function listPersonnelFinance(prisma,actorId,params=new URLSearchParams()){
+ if((params.get('view')==='list'||params.get('recordId'))&&!params.get('lookup'))return prisma.$transaction(tx=>readPersonnelFinance(tx,actorId,params),{isolationLevel:'RepeatableRead',timeout:15000})
+ return readPersonnelFinance(prisma,actorId,params)
+}
+async function readPersonnelFinance(prisma,actorId,params){
  const kind=params.get('kind')||'EMPLOYMENT',access=await personnelFinancePermission(prisma,actorId,kind)
  const page=Math.max(1,Math.min(10000,Number(params.get('page'))||1)),q=(params.get('q')||'').trim().slice(0,100)
  if(params.get('lookup')){
@@ -48,13 +53,17 @@ export async function listPersonnelFinance(prisma,actorId,params=new URLSearchPa
   return {rows:rows.map(row=>({id:row.id,name:row[field]})),total,page,pages:Math.max(1,Math.ceil(total/25))}
  }
  const status=params.get('status');if(status&&!['DRAFT','SUBMITTED','APPROVED','REJECTED','PAID','CLEARED','CLEARANCE_SUBMITTED','CANCELLED'].includes(status))fail('INVALID_STATUS',400)
- const where={kind,...(status?{status}:{}),...(q?{title:{contains:q,mode:'insensitive'}}:{})};const total=await prisma.financePersonnelRecord.count({where})
+ const recordId=params.get('recordId'),lean=params.get('view')==='list'&&!recordId
+ const where={kind,...(recordId?{id:uuid(recordId)}:{}),...(status?{status}:{}),...(q?{title:{contains:q,mode:'insensitive'}}:{})};const total=await prisma.financePersonnelRecord.count({where})
+ if(recordId&&!total)fail('NOT_FOUND',404)
  const actualPage=Math.min(page,Math.max(1,Math.ceil(total/25)))
- const rows=await prisma.financePersonnelRecord.findMany({where,orderBy:{createdAt:'desc'},take:25,skip:(actualPage-1)*25})
- const employeeIds=[...new Set(rows.flatMap(row=>[row.employeeId,row.payload.substituteId].filter(Boolean)))];const employees=await prisma.userProfile.findMany({where:{id:{in:employeeIds}},select:{id:true,displayName:true}})
- const runs=kind==='ALLOWANCE'?await prisma.dispatchRun.findMany({where:{id:{in:rows.map(row=>row.payload.runId)}},select:{id:true,name:true}}):[]
- const purchases=kind==='SUPPLIER_PAYMENT'?await prisma.purchaseOrder.findMany({where:{id:{in:rows.map(row=>row.payload.sourcePurchaseId)}},select:{id:true,name:true}}):[]
- const counts=await Promise.all(['DRAFT','SUBMITTED','APPROVED'].map(status=>prisma.financePersonnelRecord.count({where:{kind,status}})))
+ let rows=await prisma.financePersonnelRecord.findMany({where,...(lean?{select:financeListSelect}:{}),orderBy:[{createdAt:'desc'},{id:'asc'}],take:25,skip:(actualPage-1)*25})
+ if(lean)rows=await financeListPayloads(prisma,rows,kind)
+ const employeeIds=[...new Set(rows.flatMap(row=>[row.employeeId,...(!lean?[row.payload.substituteId]:[])].filter(Boolean)))];const employees=employeeIds.length?await prisma.userProfile.findMany({where:{id:{in:employeeIds}},select:{id:true,displayName:true}}):[]
+ const runs=!lean&&kind==='ALLOWANCE'?await prisma.dispatchRun.findMany({where:{id:{in:rows.map(row=>row.payload.runId)}},select:{id:true,name:true}}):[]
+ const purchases=!lean&&kind==='SUPPLIER_PAYMENT'?await prisma.purchaseOrder.findMany({where:{id:{in:rows.map(row=>row.payload.sourcePurchaseId)}},select:{id:true,name:true}}):[]
+ const grouped=lean?await prisma.financePersonnelRecord.groupBy({by:['status'],where:{kind,status:{in:['DRAFT','SUBMITTED','APPROVED']}},_count:{_all:true}}):null
+ const counts=recordId?[null,null,null]:grouped?['DRAFT','SUBMITTED','APPROVED'].map(status=>grouped.find(row=>row.status===status)?._count._all||0):await Promise.all(['DRAFT','SUBMITTED','APPROVED'].map(status=>prisma.financePersonnelRecord.count({where:{kind,status}})))
  return {rows:rows.map(row=>({...row,actions:recordActions(row,access,actorId)})),employees,runs,purchases,access,summary:{draft:counts[0],submitted:counts[1],approved:counts[2]},page:actualPage,total,pages:Math.max(1,Math.ceil(total/25)),actorId}
 }
 export async function savePersonnelFinance(prisma,actorId,input){

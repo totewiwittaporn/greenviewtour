@@ -2,11 +2,11 @@ import {billDocument,billSignatures,signBill} from './signatures.js'
 import {effectiveAccess} from '../../../../packages/contracts/access.js'
 import {bookingQuote} from '../../../../packages/contracts/booking-plan.js'
 import {cents} from '../../../../packages/contracts/personnel-finance.js'
-import {profileInclude} from '../identity-access/policy.js'
+import {accessProfileSelect} from '../identity-access/policy.js'
 import {fail,uuid,keys,string,hash,dateOnly,int} from '../operations/common.js'
 const amount=n=>(n/100).toFixed(2)
 export async function receivableAccess(tx,actorId){
- const actor=await tx.userProfile.findUnique({where:{id:uuid(actorId)},include:profileInclude})
+ const actor=await tx.userProfile.findUnique({where:{id:uuid(actorId)},select:accessProfileSelect})
  if(!effectiveAccess(actor,'finance.receive').allowed)fail('PERMISSION_DENIED',403)
 }
 export function positiveAmount(value){let n;try{n=cents(value)}catch{fail('INVALID_AMOUNT',400)}if(n<=0)fail('INVALID_AMOUNT',400);return n}
@@ -16,7 +16,7 @@ export async function listReceivables(prisma,actorId,params){
  if(params.get('id')){
   const row=await prisma.agentBill.findUnique({where:{id:uuid(params.get('id'))}});if(!row)fail('NOT_FOUND',404)
   const total=await prisma.agentPayment.count({where:{billId:row.id}}),page=Math.min(requested,Math.max(1,Math.ceil(total/25)))
-  const payments=await prisma.agentPayment.findMany({where:{billId:row.id},orderBy:[{createdAt:'desc'},{id:'asc'}],take:25,skip:(page-1)*25})
+  const payments=await prisma.agentPayment.findMany({where:{billId:row.id},select:{id:true,amount:true,receivedOn:true,reference:true},orderBy:[{createdAt:'desc'},{id:'asc'}],take:25,skip:(page-1)*25})
   return {row,payments,total,page,documentHash:hash(billDocument(row)),signatures:await billSignatures(prisma,row.id)}
  }
  const q=string(params.get('q')||'',100,false),eligible=params.get('eligible')==='true'
@@ -25,12 +25,12 @@ export async function listReceivables(prisma,actorId,params){
   where.billLine=null
   where.attendance={none:{financeStatus:{notIn:['NONE','RETAIN_CHARGES']}}}
   const total=await prisma.tourBooking.count({where}),page=Math.min(requested,Math.max(1,Math.ceil(total/25)))
-  const rows=await prisma.tourBooking.findMany({where,include:{lines:true},orderBy:[{createdAt:'desc'},{id:'asc'}],take:25,skip:(page-1)*25})
+  const rows=await prisma.tourBooking.findMany({where,select:{id:true,code:true,name:true,agentId:true,agentName:true,adultPrice:true,childPrice:true,adults:true,children:true,lines:{select:{id:true,selected:true,included:true,quantity:true,unitPrice:true,snapshot:true}}},orderBy:[{createdAt:'desc'},{id:'asc'}],take:25,skip:(page-1)*25})
   return {rows:rows.map(row=>({id:row.id,code:row.code,agentId:row.agentId,agentName:row.agentName,name:row.name,total:bookingQuote(row).total})),total,page}
  }
  const where=q?{OR:[{title:{contains:q,mode:'insensitive'}},{agentName:{contains:q,mode:'insensitive'}}]}:{}
  const total=await prisma.agentBill.count({where}),page=Math.min(requested,Math.max(1,Math.ceil(total/25)))
- const rows=await prisma.agentBill.findMany({where,orderBy:[{createdAt:'desc'},{id:'asc'}],take:25,skip:(page-1)*25})
+ const rows=await prisma.agentBill.findMany({where,select:{id:true,version:true,title:true,agentId:true,agentName:true,total:true,paid:true,status:true,dueOn:true},orderBy:[{createdAt:'desc'},{id:'asc'}],take:25,skip:(page-1)*25})
  return {rows,total,page}
 }
 export async function commandReceivable(prisma,actorId,input){

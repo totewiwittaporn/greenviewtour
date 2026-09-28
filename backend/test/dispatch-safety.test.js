@@ -23,13 +23,18 @@ function fixture({kind = 'VEHICLE', direction = 'OUTBOUND', capacity = 12, role 
  const input = {id:id(1),runId:run.id,version:1,action:'ASSIGN',bookingLineId:line.id,adults,children,pickupAt:'2026-11-10 08:00'}
  return {prisma,tx,input,run,line,events,creations}
 }
-test('vehicle and boat reject capacity overflow and allow split groups within remaining headcount',async()=>{
+test('vehicle and boat reject overflow; only vehicles retain partial-group allocation',async()=>{
  for(const [kind,role,capacity,adults] of [['VEHICLE','HEAD_DRIVER',12,14],['BOAT','GUIDE',40,45]]) {
   const f = fixture({kind,role,capacity,adults})
   await assert.rejects(()=>dispatchCommand(f.prisma,id(9),f.input),{code:'VEHICLE_CAPACITY_EXCEEDED'})
   assert.equal(f.creations.length,0)
-  await dispatchCommand(f.prisma,id(9),{...f.input,adults:capacity})
-  assert.equal(f.creations[0].adults,capacity)
+  if(kind==='BOAT'){
+   await assert.rejects(()=>dispatchCommand(f.prisma,id(9),{...f.input,adults:capacity}),{code:'BOOKING_GROUP_MUST_STAY_TOGETHER'})
+   assert.equal(f.creations.length,0)
+  }else{
+   await dispatchCommand(f.prisma,id(9),{...f.input,adults:capacity})
+   assert.equal(f.creations[0].adults,capacity)
+  }
   assert.ok(f.events.indexOf('lock')<f.events.indexOf('readRun'))
  }
 })

@@ -1,3 +1,4 @@
+import {RecordLoader} from '../../../core/ui/RecordLoader.jsx'
 import {translateLabel as bilingualLabel} from '../../../core/i18n/runtime.js'
 import { formatDate as displayDate } from '../../../core/i18n/runtime.js'
 import {roleNames} from '../../../../../../packages/contracts/access.js'
@@ -21,7 +22,7 @@ import { DataTable } from '../../../core/ui/DataTable.jsx'
 const formatDate = value => value ? displayDate(new Date(value), { dateStyle: 'medium', timeZone: 'Asia/Bangkok' }) : 'Not yet'
 export default function UsersPage({ onProfileSaved }) {
  useLocale();
-  const [selectedTab, setTab] = useState('users')
+  const [selectedTab, setTab] = useState('users'), [invitationsVisited,setInvitationsVisited]=useState(false)
   const [inviteOpen, setInviteOpen] = useState(false), [resetUser, setResetUser] = useState(null)
   const [selected,setSelected] = useState(null), [notice,setNotice] = useState('')
   const [search, setSearch] = useState('')
@@ -43,7 +44,7 @@ export default function UsersPage({ onProfileSaved }) {
     setState(old => ({ ...old, loading: true, error: '' }))
     async function load() {
       try {
-        const data = await api(`/api/users?${new URLSearchParams({ search: query, page: String(page), pageSize: '25' })}`, undefined, { signal: controller.signal })
+        const data = await api(`/api/users?${new URLSearchParams({ search: query, page: String(page), pageSize: '25', view:'list' })}`, undefined, { signal: controller.signal })
         if (!active) return
         setState({ loading: false, data, error: '' })
       } catch (error) {
@@ -58,9 +59,9 @@ export default function UsersPage({ onProfileSaved }) {
   const summary = data?.summary
   const connected = Boolean(data && !error && !loading)
   return <>
-    {data?.canInvite && <Tabs items={[{ id: 'users', label: 'Users' }, { id: 'invitations', label: 'Invitations' }]} value={tab} onChange={setTab} label={bilingualLabel("User management")} idPrefix="user-management" />}
+    {data?.canInvite && <Tabs items={[{ id: 'users', label: 'Users' }, { id: 'invitations', label: 'Invitations' }]} value={tab} onChange={value=>{if(value==='invitations')setInvitationsVisited(true);setTab(value)}} label={bilingualLabel("User management")} idPrefix="user-management" />}
 
-    <section className="page-heading"><div><p className="eyebrow">{bilingualLabel("YOUR TEAM, IN ONE PLACE")}</p><h1>{tab === 'invitations' ? bilingualLabel('Invitations') : bilingualLabel('Users')}</h1><p className="muted">{tab === 'invitations' ? t('Invite employees and follow their account activation.') : t('A clear view of the people who access Greenview Tour.')}</p></div><div className="page-actions">{data?.canInvite && <Button className="button-primary" onClick={() => { setTab('invitations'); setInviteOpen(true) }}>{t("+ Add employee")}</Button>}</div></section>
+    <section className="page-heading"><div><p className="eyebrow">{bilingualLabel("YOUR TEAM, IN ONE PLACE")}</p><h1>{tab === 'invitations' ? bilingualLabel('Invitations') : bilingualLabel('Users')}</h1><p className="muted">{tab === 'invitations' ? t('Invite employees and follow their account activation.') : t('A clear view of the people who access Greenview Tour.')}</p></div><div className="page-actions">{data?.canInvite && <Button className="button-primary" onClick={() => { setInvitationsVisited(true); setTab('invitations'); setInviteOpen(true) }}>{t("+ Add employee")}</Button>}</div></section>
     <div className="directory-tab-stage">
     <TabPanel active={tab === 'users'} preserveLayout className="directory-tab-panel" id="user-management-panel-users" labelledBy={data?.canInvite ? 'user-management-tab-users' : undefined}>
     <SummaryCards label={bilingualLabel("Account summary")} items={[
@@ -82,12 +83,12 @@ export default function UsersPage({ onProfileSaved }) {
       <Pagination page={data?.page ?? page} pageSize={25} total={error || loading ? undefined : data?.total} busy={loading} onPageChange={setPage} label={bilingualLabel("Users pagination")} />
     </section>
     </TabPanel>
-    {data?.canInvite && <TabPanel active={tab === 'invitations'} preserveLayout className="directory-tab-panel" id="user-management-panel-invitations" labelledBy="user-management-tab-invitations"><StaffInvitations open={inviteOpen} onClose={() => setInviteOpen(false)} /></TabPanel>}
+    {data?.canInvite && <TabPanel active={tab === 'invitations'} preserveLayout className="directory-tab-panel" id="user-management-panel-invitations" labelledBy="user-management-tab-invitations">{invitationsVisited&&<StaffInvitations open={inviteOpen} onClose={() => setInviteOpen(false)} />}</TabPanel>}
     </div>
     {resetUser && <ResetPassword user={resetUser} onClose={() => setResetUser(null)} />}
     {notice && <p role="status">{t(notice)}</p>}
     {selected?.mode==='access' && <UserAccess user={selected.user} onClose={()=>setSelected(null)} onSaved={()=>{setSelected(null);setNotice('User permissions updated.');setRefresh(n=>n+1);onProfileSaved?.()}}/>}
-    {selected && selected.mode!=='access' && <UserActions user={selected.user} initialMode={selected.mode} canChangeDepartment={data?.canChangeDepartment} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); setNotice('User profile updated.'); setRefresh(n => n + 1); onProfileSaved?.() }} />}
+    {selected && selected.mode!=='access' && <RecordLoader recordId={selected.user.id} url={'/api/users?'+new URLSearchParams({recordId:selected.user.id})} title='User details' onClose={()=>setSelected(null)}>{(user,details)=><UserActions user={user} initialMode={selected.mode} canChangeDepartment={details.canChangeDepartment} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); setNotice('User profile updated.'); setRefresh(n => n + 1); onProfileSaved?.() }}/>}</RecordLoader>}
     {data && <p style={{ visibility: tab === 'users' ? 'visible' : 'hidden' }} className="last-checked" role="status">{t("Last updated")}{' '}{displayDate(new Date(data.checkedAt), { timeStyle: 'medium', timeZone: 'Asia/Bangkok' })}{' '}{t("· Bangkok time")}</p>}
   </>
 }

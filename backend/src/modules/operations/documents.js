@@ -2,7 +2,7 @@ import { authorize, dateOnly } from './common.js'
 import { bookingAmount, dailyBookingSummary } from '../../../../packages/contracts/booking-document.js'
 
 export async function documentBrand(prisma) {
- const asset = await prisma.documentAsset.findUnique({ where: { key: 'company-logo' } })
+ const asset = await prisma.documentAsset.findUnique({ where: { key: 'company-logo' },select:{mimeType:true,content:true,sha256:true} })
  if (!asset) return { logo: null }
  return { logo: `data:${asset.mimeType};base64,${Buffer.from(asset.content).toString('base64')}`, sha256: asset.sha256 }
 }
@@ -14,7 +14,7 @@ export async function dailyBookingDocument(prisma, actorId, date) {
   // Reception owns arrival-day intake; return-only customers use their return service day.
   const bookings = await tx.tourBooking.findMany({
    where: { status: { in: ['CONFIRMED', 'COMPLETED'] }, OR: [{outboundDate:day},{outboundDate:null,returnDate:day,returnStatus:'OUR'}] },
-   include: { trip: true, lines: { include: { resource: true } } },
+   select: {id:true,code:true,version:true,name:true,agentName:true,adults:true,children:true,paymentTerms:true,adultPrice:true,childPrice:true,hotel:true,room:true,allergies:true,specialRequirements:true,assistance:true,requestNotes:true,programSnapshot:true,trip:{select:{tourId:true,name:true}},lines:{select:{selected:true,included:true,quantity:true,unitPrice:true,snapshot:true,dispatchDirection:true,resource:{select:{category:true}}}}},
    orderBy: [{ code: 'asc' }, { id: 'asc' }],
   })
   const rows = bookings.map(b => ({

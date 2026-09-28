@@ -15,7 +15,7 @@ try {
   process.env.GREENVIEW_TEST_ORIGIN = 'http://localhost:5274'
   vite = await createViteServer({ root, server:{port:5274}, configFile: `${root}vite.config.js` })
   await vite.listen()
-  for (const name of ['smoke-auth.js', 'smoke-staff-invitations.js', 'smoke-user-access.js', 'smoke-dashboard.js', 'smoke-locale-backoffice.js', 'smoke-navigation-ui.js']) {
+  for (const name of ['smoke-shell-scroll.js', 'smoke-data-fetch.js', 'smoke-customers.js', 'smoke-workspace-startup.js', 'smoke-auth.js', 'smoke-staff-invitations.js', 'smoke-user-access.js', 'smoke-portrait-job.js', 'smoke-dashboard.js', 'smoke-reference-dashboard.js', 'smoke-shell-geometry.js', 'smoke-booking-access.js', 'smoke-booking-commission.js', 'smoke-locale-backoffice.js', 'smoke-navigation-ui.js', 'smoke-capacity-ui.js']) {
     await new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [fileURLToPath(new URL(name, import.meta.url))], { stdio: 'inherit' })
       child.once('error', reject)
@@ -30,10 +30,10 @@ try {
     const appVite = await createViteServer({root:appRoot, server:{port,strictPort:true}, configFile:`${appRoot}vite.config.js`})
     try {
       await appVite.listen()
-      await new Promise((resolve, reject) => {
-        const child = spawn(process.execPath, [fileURLToPath(new URL(script, import.meta.url))], {stdio:'inherit',env:{...process.env,[env]:`http://localhost:${port}`}})
+      for(const testScript of [script,'smoke-commerce-data-fetch.js'])await new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, [fileURLToPath(new URL(testScript, import.meta.url))], {stdio:'inherit',env:{...process.env,[env]:`http://localhost:${port}`,GREENVIEW_COMMERCE_SURFACE:app}})
         child.once('error',reject)
-        child.once('exit',code=>code===0?resolve():reject(new Error(`${script} failed`)))
+        child.once('exit',code=>code===0?resolve():reject(new Error(`${testScript} failed`)))
       })
     } finally { await appVite.close() }
   }

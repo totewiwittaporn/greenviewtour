@@ -5,7 +5,8 @@ import {randomUUID} from 'node:crypto'
 import {createDemoPayment,applyDemoPaymentEvent,demoPaymentNotification} from '../../platform/payments/preparation.js'
 import {pushText} from '../../platform/line/messaging.js'
 import {programBookingPlan,storedJourney} from '../operations/booking-plan.js'
-import {customerFor} from './service.js'
+import {customerFor,customerCapacity} from './service.js'
+import {releaseRequestCapacity} from '../operations/capacity-service.js'
 import {uuid,fail,hash} from '../operations/common.js'
 let fixture=null
 try{fixture=JSON.parse(readFileSync(new URL('../../../../docs/validation/commerce-demo-manifest.json',import.meta.url),'utf8'))}catch{/* Missing fixture disables simulation. */}
@@ -24,6 +25,8 @@ export async function demoCheckout(db,user,input,now=new Date()){
   if(row.snapshot.demoCheckout?.payment.status==='SUCCEEDED')return {ok:true,bookingId:row.bookingId,status:'SIMULATED_SUCCESS'}
   if(row.status!=='REQUESTED'||row.bookingId)fail('BOOKING_LOCKED')
   if(row.holdUntil&&row.holdUntil<=now)fail('PROMOTION_HOLD_EXPIRED')
+  const availability=await customerCapacity(tx,{tourId:row.tourId,serviceDate:row.serviceDate.toISOString().slice(0,10),adults:row.adults,children:row.children,capacitySelections:row.snapshot.capacitySelections||[]},row.snapshot,now,row.id)
+  if(!availability.canConfirm)fail('BOAT_CAPACITY_REVIEW_REQUIRED')
   const amountMinor=Math.round(Number(row.snapshot.packageTotal)*100)
   let payment=row.snapshot.demoCheckout?.payment
   if(input.action==='PREPARE'){
@@ -41,7 +44,8 @@ export async function demoCheckout(db,user,input,now=new Date()){
   const id=randomUUID(),code='DEMO-'+id.slice(0,8),name='DEMO · '+row.details.name.slice(0,190)
   await tx.operationTrip.create({data:{id:plan.trip.id,code:'T-'+id,name,tourId:row.tourId,startsAt:plan.trip.startsAt,endsAt:plan.trip.endsAt,capacity:row.adults+row.children,status:'OPEN'}})
   await requireOpenServiceDays(tx,[plan.journey.outboundDate,plan.journey.returnDate])
-  await tx.tourBooking.create({data:{id,code,name,tripId:plan.trip.id,adults:row.adults,children:row.children,status:'CONFIRMED',paymentTerms:'PREPAID',adultPrice:row.snapshot.adultPrice,childPrice:row.snapshot.childPrice,contactPhone:row.details.phone,allergyStatus:row.details.allergyStatus,allergies:row.details.allergies,...storedJourney(plan.journey),requestHash:hash({demoPayment:payment.id}),programSnapshot:{tourId:row.tourId,name:plan.program.name,bookingOwnedTrip:true,journeyMode:plan.program.journeyMode,durationDays:plan.program.durationDays,customerRequestId:row.id,customerId:customer.id,demo:true,demoPaymentStatus:'SUCCEEDED',paymentNotice:'SIMULATION ONLY — no real money received',startsAt:plan.trip.startsAt.toISOString(),endsAt:plan.trip.endsAt.toISOString()},lines:{create:plan.lines.map(l=>({id:randomUUID(),resourceId:l.resourceId,quantity:l.quantity,selected:row.snapshot.components.find(c=>c.componentId===l.componentId).selected,included:l.included,usagePoint:l.usagePoint,dispatchDirection:l.dispatchDirection,unitPrice:l.unitPrice,snapshot:{...l.snapshot,componentId:l.componentId,demo:true}}))}}})
+  await tx.tourBooking.create({data:{id,code,name,tripId:plan.trip.id,adults:row.adults,children:row.children,status:'CONFIRMED',paymentTerms:'PREPAID',adultPrice:row.snapshot.adultPrice,childPrice:row.snapshot.childPrice,contactPhone:row.details.phone,allergyStatus:row.details.allergyStatus,allergies:row.details.allergies,...storedJourney(plan.journey),requestHash:hash({demoPayment:payment.id}),programSnapshot:{capacitySelections:availability.selections,tourId:row.tourId,name:plan.program.name,bookingOwnedTrip:true,journeyMode:plan.program.journeyMode,durationDays:plan.program.durationDays,customerRequestId:row.id,customerId:customer.id,demo:true,demoPaymentStatus:'SUCCEEDED',paymentNotice:'SIMULATION ONLY — no real money received',startsAt:plan.trip.startsAt.toISOString(),endsAt:plan.trip.endsAt.toISOString()},lines:{create:plan.lines.map(l=>({id:randomUUID(),resourceId:l.resourceId,quantity:l.quantity,selected:row.snapshot.components.find(c=>c.componentId===l.componentId).selected,included:l.included,usagePoint:l.usagePoint,dispatchDirection:l.dispatchDirection,unitPrice:l.unitPrice,snapshot:{...l.snapshot,componentId:l.componentId,demo:true}}))}}})
+  await releaseRequestCapacity(tx,row.id,now)
   const prepared=demoPaymentNotification(payment)
   // Synthetic identity is never saved as a verified LINE account or passed to live mode.
   const delivery=await pushText({payload:{to:'U'+'0'.repeat(32),messages:[{type:'text',text:prepared.text}]},retryKey:payment.id,mode:'simulation',transport:()=>{throw Error('SIMULATION_NETWORK_FORBIDDEN')}})

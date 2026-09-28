@@ -28,3 +28,8 @@ dist-ssr
 .env.*
 !.env.example
 coverage/
+
+# Private operator exports and authentication state
+*.private.*
+credentials.private.json
+playwright/.auth/

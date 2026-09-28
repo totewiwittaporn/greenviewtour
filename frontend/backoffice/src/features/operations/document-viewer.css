@@ -1,0 +1,22 @@
+.core-dialog[data-variant="job-document"]{width:min(1020px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}
+.core-dialog[data-variant="job-document"]>.dialog-header{padding:14px 20px;gap:16px}
+.core-dialog[data-variant="job-document"]>.dialog-header h2{font-size:16px;overflow-wrap:anywhere;min-width:0}
+.core-dialog[data-variant="job-document"]>.dialog-header button{flex:none;min-width:40px;min-height:40px}
+.core-dialog[data-variant="job-document"]>.dialog-content{padding:0 16px 16px;background:#edf2f5;overflow-x:hidden;scrollbar-gutter:stable;isolation:isolate}
+.document-preview[data-orientation="portrait"]{min-width:0;width:100%;overflow:visible;padding:0}
+.document-preview[data-orientation="portrait"]>.document-toolbar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 0;margin:0;background:#edf2f5;border-bottom:1px solid #d4dfe5}
+.document-toolbar .document-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.document-toolbar .document-view-label{font-size:12px;color:#3d545f;line-height:1.4}
+.document-preview[data-orientation="portrait"] .fit-document{position:relative;width:100%;min-width:0;margin-top:12px;overflow:clip}
+.document-preview[data-orientation="portrait"] .fit-document-inner{position:absolute;top:0;left:0;width:210mm;transform-origin:top left}
+.document-preview[data-orientation="portrait"] .fit-document-inner>.job-sheet{min-width:0;width:210mm}
+.job-code-guide{display:grid;gap:18px}
+.job-code-guide h3{margin:0 0 8px;font-size:14px}
+.job-code-guide dl{display:grid;grid-template-columns:90px minmax(0,1fr);gap:8px 12px;margin:0;font-size:13px}
+.job-code-guide dt{font-weight:700}.job-code-guide dd{margin:0;line-height:1.6;overflow-wrap:anywhere}
+@media(max-width:520px){.core-dialog[data-variant="job-document"]{width:calc(100vw - 12px);max-width:calc(100vw - 12px);max-height:calc(100dvh - 12px)}.core-dialog[data-variant="job-document"]>.dialog-header{padding:8px 10px}.core-dialog[data-variant="job-document"]>.dialog-content{padding:0 6px 8px}.document-view-label{width:100%}.document-toolbar .button{min-height:40px}}
+@media print{
+ .document-toolbar,.job-code-guide{display:none!important}
+ .document-preview[data-orientation="portrait"] .fit-document,.document-preview[data-orientation="portrait"] .fit-document-inner{position:static!important;width:210mm!important;height:auto!important;min-height:0!important;transform:none!important;overflow:visible!important;margin:0!important;padding:0!important}
+ body:has(.compact-boat-sheet) .core-dialog[data-variant="job-document"]>.dialog-content{padding:0!important;background:white!important;overflow:visible!important;scrollbar-gutter:auto}
+}

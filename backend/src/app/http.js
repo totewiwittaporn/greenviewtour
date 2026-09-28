@@ -1,7 +1,11 @@
+import {listCapacityPools,saveCapacityPool,bookingCapacityPreview,bindLegacyBookingWindow} from '../modules/operations/capacity-service.js'
+import {publicQuoteAvailability,parseCapacitySelections,staffCustomerCapacity,answerCustomerDate} from '../modules/commerce/service.js'
+import {moveBoatGroup} from '../modules/operations/dispatch.js'
+import { bookingAssignees, assignBooking } from '../modules/operations/booking-ownership.js'
 import { checkInState, checkInCommand } from '../modules/operations/check-in.js'
 import {demoCheckout} from '../modules/commerce/demo-checkout.js'
 import {listGuideAssignments,guideAssignmentOptions,saveGuideAssignment} from '../modules/operations/guide-assignments.js'
-import { previewWebsiteImage, cancelCustomerRequest, saveCustomer, customerDocuments, customerDocument, quoteRequest, saveWebsiteImage, websiteImage, commandCustomerRequest, uploadCustomerProof, publicCatalog, publicCompany, publicPopups, customerFor, enrollCustomer, saveCustomerProfile, memberRequests, submitCustomerRequest, listCustomers } from '../modules/commerce/service.js'
+import { previewWebsiteImage, cancelCustomerRequest, saveCustomer, customerDocuments, customerDocument, saveWebsiteImage, websiteImage, commandCustomerRequest, uploadCustomerProof, publicCatalog, publicCompany, publicPopups, customerFor, enrollCustomer, saveCustomerProfile, memberRequests, submitCustomerRequest, listCustomers } from '../modules/commerce/service.js'
 import {listReceivables,commandReceivable} from '../modules/receivables/service.js'
 import {listEvidence,saveEvidence,downloadEvidence} from '../modules/evidence/service.js'
 import { bookingPriceCommand } from '../modules/operations/booking-price.js'
@@ -18,12 +22,12 @@ import { operationMessages } from '../modules/operations/messages.js'
 import { listSettings, saveSettings } from '../modules/service-catalog/settings.js'
 import { assertDeliverableInvitationEmail, canInvite, canResetPassword, listInvitations, createInvitation, changeInvitation, lookupInvitation, acceptInvitation, requestUserReset } from '../modules/identity-access/invitations.js'
 import { managementScope, canEditProfile, editProfile, editOwnProfile } from '../modules/identity-access/user-management.js'
-import { hash as commerceHash } from '../modules/operations/common.js'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { listUsers } from '../modules/identity-access/list-users.js'
 import { parseUsersQuery } from '../backoffice/settings/users/query.js'
 import { AccessError, normalizeEmail, resolveMembership } from '../modules/identity-access/membership.js'
 import { profileInclude, publicProfile } from '../modules/identity-access/policy.js'
+import { readManuals } from '../backoffice/manuals/service.js'
 import { dashboardOverview } from '../backoffice/dashboard/overview/service.js'
 import { SessionStore } from '../platform/auth/sessions.js'
 const digest = value => createHash('sha256').update(value).digest()
@@ -69,7 +73,7 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         if(req.method!=='GET')return send(405,{code:'METHOD_NOT_ALLOWED'})
         const imageMatch=path.match(/^\/api\/public\/images\/([0-9a-f-]{36})$/)
         if(imageMatch){const file=await websiteImage(prisma,imageMatch[1]);res.writeHead(200,{'Content-Type':file.mimeType,'Content-Length':file.size,'X-Content-Type-Options':'nosniff','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; sandbox"});return res.end(Buffer.from(file.content))}
-        if(path==='/api/public/quote'){const quote=await quoteRequest(prisma,{tourId:url.searchParams.get('tourId'),serviceDate:url.searchParams.get('serviceDate'),adults:Number(url.searchParams.get('adults')),children:Number(url.searchParams.get('children')),promotionId:url.searchParams.get('promotionId')||null,optionalIds:url.searchParams.getAll('optionalId')});return send(200,{...quote,quoteKey:commerceHash(quote)})}
+        if(path==='/api/public/quote')return send(200,await publicQuoteAvailability(prisma,{tourId:url.searchParams.get('tourId'),serviceDate:url.searchParams.get('serviceDate'),adults:Number(url.searchParams.get('adults')),children:Number(url.searchParams.get('children')),promotionId:url.searchParams.get('promotionId')||null,optionalIds:url.searchParams.getAll('optionalId'),capacitySelections:parseCapacitySelections(url.searchParams.get('capacitySelections'))}))
         if(path==='/api/public/company')return send(200,await publicCompany(prisma))
         if(path==='/api/public/tours')return send(200,await publicCatalog(prisma,url.searchParams))
         if(path==='/api/public/popups')return send(200,await publicPopups(prisma))
@@ -113,10 +117,11 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         }
         if(path==='/api/member/profile'&&req.method==='GET'&&entry.purpose==='customer-recovery'){await customerFor(prisma,user);return memberSend({recovery:true})}
         if(entry.purpose!=='customer')throw new AccessError('LOGIN_REQUIRED',401)
-        if(path==='/api/member/documents'&&req.method==='GET')return memberSend(await customerDocuments(prisma,user,url.searchParams.get('requestId')))
+        if(path==='/api/member/documents'&&req.method==='GET')return memberSend(await customerDocuments(prisma,user,url.searchParams.get('requestId'),Number(url.searchParams.get('page')||1)))
         const docMatch=path.match(/^\/api\/member\/documents\/([0-9a-f-]{36})$/)
         if(docMatch&&req.method==='GET'){const file=await customerDocument(prisma,user,docMatch[1]);res.writeHead(200,{'Content-Type':file.mimeType,'Content-Length':file.size,'Cache-Control':'no-store','Content-Disposition':"inline; filename*=UTF-8''"+encodeURIComponent(file.filename),'X-Content-Type-Options':'nosniff','Content-Security-Policy':file.mimeType==='application/pdf'?"script-src 'none'; base-uri 'none'":"default-src 'none'; sandbox"});return res.end(Buffer.from(file.content))}
         if(path==='/api/member/demo-checkout'&&req.method==='POST')return memberSend(await demoCheckout(prisma,user,await body(req)))
+        if(path==='/api/member/date-response'&&req.method==='POST')return memberSend(await answerCustomerDate(prisma,user,await body(req)))
         if(path==='/api/member/cancel'&&req.method==='POST')return memberSend(await cancelCustomerRequest(prisma,user,await body(req)))
         if(path==='/api/member/proof'&&req.method==='POST')return memberSend(await uploadCustomerProof(prisma,user,await body(req,7100000)))
         if(path==='/api/member/profile')return memberSend(req.method==='GET'?{customer:await customerFor(prisma,user)}:await saveCustomerProfile(prisma,user,await body(req)))
@@ -248,9 +253,16 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         const { user, entry } = await sessions.authenticated(req, provider, pool)
         if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
         const entity = operationMatch[1]
-        if (req.method === 'GET') return send(200, entity === 'check-in' ? await checkInState(prisma,user.id,url.searchParams) : entity === 'document-brand' ? await documentBrand(prisma) : entity === 'booking-document' ? await dailyBookingDocument(prisma,user.id,url.searchParams.get('date')) : entity === 'daily-summary' ? await dailySummaryState(prisma,user.id,url.searchParams.get('date'),process.env,Number(url.searchParams.get('page')||1)) : entity === 'jobs' ? await listJobs(prisma,user.id,url.searchParams) : entity === 'dispatch-options' ? await dispatchOptions(prisma,user.id,url.searchParams) : entity === 'booking-options' ? await bookingOptions(prisma,user.id,url.searchParams) : entity === 'boat-preparation' ? await boatPreparation(prisma,user.id,url.searchParams) : entity === 'preparation' ? await tripPreparation(prisma,user.id,url.searchParams) : entity === 'blueprint' ? await getBlueprint(prisma,user.id,url.searchParams) : await listOperations(prisma,user.id,entity,url.searchParams))
+        if(entity==='capacity'&&req.method==='GET')return send(200,await listCapacityPools(prisma,user.id,url.searchParams))
+        if(entity==='customer-capacity'&&req.method==='GET')return send(200,await staffCustomerCapacity(prisma,user.id,url.searchParams))
+        if(entity==='capacity-check'&&req.method==='GET')return send(200,await bookingCapacityPreview(prisma,user.id,Object.fromEntries(url.searchParams)))
+        if (req.method === 'GET') return send(200, entity === 'booking-assignees' ? await bookingAssignees(prisma,user.id,url.searchParams) : entity === 'check-in' ? await checkInState(prisma,user.id,url.searchParams) : entity === 'document-brand' ? await documentBrand(prisma) : entity === 'booking-document' ? await dailyBookingDocument(prisma,user.id,url.searchParams.get('date')) : entity === 'daily-summary' ? await dailySummaryState(prisma,user.id,url.searchParams.get('date'),process.env,Number(url.searchParams.get('page')||1),{view:url.searchParams.get('view'),snapshotId:url.searchParams.get('snapshotId')}) : entity === 'jobs' ? await listJobs(prisma,user.id,url.searchParams) : entity === 'dispatch-options' ? await dispatchOptions(prisma,user.id,url.searchParams) : entity === 'booking-options' ? await bookingOptions(prisma,user.id,url.searchParams) : entity === 'boat-preparation' ? await boatPreparation(prisma,user.id,url.searchParams) : entity === 'preparation' ? await tripPreparation(prisma,user.id,url.searchParams) : entity === 'blueprint' ? await getBlueprint(prisma,user.id,url.searchParams) : await listOperations(prisma,user.id,entity,url.searchParams))
         const input = await body(req,131072)
-        return send(200, entity === 'check-in' ? await checkInCommand(prisma,user.id,input) : entity === 'daily-summary' ? await prepareDailySummary(prisma,user.id,input) : entity === 'runs' ? await saveRun(prisma,user.id,input) : entity === 'dispatch-command' ? await dispatchCommand(prisma,user.id,input) : entity === 'stock-command' ? await stockCommand(prisma,user.id,input) : entity === 'booking-return' ? await amendBookingReturn(prisma,user.id,input) : entity === 'booking-details' ? await amendBookingDetails(prisma,user.id,input) : entity === 'booking-price' ? await bookingPriceCommand(prisma,user.id,input) : entity === 'booking-status' ? await bookingStatus(prisma,user.id,input) : entity === 'bookings' ? await saveBooking(prisma,user.id,input) : await saveOperationCatalog(prisma,user.id,entity,input))
+        if(entity==='capacity'&&req.method==='POST')return send(200,await saveCapacityPool(prisma,user.id,input))
+        if(entity==='capacity-check'&&req.method==='POST')return send(200,await bookingCapacityPreview(prisma,user.id,input))
+        if(entity==='bind-booking-window'&&req.method==='POST')return send(200,await bindLegacyBookingWindow(prisma,user.id,input))
+        if(entity==='move-boat-group'&&req.method==='POST')return send(200,await moveBoatGroup(prisma,user.id,input))
+        return send(200, entity === 'booking-assignment' ? await assignBooking(prisma,user.id,input) : entity === 'check-in' ? await checkInCommand(prisma,user.id,input) : entity === 'daily-summary' ? await prepareDailySummary(prisma,user.id,input) : entity === 'runs' ? await saveRun(prisma,user.id,input) : entity === 'dispatch-command' ? await dispatchCommand(prisma,user.id,input) : entity === 'stock-command' ? await stockCommand(prisma,user.id,input) : entity === 'booking-return' ? await amendBookingReturn(prisma,user.id,input) : entity === 'booking-details' ? await amendBookingDetails(prisma,user.id,input) : entity === 'booking-price' ? await bookingPriceCommand(prisma,user.id,input) : entity === 'booking-status' ? await bookingStatus(prisma,user.id,input) : entity === 'bookings' ? await saveBooking(prisma,user.id,input) : await saveOperationCatalog(prisma,user.id,entity,input))
       }
       const settingsMatch = path.match(/^\/api\/settings\/(company|partners|tours|rates|agreements|locations|vehicles|channels)$/)
       if (settingsMatch) {
@@ -291,12 +303,13 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         if (entry.purpose !== 'recovery') throw new AccessError('RECOVERY_REQUIRED')
         return send(200, { ok: true })
       }
-      if (!['/api/me', '/api/users', '/api/dashboard'].includes(path)) return send(404, { code: 'NOT_FOUND' })
+      if (!['/api/me', '/api/users', '/api/dashboard', '/api/manuals'].includes(path)) return send(404, { code: 'NOT_FOUND' })
       const { user, entry } = await sessions.authenticated(req, provider, pool)
       if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
+      if (path === '/api/dashboard') return send(200, await dashboardOverview(prisma, user.id, new Date(), {surface:'page'}))
       const profile = await prisma.userProfile.findUnique({ where: { id: user.id }, include: profileInclude })
       if (profile?.status !== 'ACTIVE') throw new AccessError('ACCOUNT_UNAVAILABLE')
-      if (path === '/api/dashboard') return send(200, await dashboardOverview(prisma, user.id))
+      if (path === '/api/manuals') { if(req.method!=='GET')return send(405,{code:'METHOD_NOT_ALLOWED'});return send(200,readManuals(profile,url.searchParams.get('role'))) }
       if (path === '/api/me') return send(200, { user: publicProfile(profile, user.email) })
       const scope = managementScope(profile)
       if (!scope) throw new AccessError('PERMISSION_DENIED')

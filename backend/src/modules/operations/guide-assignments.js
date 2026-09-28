@@ -8,9 +8,13 @@ const projection=row=>({...row,status:row.booking.status==='CANCELLED'?'CANCELLE
 export async function listGuideAssignments(db,actorId,params){
  const {access}=await authorize(db,actorId,'guide'),page=int(params.get('page')||1,1),q=string(params.get('q')||'',100,false)
  const where={...(access.manageGuide?{}:{guideId:actorId}),...(q?{booking:{OR:[{code:{contains:q,mode:'insensitive'}},{name:{contains:q,mode:'insensitive'}}]}}:{})}
+ const recordId=params.get('recordId'),lean=params.get('view')==='list'&&!recordId
+ if(recordId)where.id=uuid(recordId)
  const total=await db.guideAssignment.count({where}),actual=Math.min(page,Math.max(1,Math.ceil(total/25)))
- const rows=await db.guideAssignment.findMany({where,include,orderBy:[{startsAt:'desc'},{id:'asc'}],skip:(actual-1)*25,take:25})
- return {rows:rows.map(projection),total,page:actual,pageSize:25,canManage:access.manageGuide}
+ if(recordId&&!total)fail('NOT_FOUND',404)
+ const select={id:true,version:true,bookingId:true,guideId:true,startsAt:true,endsAt:true,status:true,guide:{select:{displayName:true}},booking:{select:{id:true,code:true,name:true,status:true}}}
+ const rows=await db.guideAssignment.findMany({where,...(lean?{select}:{include}),orderBy:[{startsAt:'desc'},{id:'asc'}],skip:(actual-1)*25,take:25})
+ return {rows:lean?rows.map(row=>({...row,status:row.booking.status==='CANCELLED'?'CANCELLED':row.status})):rows.map(projection),total,page:actual,pageSize:25,canManage:access.manageGuide}
 }
 export async function guideAssignmentOptions(db,actorId,params){
  await authorize(db,actorId,'manageGuide')

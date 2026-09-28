@@ -1,3 +1,4 @@
+import {readCheckInPage} from './check-in-read.js'
 import { randomUUID } from 'node:crypto'
 import { audit, authorize, dateOnly, fail, hash, int, keys, string, uuid, write } from './common.js'
 import { receivableAccess } from '../receivables/service.js'
@@ -15,15 +16,16 @@ export function attendanceRow(booking, date, direction) {
  return { bookingId: booking.id, code: booking.code, name: booking.name, program: booking.programSnapshot?.name || booking.trip?.name, serviceDate: date, direction, bookingVersion: booking.version, version: entry?.version || 0, adults, children, noShowAdults, noShowChildren, expectedAdults: booking.adults, expectedChildren: booking.children, remainingAdults: booking.adults - adults - noShowAdults, remainingChildren: booking.children - children - noShowChildren, reason: entry?.reason, financeStatus: entry?.financeStatus || 'NONE', financeReason: entry?.financeReason, changes: entry?.changes || [], demo: booking.programSnapshot?.demo === true, status: noShowAdults + noShowChildren ? adults + children ? 'PARTIAL_NO_SHOW' : 'NO_SHOW' : adults + children === booking.adults + booking.children ? 'CHECKED_IN' : adults + children ? 'PARTIAL' : 'WAITING' }
 }
 const whereDate = date => ({ status: { in: eligible }, OR: [{ outboundDate: dateOnly(date) }, { returnDate: dateOnly(date), returnStatus: 'OUR' }, { outboundDate: null, trip: { startsAt: { gte: new Date(`${date}T00:00:00+07:00`), lt: new Date(+new Date(`${date}T00:00:00+07:00`) + 86400000) } } }] })
-async function allRows(tx, date) {
- const bookings = await tx.tourBooking.findMany({ where: whereDate(date), include, orderBy: { code: 'asc' } })
- return bookings.flatMap(b => attendanceLegs(b, date).map(direction => attendanceRow(b, date, direction)))
+async function allRows(tx,date){
+ const bookings=await tx.tourBooking.findMany({where:whereDate(date),include,orderBy:{code:'asc'}})
+ return bookings.flatMap(b=>attendanceLegs(b,date).map(direction=>attendanceRow(b,date,direction)))
 }
 export async function checkInState(prisma, actorId, params) {
  await authorize(prisma, actorId, 'booking')
  const date = params.get('date') || thailandDay(); dateOnly(date)
  const q = string(params.get('q') || '', 100, false)?.toLowerCase(), requested = int(params.get('page') || 1, 1, 100000)
  return prisma.$transaction(async tx => {
+  if(params.get('view')==='list')return readCheckInPage(tx,date,q,requested,attendanceRow)
   const all = await allRows(tx, date), filtered = all.filter(r => !q || `${r.code} ${r.name}`.toLowerCase().includes(q))
   const page = Math.min(requested, Math.max(1, Math.ceil(filtered.length / 25)))
   return { rows: filtered.slice((page - 1) * 25, page * 25), page, pageSize: 25, total: filtered.length, serviceDate: date, close: await tx.serviceDayClose.findUnique({ where: { serviceDate: dateOnly(date) } }), summary: { bookings: new Set(all.map(r => r.bookingId)).size, expected: all.reduce((n, r) => n + r.expectedAdults + r.expectedChildren, 0), present: all.reduce((n, r) => n + r.adults + r.children, 0), noShow: all.reduce((n, r) => n + r.noShowAdults + r.noShowChildren, 0), unresolved: all.filter(r => r.remainingAdults + r.remainingChildren > 0).length, financePending: all.filter(r => !['NONE', 'RETAIN_CHARGES'].includes(r.financeStatus)).length } }

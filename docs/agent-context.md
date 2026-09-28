@@ -7,6 +7,7 @@ Choose only rows touched by the task. Read matching sections and implementation/
 | Module ownership, shared code, app boundaries | [Architecture](architecture.md) | `backend/src/modules`, `packages/contracts`, affected app |
 | Staff login, roles, scopes, user administration | [Identity/access](identity-access.md), [authentication](authentication.md) | `backend/src/modules/identity-access`, `packages/contracts/access.js` |
 | Tour catalog, Agent prices, company setup | [Tour settings](tour-settings.md) | `backend/src/modules/service-catalog` |
+| Group-safe Booking availability, seat holds, fleet planning | [Owner decisions and next work — 25 September](booking-capacity-handoff-2026-09-25.md) | `operations/boat-capacity-plan.js` is pure/unwired; inspect `bookings.js`, `reservations.js`, `dispatch.js`, commerce before integration |
 | Booking, capacity, equipment/consumables | [Tour operations](tour-operations.md) | `backend/src/modules/operations`, matching contracts/tests |
 | Boat/vehicle/guide allocation, job documents | [Dispatch](tour-dispatch-workflow.md); for daily snapshots/LINE, [nightly summary](operations-nightly-summary.md) | `dispatch.js`, `guide-assignments.js`, `documents.js`, `notifications.js` in operations |
 | Service-day attendance, no-show decisions | “Service attendance and no-show review” in [UI contract](../UX-CONTRACT.md) | operations `check-in.js`, `service-day.js`, `backend/test/check-in.test.js` |
@@ -22,3 +23,9 @@ Choose only rows touched by the task. Read matching sections and implementation/
 Current code has public-web, backoffice, and member applications. Some older documents describe the initial two-app scaffold. Dated sections are evidence of their original change, not proof of current completeness. Preserve approved domain constraints and consult later explicit owner decisions for supersession. For example, the latest QR-payment requirement is not fulfilled merely because manual payment review or local demo checkout exists.
 
 For Thai/English interface changes, read [localization](localization.md) for locale ownership, persisted-value boundaries, validation and bilingual-content gaps.
+
+For shared seat availability, temporary holds, waiting-team confirmation and whole-Booking boat dispatch, read [Booking capacity flow](booking-capacity-flow.md) and the [dated handoff](booking-capacity-handoff-2026-09-25.md).
+
+## Data-fetch and read-model contracts
+
+For list/detail/lookup changes or performance work, read [the data-fetch audit and contracts](data-fetch-audit-2026-09-27.md). Reuse the domain-owned reduced read models and Core loading controls. Preserve complete capacity/stock/financial calculations and server-side authorization; list DTOs must not initialize editable forms. The report distinguishes fixture tests, stored-profile read-only checks and untested hosted environments.
