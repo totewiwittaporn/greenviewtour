@@ -210,8 +210,7 @@ try {
   await page.locator('.public-footer').scrollIntoViewIfNeeded()
   const backTop = page.locator('.public-back-top')
   assert.equal(await backTop.evaluate(el => getComputedStyle(el).position), 'fixed')
-  assert.equal(await page.locator('.public-footer-bottom > .staff-login').getAttribute('href'), 'http://localhost:5174/login')
-  assert.equal(await page.locator('.public-footer nav .staff-login').count(), 0)
+  assert.equal(await page.locator('a[href*="5174"], a[href*="backoffice"], .staff-login').count(), 0, 'Public must not advertise Back Office URLs')
   await backTop.click()
   await page.waitForFunction(() => window.scrollY < 2)
   // Home consumes public company data and ownership-filtered published tours.

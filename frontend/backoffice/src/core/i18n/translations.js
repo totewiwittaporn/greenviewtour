@@ -1,5 +1,8 @@
 import {capacityErrorCodes,capacityText} from '../../../../../packages/contracts/capacity-copy.js'
 export default {
+  "Partner source / reference URL": "แหล่งอ้างอิงของพันธมิตร",
+  "Partner terms verified": "วันที่ตรวจเงื่อนไขพันธมิตร",
+  "Partner content verified": "วันที่ตรวจเนื้อหาพันธมิตร",
   "Open to load options.": "เปิดช่องเพื่อโหลดตัวเลือก",
   "Loading current record…": "กำลังโหลดข้อมูลรายการล่าสุด…",
   "Unable to load this record. Refresh and retry before editing.": "โหลดข้อมูลรายการนี้ไม่สำเร็จ กรุณาลองใหม่ก่อนแก้ไข",

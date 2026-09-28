@@ -23,11 +23,11 @@ Translate only known interface copy at its rendering boundary. Keep source messa
 
 Backoffice locale ownership is `src/core/i18n` (runtime, provider and shared dictionary) plus `src/features/translations.js`. Public ownership is `src/core/locale.js`, `Locale.jsx` and `useLocale.js`. Member ownership is `src/core/locale.js`, `messages.js` and `LocaleProvider.jsx`.
 
-## Content/model gaps
+## Localized content models
 
-The audited Prisma models `TourProgram`, `TourPromotion` and `WebsitePopup` currently have one value for each customer-facing content field, rather than localized variants. Tour names/descriptions/itineraries/terms, promotion names/terms, pop-up titles/image descriptions/button copy and company payment instructions therefore remain the original authored content in both interfaces. Staff-entered content, immutable document snapshots and previously generated documents are also preserved. No guessed translations or destructive content migration are introduced.
+Tour Program public content now has an additive bilingual authoring model. `TourProgramContent` owns Thai/English customer copy and SEO metadata; structured `TourHighlight`, `TourItineraryStep`, `TourFaq` and `TourMedia` records support localized tour detail sections. Existing `TourProgram` single-language public fields are retained as a compatibility projection while Public Tour Detail V2 still reads the legacy contract. Existing data is not destructively translated or rewritten, and the editor never invents English from Thai or Thai from English.
 
-Full bilingual editorial content requires an additive content model, Backoffice authoring fields, API locale/fallback contracts and approved translations of the actual published copy. This is a remaining content capability, not something the interface switch claims to provide. Server-generated/provider emails and existing exported files do not become bilingual from the browser preference alone.
+`TourPromotion`, `WebsitePopup`, company payment instructions, staff-entered notes, immutable document snapshots and previously generated documents remain original authored values unless their own explicit localized model is added later. Browser language switching must never translate arbitrary stored business content merely because a value resembles known interface copy.
 
 ## Verification
 

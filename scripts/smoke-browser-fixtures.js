@@ -15,7 +15,7 @@ try {
   process.env.GREENVIEW_TEST_ORIGIN = 'http://localhost:5274'
   vite = await createViteServer({ root, server:{port:5274}, configFile: `${root}vite.config.js` })
   await vite.listen()
-  for (const name of ['smoke-shell-scroll.js', 'smoke-data-fetch.js', 'smoke-customers.js', 'smoke-workspace-startup.js', 'smoke-auth.js', 'smoke-staff-invitations.js', 'smoke-user-access.js', 'smoke-portrait-job.js', 'smoke-dashboard.js', 'smoke-reference-dashboard.js', 'smoke-shell-geometry.js', 'smoke-booking-access.js', 'smoke-booking-commission.js', 'smoke-locale-backoffice.js', 'smoke-navigation-ui.js', 'smoke-capacity-ui.js', 'smoke-backoffice-finance.js']) {
+  for (const name of ['smoke-shell-scroll.js', 'smoke-data-fetch.js', 'smoke-customers.js', 'smoke-workspace-startup.js', 'smoke-auth.js', 'smoke-staff-invitations.js', 'smoke-user-access.js', 'smoke-portrait-job.js', 'smoke-dashboard.js', 'smoke-reference-dashboard.js', 'smoke-shell-geometry.js', 'smoke-booking-access.js', 'smoke-booking-commission.js', 'smoke-locale-backoffice.js', 'smoke-navigation-ui.js', 'smoke-capacity-ui.js', 'smoke-tour-program-editor.js', 'smoke-backoffice-finance.js']) {
     await new Promise((resolve, reject) => {
       const child = spawn(process.execPath, [fileURLToPath(new URL(name, import.meta.url))], { stdio: 'inherit' })
       child.once('error', reject)

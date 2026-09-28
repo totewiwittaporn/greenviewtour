@@ -1,0 +1,42 @@
+// Isolated Tour Program editor UI verification. All API calls are intercepted; no DB writes.
+import assert from 'node:assert/strict'
+import {chromium} from 'playwright'
+const origin=process.env.GREENVIEW_TEST_ORIGIN||'http://localhost:5274'
+const tourId='53000000-0000-4000-8000-000000000001'
+const user={id:'53000000-0000-4000-8000-000000000099',displayName:'Tour Editor Manager',status:'ACTIVE',roles:[{code:'MANAGER',scope:'COMPANY'}],management:{company:true},operations:{},companyAccess:{}}
+const content=(locale)=>({name:locale==='th'?'สุรินทร์วันเดียว':'Surin Islands Day Trip',summary:locale==='th'?'เที่ยวหมู่เกาะสุรินทร์แบบวันเดียว':'A complete Surin Islands day trip',introduction:locale==='th'?'เกริ่นนำภาษาไทย':'English introduction',longDescription:locale==='th'?'รายละเอียดฉบับเต็มภาษาไทย':'Full English tour detail',departureTimes:'08:30',childPolicy:locale==='th'?'เงื่อนไขเด็ก':'Child policy',cancellationTerms:locale==='th'?'เงื่อนไขยกเลิก':'Cancellation policy',bookingCutoff:locale==='th'?'ปิดก่อนเดินทาง 1 วัน':'Closes one day before travel',meals:locale==='th'?'รวมอาหารกลางวัน':'Lunch included',fees:locale==='th'?'ค่าธรรมเนียมอุทยานชำระเพิ่ม':'National park fee is extra',inclusions:locale==='th'?'เรือ ไกด์ อาหาร':'Boat, guide, lunch',exclusions:locale==='th'?'ค่าธรรมเนียมอุทยาน':'National park fee',preparationNotes:locale==='th'?'หมวกและครีมกันแดด':'Hat and sunscreen',specialConditions:locale==='th'?'เส้นทางขึ้นกับสภาพทะเล':'Route depends on sea conditions',seoTitle:locale==='th'?'ทัวร์เกาะสุรินทร์ 1 วัน | Greenview Tour':'Surin Islands Day Trip | Greenview Tour',metaDescription:locale==='th'?'โปรแกรมเที่ยวเกาะสุรินทร์แบบวันเดียว':'Plan a Surin Islands day trip',ogTitle:'Surin Islands',ogDescription:'Greenview Tour',contentReviewedAt:'2026-09-28'})
+const fixture={tour:{id:tourId,version:4,code:'SURIN-1D',name:'Surin Islands Day Trip',status:'ACTIVE',printCode:'DT',bookingCommissionEligible:false,bookingAdultCommission:null,bookingChildCommission:null,journeyMode:'FIXED',durationDays:1,ownership:'GREENVIEW',operatorId:null,operator:null,route:'Legacy route',departureTimes:'08:30',childPolicy:'Legacy child policy',confirmationMode:'REQUEST',cancellationTerms:'Legacy cancellation',bookingCutoff:'1 day',adultPrice:'2800.00',childPrice:'2200.00',supplierPricing:'NOT_SET',supplierAdultNet:null,supplierChildNet:null,supplierAdultCommission:null,supplierChildCommission:null,publicStatus:'PUBLISHED',slug:'surin-islands-day-trip',tourType:'DAY_TRIP',description:'Legacy summary',highlights:'Legacy highlight',imageUrls:'https://example.com/hero.webp',meals:'Lunch',fees:'Park fee',inclusions:'Boat',exclusions:'Park fee',preparationNotes:'Hat',partnerSourceUrl:null,partnerTermsVerifiedAt:null,partnerContentVerifiedAt:null},content:{th:content('th'),en:content('en')},legacyFallback:{th:false,en:false},highlights:[{id:'53000000-0000-4000-8000-000000000002',version:1,status:'ACTIVE',sortOrder:0,titleTh:'ดำน้ำตื้น',titleEn:'Snorkelling',descriptionTh:'ชมโลกใต้ทะเล',descriptionEn:'Explore the underwater world'}],itinerary:[{id:'53000000-0000-4000-8000-000000000003',version:1,status:'ACTIVE',sortOrder:0,day:1,timeLabel:'08:30',titleTh:'ออกเดินทาง',titleEn:'Departure',descriptionTh:'ออกจากท่าเรือกรีนวิว',descriptionEn:'Depart Greenview pier',locationTh:'คุระบุรี',locationEn:'Khura Buri'}],faqs:[{id:'53000000-0000-4000-8000-000000000004',version:1,status:'ACTIVE',sortOrder:0,questionTh:'รวมอาหารไหม?',answerTh:'รวมอาหารกลางวัน',questionEn:'Is lunch included?',answerEn:'Lunch is included.'}],media:[{id:'53000000-0000-4000-8000-000000000005',version:1,status:'ACTIVE',sortOrder:0,kind:'HERO',url:'https://example.com/hero.webp',altTh:'หมู่เกาะสุรินทร์',altEn:'Surin Islands',captionTh:'ทะเลสุรินทร์',captionEn:'Surin sea'}],seasons:[{id:'53000000-0000-4000-8000-000000000006',name:'Season 2026/27',code:'S2627',status:'ACTIVE',startsOn:'2026-10-15',endsOn:'2027-05-15',onlineStartsOn:'2026-10-15',onlineEndsOn:'2027-05-15',bookingStartsOn:'2026-09-01',bookingEndsOn:'2027-05-14',cutoffDays:1,closedDates:null}],promotions:[],components:[{id:'53000000-0000-4000-8000-000000000007',status:'ACTIVE',selection:'INCLUDED',basis:'PER_PERSON',quantity:1,usagePoint:'ISLAND',day:1,notes:'Lunch',resource:{id:'53000000-0000-4000-8000-000000000008',name:'Lunch',category:'MEAL',baseUnit:'PERSON_MEAL',salePrice:'300.00',ownership:'GREENVIEW'}}]}
+const browser=await chromium.launch({headless:true}),errors=[],requests=[]
+try{
+ const context=await browser.newContext({viewport:{width:1440,height:1000}});await context.addInitScript(()=>localStorage.setItem('greenview.locale','en'))
+ const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message));page.setDefaultTimeout(12000)
+ await page.route('**/api/**',route=>{
+  const request=route.request(),path=new URL(request.url()).pathname;requests.push({method:request.method(),path})
+  if(path==='/api/me')return route.fulfill({json:{user}})
+  if(path===`/api/settings/tours/${tourId}/editor`)return route.fulfill({json:fixture})
+  if(path==='/api/notifications')return route.fulfill({json:{rows:[],total:0,page:1,pageSize:25}})
+  return route.fulfill({json:{rows:[],total:0,page:1,pages:1,pageSize:25,summary:{total:0,active:0,inactive:0,featured:0}}})
+ })
+ await page.goto(`${origin}/settings/tours/${tourId}`)
+ await page.getByRole('heading',{name:'Surin Islands Day Trip',exact:true}).waitFor()
+ assert.equal(await page.getByRole('tab').count(),7)
+ assert.deepEqual(await page.getByRole('tab').allTextContents(),['Overview','Public content','Package & availability','Itinerary','Terms & conditions','Media & FAQ','SEO & publish'])
+ await page.getByRole('tab',{name:'Public content',exact:true}).click()
+ assert.equal(await page.getByLabel('Short summary',{exact:true}).inputValue(),'เที่ยวหมู่เกาะสุรินทร์แบบวันเดียว')
+ await page.getByRole('tab',{name:'English content',exact:true}).click()
+ assert.equal(await page.getByLabel('Short summary',{exact:true}).inputValue(),'A complete Surin Islands day trip')
+ await page.getByRole('tab',{name:'Package & availability',exact:true}).click()
+ await page.getByText('Lunch',{exact:true}).waitFor();await page.getByText('Season 2026/27',{exact:true}).waitFor()
+ await page.getByRole('tab',{name:'Itinerary',exact:true}).click();await page.getByText('Step 1',{exact:true}).waitFor();assert.equal(await page.getByLabel('Time label',{exact:true}).inputValue(),'08:30')
+ await page.getByRole('tab',{name:'Terms & conditions',exact:true}).click();await page.getByRole('tab',{name:'English content',exact:true}).click();assert.equal(await page.getByLabel('Special conditions',{exact:true}).inputValue(),'Route depends on sea conditions')
+ await page.getByRole('tab',{name:'Media & FAQ',exact:true}).click();await page.getByText('Hero #1',{exact:true}).waitFor();assert.equal(await page.getByLabel('English question',{exact:true}).inputValue(),'Is lunch included?')
+ await page.getByRole('tab',{name:'SEO & publish',exact:true}).click();await page.getByRole('tab',{name:'English content',exact:true}).click();assert.equal(await page.getByLabel('SEO title',{exact:true}).inputValue(),'Surin Islands Day Trip | Greenview Tour')
+ assert.ok(await page.getByText('✓ Hero image',{exact:true}).count())
+ await page.getByRole('tab',{name:'Public content',exact:true}).click();await page.getByRole('tab',{name:'English content',exact:true}).click();await page.getByLabel('Short summary',{exact:true}).fill('Unsaved editor check')
+ await page.getByRole('button',{name:'← Tour programs',exact:true}).click();await page.getByRole('dialog',{name:'Unsaved changes',exact:true}).waitFor();await page.getByRole('button',{name:'Keep editing',exact:true}).click();assert.equal(await page.getByLabel('Short summary',{exact:true}).inputValue(),'Unsaved editor check')
+ await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true)
+ assert.deepEqual(errors,[])
+ assert.equal(requests.some(item=>item.method==='POST'),false,'Rendered smoke must not write real or fixture business data')
+ console.log(JSON.stringify({result:'PASS',test:'tour-program-full-page-editor',checks:['7 sections','TH/EN content','structured package sources','itinerary','terms','media/FAQ','SEO readiness','dirty navigation guard','390px overflow'],realAccounts:false,realWrites:0}))
+ await context.close()
+}finally{await browser.close()}

@@ -233,6 +233,15 @@ model TourProgram {
  seasons TourSeason[]
  promotions TourPromotion[]
  customerRequests CustomerRequest[]
+ publicContent TourProgramContent[]
+ publicHighlights TourHighlight[]
+ itinerarySteps TourItineraryStep[]
+ publicFaqs TourFaq[]
+ publicMedia TourMedia[]
+
+ partnerSourceUrl String? @db.VarChar(2048)
+ partnerTermsVerifiedAt DateTime? @db.Date
+ partnerContentVerifiedAt DateTime? @db.Date
 
  journeyMode String @default("FIXED") @db.VarChar(30)
  durationDays Int? @default(1)
@@ -264,6 +273,112 @@ model TourProgram {
  agentPrices AgentTourPrice[]
  @@index([operatorId])
  @@index([status])
+ @@schema("app_private")
+}
+
+model TourProgramContent {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ tourId String @db.Uuid
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ locale String @db.VarChar(5)
+ name String? @db.VarChar(200)
+ summary String? @db.VarChar(1000)
+ introduction String? @db.VarChar(5000)
+ longDescription String? @db.VarChar(20000)
+ departureTimes String? @db.VarChar(1000)
+ childPolicy String? @db.VarChar(2000)
+ cancellationTerms String? @db.VarChar(3000)
+ bookingCutoff String? @db.VarChar(1000)
+ meals String? @db.VarChar(3000)
+ fees String? @db.VarChar(3000)
+ inclusions String? @db.VarChar(4000)
+ exclusions String? @db.VarChar(4000)
+ preparationNotes String? @db.VarChar(4000)
+ specialConditions String? @db.VarChar(5000)
+ seoTitle String? @db.VarChar(120)
+ metaDescription String? @db.VarChar(320)
+ ogTitle String? @db.VarChar(120)
+ ogDescription String? @db.VarChar(320)
+ contentReviewedAt DateTime? @db.Date
+ @@unique([tourId,locale])
+ @@index([tourId])
+ @@schema("app_private")
+}
+
+model TourHighlight {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ tourId String @db.Uuid
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ sortOrder Int @default(0)
+ status String @default("ACTIVE") @db.VarChar(20)
+ titleTh String? @db.VarChar(300)
+ titleEn String? @db.VarChar(300)
+ descriptionTh String? @db.VarChar(1000)
+ descriptionEn String? @db.VarChar(1000)
+ @@index([tourId,status,sortOrder])
+ @@schema("app_private")
+}
+
+model TourItineraryStep {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ tourId String @db.Uuid
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ day Int @default(1)
+ sortOrder Int @default(0)
+ timeLabel String? @db.VarChar(100)
+ status String @default("ACTIVE") @db.VarChar(20)
+ titleTh String? @db.VarChar(300)
+ titleEn String? @db.VarChar(300)
+ descriptionTh String? @db.VarChar(2000)
+ descriptionEn String? @db.VarChar(2000)
+ locationTh String? @db.VarChar(300)
+ locationEn String? @db.VarChar(300)
+ @@index([tourId,status,day,sortOrder])
+ @@schema("app_private")
+}
+
+model TourFaq {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ tourId String @db.Uuid
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ sortOrder Int @default(0)
+ status String @default("ACTIVE") @db.VarChar(20)
+ questionTh String? @db.VarChar(500)
+ answerTh String? @db.VarChar(5000)
+ questionEn String? @db.VarChar(500)
+ answerEn String? @db.VarChar(5000)
+ @@index([tourId,status,sortOrder])
+ @@schema("app_private")
+}
+
+model TourMedia {
+ id String @id @db.Uuid
+ version Int @default(1)
+ createdAt DateTime @default(now()) @db.Timestamptz(6)
+ updatedAt DateTime @updatedAt @db.Timestamptz(6)
+ tourId String @db.Uuid
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ sortOrder Int @default(0)
+ kind String @default("GALLERY") @db.VarChar(20)
+ status String @default("ACTIVE") @db.VarChar(20)
+ url String @db.VarChar(2048)
+ altTh String? @db.VarChar(300)
+ altEn String? @db.VarChar(300)
+ captionTh String? @db.VarChar(500)
+ captionEn String? @db.VarChar(500)
+ @@index([tourId,status,sortOrder])
  @@schema("app_private")
 }
 
