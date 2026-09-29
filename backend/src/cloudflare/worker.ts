@@ -19,7 +19,7 @@ export default {
     if(url.pathname==='/health/live')return json({status:'UP',service:'greenviewtour-cloudflare-api',environment:env.APP_ENV})
     if(url.pathname==='/health/db'){
       const direct=await env.DB.prepare('SELECT 1 AS connected').first<{connected:number}>()
-      const prisma=createD1Prisma(env.DB)
+      const prisma=createD1Prisma(env.DB,{files:env.FILES})
       try{
         const roles=await prisma.role.count()
         const insensitiveSearchProbe=await prisma.role.count({where:{name:{contains:'__probe__',mode:'insensitive'}}})

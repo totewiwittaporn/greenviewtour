@@ -7,8 +7,11 @@ import {R2FileStore} from '../src/platform/files/r2.js'
 class FakeBucket{
   objects=new Map()
   async put(key,body,options={}){
+    if(options.onlyIf?.etagDoesNotMatch==='*'&&this.objects.has(key))return null
     const data=new Uint8Array(body)
-    this.objects.set(key,{data,httpMetadata:options.httpMetadata||{},customMetadata:options.customMetadata||{}})
+    const row={data,httpMetadata:options.httpMetadata||{},customMetadata:options.customMetadata||{}}
+    this.objects.set(key,row)
+    return {size:data.byteLength,httpMetadata:row.httpMetadata,customMetadata:row.customMetadata}
   }
   async get(key){
     const row=this.objects.get(key)
@@ -48,4 +51,13 @@ test('D1 schema stores object keys instead of binary payloads',()=>{
     assert.match(block,/objectKey String @unique/)
     assert.doesNotMatch(block,/content Bytes/)
   }
+})
+
+test('R2 conditional put never overwrites an existing object key',async()=>{
+  const bucket=new FakeBucket(),store=new R2FileStore(bucket),key=fileObjectKey('evidenceAttachment','same-id')
+  const first=await store.putIfAbsent(key,new Uint8Array([1,2,3]),{mimeType:'application/pdf',sha256:'a'.repeat(64)})
+  const second=await store.putIfAbsent(key,new Uint8Array([9,9,9,9]),{mimeType:'image/png',sha256:'b'.repeat(64)})
+  assert.equal(first.created,true)
+  assert.deepEqual(second,{created:false,key,size:3,mimeType:'application/pdf',sha256:'a'.repeat(64)})
+  assert.deepEqual([...(await store.get(key)).body],[1,2,3])
 })

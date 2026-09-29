@@ -13,6 +13,18 @@ export class R2FileStore{
     })
     return {key,size:body.byteLength,mimeType,sha256}
   }
+  async putIfAbsent(key,value,{mimeType='application/octet-stream',sha256=null}={}){
+    const body=bytes(value)
+    const object=await this.bucket.put(key,body,{
+      onlyIf:{etagDoesNotMatch:'*'},
+      httpMetadata:{contentType:mimeType},
+      customMetadata:sha256?{sha256}:undefined,
+    })
+    if(object)return {created:true,key,size:body.byteLength,mimeType,sha256}
+    const existing=await this.head(key)
+    if(!existing)throw new Error('R2_CONDITIONAL_WRITE_LOST')
+    return {created:false,...existing}
+  }
   async get(key){
     const object=await this.bucket.get(key)
     if(!object)return null
