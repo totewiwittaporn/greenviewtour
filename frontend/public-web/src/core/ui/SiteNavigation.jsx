@@ -56,5 +56,3 @@ export function SiteFooter(){
     <div className="public-footer-bottom"><small>© {new Date().getFullYear()} GREENVIEW TOUR. {t('สงวนลิขสิทธิ์')}</small>{staffLogin&&<a className="staff-login" href={staffLogin}>{t('เข้าสู่ระบบพนักงาน')}</a>}<a className="public-back-top" href="#" aria-label={t('กลับขึ้นด้านบน')}>↑</a></div>
   </footer>
 }
-
-[executed on device: Wutcharapongs-MacBook-Air.local (df69a579-c325-4180-ad88-edccd35dfdc1)]

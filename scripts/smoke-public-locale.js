@@ -348,5 +348,3 @@ try {
 } finally {
   await browser.close()
 }
-
-[executed on device: Wutcharapongs-MacBook-Air.local (df69a579-c325-4180-ad88-edccd35dfdc1)]
