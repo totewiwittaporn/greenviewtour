@@ -80,3 +80,16 @@ Public Home uses an explicit Tour Program marketing selection instead of inferri
 Tour Program localized content also includes `suitableFor`, `meetingPoint` and `weatherNotes`, which feed customer-facing Quick facts and Important information on Tour Detail V2. Public reads localized names, summaries, highlights, itinerary, FAQ, media and these customer terms through explicit read models. Partner attribution exposes only the operator name. Supplier prices, Agent rates, partner source/verification fields, component notes, procurement cost and provider/internal ownership remain outside Public responses.
 
 The approved Public Tour Detail composition is: gallery + quick decision summary, price/availability, overview, highlights, structured itinerary, included/excluded and fee information, important conditions, gallery, programme FAQ, related tours and final CTA. Rating/review counts are intentionally not staff-editable or fabricated; they require a verified review source before being displayed.
+
+
+## Tour Program view and collection editor — owner update 29 September 2026
+
+Tour Program list actions have distinct semantics. **View** stays on the Tour Programs dataset and opens a read-only modal loaded from the full authorized editor read model. The modal summarizes program identity, public content, prices, structured-content counts and package/availability data; **Edit** is the action that opens the full-page editor at `/settings/tours/:id`. View and Edit must never be aliases for the same navigation action.
+
+The full-page editor separates **Media** and **FAQ** into independent tabs. Both use a reusable master-detail interaction: the left column selects a record and the right column edits that record. Adding a Media or FAQ record selects the new record immediately, brings its detail pane into view and moves focus into the editor. On narrow screens the two columns stack, and selecting a record brings the detail pane into view.
+
+Media list identity uses its thumbnail/type/status/caption while the detail owns type, status, URL, localized alt text and captions. FAQ list identity uses its authored question/status while the detail owns status plus Thai/English questions and answers. This interaction is intended to be reused for other long structured collections such as itinerary after their own review; it does not change the underlying content schema or Public API boundary.
+
+## Final Tour Program editor audit — 29 September 2026
+
+All eight editor tabs were audited against Backoffice Core before Preview checkpoint. Overview owns program classification (including Tour type), Public content uses Core MasterDetail for Highlights, Package & availability keeps Program Components / Tour Seasons / Promotions as structured sources, Itinerary uses Core MasterDetail, Terms & conditions are grouped into schedule/booking, guest suitability/preparation, and meals/fees/package notes, Media and FAQ use Core MasterDetail, and SEO & publish contains website publication / URL / Home merchandising plus localized search metadata. Full-page field density is regression-tested against a standard Core Add/Edit modal, including desktop field width, control height and typography.

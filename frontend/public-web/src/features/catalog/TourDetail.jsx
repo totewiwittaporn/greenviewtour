@@ -1,8 +1,9 @@
 import {useEffect,useMemo,useState} from 'react'
 import {useLocale} from '../../core/useLocale.js'
 import {Button} from '../../core/ui/Controls.jsx'
+import ImageGallery from '../../core/ui/ImageGallery.jsx'
 import TourAvailability from './TourAvailability.jsx'
-import {badgeText,faqs,highlights,itinerary,tourContent,tourCover,tourMedia,typeText} from './tourPresentation.js'
+import {badgeText,componentBasisText,componentSelectionText,faqs,highlights,itinerary,journeyText,packageComponents,tourContent,tourCover,tourMedia,typeText} from './tourPresentation.js'
 import './TourDetail.css'
 
 const memberOrigin=()=>['localhost','127.0.0.1'].includes(location.hostname)?'http://localhost:5175':'https://member.greenviewtour.com'
@@ -12,6 +13,14 @@ function RelatedCard({tour,locale,t,money}){
   const content=tourContent(tour,locale),cover=tourCover(tour,locale)
   const href='/tours?tour='+encodeURIComponent(tour.slug)
   return <article className="tour-related-card"><a href={href}>{cover&&<img src={cover.url} alt={cover.alt||content.name} loading="lazy"/>}<div><strong>{content.name}</strong><span>{tour.durationDays!=null?tour.durationDays+' '+t('วัน'):typeText(tour.tourType,t)}</span><b>{money(tour.adultPrice)}</b></div></a></article>
+}
+function ComponentList({rows,t,number,money,showPrice=false}){
+  return <ul className="tour-component-list">{rows.map(row=>{
+    const basis=componentBasisText(row.basis,t)
+    const meta=[componentSelectionText(row.selection,t),row.quantity!=null&&basis?number(row.quantity)+' · '+basis:'',row.day? t('วันที่ในโปรแกรม')+' '+number(row.day):''].filter(Boolean)
+    const price=showPrice?(row.resource?.salePrice!=null?money(row.resource.salePrice):t('สอบถามราคา')):''
+    return <li key={row.id}><div><strong>{row.resource?.name}</strong>{meta.length>0&&<span>{meta.join(' · ')}</span>}</div>{price&&<b>{price}</b>}</li>
+  })}</ul>
 }
 
 export default function TourDetail({slug,search=''}){
@@ -46,22 +55,21 @@ export default function TourDetail({slug,search=''}){
   },[content])
   if(state.loading)return <main id="content" className="tour-detail-v2"><p className="tour-detail-state" role="status">{t('กำลังโหลด…')}</p></main>
   if(state.error||!tour)return <main id="content" className="tour-detail-v2"><section className="tour-detail-state" role="alert"><p>{t('โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง')}</p><Button onClick={()=>setAttempt(n=>n+1)}>{t('ลองอีกครั้ง')}</Button></section></main>
-  const media=tourMedia(tour,locale),cover=tourCover(tour,locale),thumbs=media.slice(0,5)
+  const media=tourMedia(tour,locale),cover=tourCover(tour,locale)
   const highlightRows=highlights(tour,locale),steps=itinerary(tour,locale),faqRows=faqs(tour,locale),badge=badgeText(tour.homeBadge,t)
-  const season=tour.seasons?.[0],included=lines(content.inclusions),excluded=lines(content.exclusions)
+  const season=tour.seasons?.[0],included=lines(content.inclusions),excluded=lines(content.exclusions),components=packageComponents(tour)
   const initialDate=params.get('date')||'',initialAdults=params.get('pax')||'1'
   return <main id="content" className="tour-detail-v2">
     <nav className="tour-breadcrumb" aria-label={t('เส้นทางหน้าเว็บ')}><a href="/">{t('หน้าแรก')}</a><span>›</span><a href="/tours">{t('โปรแกรมทัวร์')}</a><span>›</span><strong>{content.name}</strong></nav>
     <section className="tour-detail-top">
-      <div className="tour-gallery-hero">{cover?<img className="tour-hero-image" src={cover.url} alt={cover.alt||content.name} fetchPriority="high"/>:<div className="tour-photo-empty">{content.name}</div>}<span className="tour-gallery-count">{t('ดูรูปทั้งหมด')} ({media.length})</span>
-        <div className="tour-thumb-row">{thumbs.map(item=><img key={item.id} src={item.url} alt={item.alt||''} loading="lazy"/>)}</div>
-      </div>
+      <ImageGallery items={media} initialId={cover?.id} title={content.name}/>
       <div className="tour-detail-summary">
         <div className="tour-detail-badges">{badge&&<span className="tour-marketing-badge">{badge}</span>}{typeText(tour.tourType,t)&&<span>{typeText(tour.tourType,t)}</span>}{tour.durationDays!=null&&<span>◷ {number(tour.durationDays)} {t('วัน')}</span>}</div>
         <h1>{content.name}</h1>{content.summary&&<p className="tour-summary-copy">{content.summary}</p>}
         <dl className="tour-quick-facts">
           {tour.durationDays!=null&&<><dt>{t('ระยะเวลา')}</dt><dd>{number(tour.durationDays)} {t('วัน')}</dd></>}
           {typeText(tour.tourType,t)&&<><dt>{t('รูปแบบ')}</dt><dd>{typeText(tour.tourType,t)}</dd></>}
+          {journeyText(tour.journeyMode,t)&&<><dt>{t('รูปแบบการเดินทาง')}</dt><dd>{journeyText(tour.journeyMode,t)}</dd></>}
           {content.meetingPoint&&<><dt>{t('จุดออกเดินทาง')}</dt><dd>{content.meetingPoint}</dd></>}
           {season&&<><dt>{t('ช่วงให้บริการ')}</dt><dd>{date(season.onlineStartsOn)} – {date(season.onlineEndsOn)}</dd></>}
           {content.suitableFor&&<><dt>{t('เหมาะสำหรับ')}</dt><dd>{content.suitableFor}</dd></>}
@@ -74,7 +82,11 @@ export default function TourDetail({slug,search=''}){
       <article className="tour-copy-section"><h2>{t('ภาพรวมโปรแกรม')}</h2>{content.introduction&&<p>{content.introduction}</p>}{content.longDescription&&<p>{content.longDescription}</p>}</article>
       {!!highlightRows.length&&<section><h2>{t('ไฮไลต์ของโปรแกรม')}</h2><div className="tour-highlight-grid">{highlightRows.map((row,index)=><article key={row.id}><span>{['♢','⌁','▧','▱','◎'][index%5]}</span><h3>{row.title}</h3>{row.description&&<p>{row.description}</p>}</article>)}</div></section>}
       {!!steps.length&&<section><h2>{t('กำหนดการเดินทาง')}</h2><div className="tour-itinerary">{steps.map(step=><article key={step.id}><time>{step.timeLabel||('Day '+step.day)}</time><div><h3>{step.title||step.location}</h3>{step.location&&step.title&&<span>{step.location}</span>}{step.description&&<p>{step.description}</p>}</div></article>)}</div>{content.specialConditions&&<p className="tour-section-note">{content.specialConditions}</p>}</section>}
-      {(included.length||excluded.length)&&<section className="tour-package-grid"><article className="included"><h2>✓ {t('รวมในราคา')}</h2><ul>{included.map(item=><li key={item}>{item}</li>)}</ul></article><article className="excluded"><h2>− {t('ไม่รวมในราคา')}</h2><ul>{excluded.map(item=><li key={item}>{item}</li>)}</ul>{content.fees&&<p>{content.fees}</p>}</article></section>}
+      {(components.included.length||components.optional.length||components.excluded.length||included.length||excluded.length||content.fees)&&<section className="tour-package-grid">
+        {(components.included.length||included.length)&&<article className="included"><h2>✓ {t('รวมในราคา')}</h2>{components.included.length>0&&<ComponentList rows={components.included} t={t} number={number} money={money}/>} {included.length>0&&<div className={components.included.length?'tour-package-notes':''}>{components.included.length>0&&<h3>{t('รายละเอียดเพิ่มเติม')}</h3>}<ul>{included.map(item=><li key={item}>{item}</li>)}</ul></div>}</article>}
+        {(components.excluded.length||excluded.length||content.fees)&&<article className="excluded"><h2>− {t('ไม่รวมในราคา')}</h2>{components.excluded.length>0&&<ComponentList rows={components.excluded} t={t} number={number} money={money} showPrice/>}{excluded.length>0&&<div className={components.excluded.length?'tour-package-notes':''}>{components.excluded.length>0&&<h3>{t('รายละเอียดเพิ่มเติม')}</h3>}<ul>{excluded.map(item=><li key={item}>{item}</li>)}</ul></div>}{content.fees&&<p>{content.fees}</p>}</article>}
+        {components.optional.length>0&&<article className="optional"><h2>+ {t('บริการเสริม')}</h2><ComponentList rows={components.optional} t={t} number={number} money={money} showPrice/></article>}
+      </section>}
       <section><h2>{t('ข้อมูลสำคัญ')}</h2><div className="tour-info-grid">{[
         [t('เวลาออกเดินทาง'),content.departureTimes],
         [t('อาหาร'),content.meals],

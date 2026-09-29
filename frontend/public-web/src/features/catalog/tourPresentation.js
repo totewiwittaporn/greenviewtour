@@ -56,3 +56,20 @@ export function badgeText(value,t){
 export function typeText(value,t){
   return ({DAY_TRIP:t('Day Trip'),OVERNIGHT:t('Overnight'),PRIVATE:t('Private Tour'),JOIN:t('Join Tour'),TRANSFER:t('Boat Ticket')})[value]||''
 }
+export function journeyText(value,t){
+  return ({FIXED:t('ไป–กลับตามโปรแกรม'),OPEN_RETURN:t('ไป–กลับแบบ Open Return'),OUTBOUND_ONLY:t('เที่ยวเดียว · ขาไป'),RETURN_ONLY:t('เที่ยวเดียว · ขากลับ')})[value]||''
+}
+export function packageComponents(tour){
+  const rows=(tour?.components||[]).filter(row=>row?.resource?.name)
+  return {
+    included:rows.filter(row=>['INCLUDED','REQUIRED'].includes(row.selection)),
+    optional:rows.filter(row=>row.selection==='OPTIONAL'),
+    excluded:rows.filter(row=>row.selection==='EXCLUDED'),
+  }
+}
+export function componentSelectionText(value,t){
+  return ({INCLUDED:t('รวมในแพ็กเกจ'),REQUIRED:t('รวมและจำเป็น'),OPTIONAL:t('บริการเสริม'),EXCLUDED:t('ไม่รวม')})[value]||''
+}
+export function componentBasisText(value,t){
+  return ({PER_PERSON:t('ต่อคน'),PER_ADULT:t('ต่อผู้ใหญ่'),PER_CHILD:t('ต่อเด็ก'),PER_BOOKING:t('ต่อการจอง'),PER_PERSON_NIGHT:t('ต่อคนต่อคืน'),PER_ROOM_NIGHT:t('ต่อห้องต่อคืน')})[value]||''
+}

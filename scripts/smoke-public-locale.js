@@ -14,7 +14,16 @@ const tour = {
   publicHighlights:[{id:'h1',sortOrder:0,titleTh:'ทะเลใส',titleEn:'Clear sea',descriptionTh:'จุดเด่นภาษาไทย',descriptionEn:'English highlight'}],
   itinerarySteps:[{id:'i1',day:1,sortOrder:0,timeLabel:'08:30',titleTh:'ออกเรือ',titleEn:'Departure',descriptionTh:'ออกจากคุระบุรี',descriptionEn:'Depart Khura Buri',locationTh:'คุระบุรี',locationEn:'Khura Buri'}],
   publicFaqs:[{id:'f1',sortOrder:0,questionTh:'รวมอาหารไหม?',answerTh:'รวมอาหารกลางวัน',questionEn:'Is lunch included?',answerEn:'Lunch is included.'}],
-  publicMedia:[],components:[]
+  publicMedia:[
+    {id:'m1',sortOrder:0,kind:'HERO',url:'/images/home/surin-hero.webp',altTh:'ทะเลสุรินทร์',altEn:'Surin sea',captionTh:'ภาพหลัก',captionEn:'Hero view'},
+    {id:'m2',sortOrder:1,kind:'GALLERY',url:'/images/home/surin-coral.webp',altTh:'ปะการังสุรินทร์',altEn:'Surin coral',captionTh:'แนวปะการัง',captionEn:'Coral view'},
+  ],
+  components:[
+    {id:'component-required',selection:'REQUIRED',basis:'PER_PERSON',quantity:1,day:1,resource:{name:'Boat passage',category:'TOUR_BOAT',baseUnit:'PERSON',salePrice:'0'}},
+    {id:'component-included',selection:'INCLUDED',basis:'PER_PERSON',quantity:1,day:1,resource:{name:'Lunch service',category:'MEAL',baseUnit:'PERSON_MEAL',salePrice:'0'}},
+    {id:'component-excluded',selection:'EXCLUDED',basis:'PER_PERSON',quantity:1,day:1,resource:{name:'Park fee sample',category:'PARK_FEE',baseUnit:'PERSON',salePrice:'500'}},
+    {id:'component-optional',selection:'OPTIONAL',basis:'PER_PERSON',quantity:1,day:1,resource:{name:'Hotel transfer',category:'TRANSFER',baseUnit:'PERSON',salePrice:'300'}},
+  ]
 }
 const partner = {...tour,id:'partner-fixture',slug:'partner-fixture',name:'Partner CMS tour',ownership:'PARTNER',publicContent:tour.publicContent.map(row=>({...row,name:row.locale==='th'?'ทัวร์พันธมิตร CMS':'Partner CMS tour'}))}
 const featuredTwo={...tour,id:'featured-two',slug:'featured-two',adultPrice:2900,homeBadge:'RECOMMENDED',publicContent:tour.publicContent.map(row=>({...row,name:row.locale==='th'?'ทัวร์ดำน้ำ CMS':'CMS Snorkel Explorer'}))}
@@ -64,7 +73,7 @@ try {
   assert.match(await page.locator('.language-selector > button').innerText(),/TH/)
   await chooseLanguage('EN')
   await page.getByRole('heading',{name:'CMS Surin Tour',exact:true}).waitFor()
-  await page.waitForFunction(()=>document.title==='CMS Surin Tour | Greenview Tour')
+  await page.waitForFunction(()=>document.title==='CMS Surin Tour')
   assert.equal(await page.locator('html').getAttribute('lang'),'en')
   assert.equal(await page.evaluate(()=>localStorage.getItem('greenview.locale')),'en')
   const detailText=await page.locator('body').innerText()
@@ -73,7 +82,22 @@ try {
   assert.ok(/(?:THB|฿)\s*2,500\.00/.test(detailText))
   assert.ok(detailText.includes('English introduction'))
   assert.ok(detailText.includes('Clear sea'))
+  assert.ok(detailText.includes('Journey arrangement'))
+  assert.ok(detailText.includes('Fixed return itinerary'))
+  assert.ok(detailText.includes('Included · required'))
+  assert.ok(detailText.includes('Optional services'))
+  assert.ok(detailText.includes('Hotel transfer'))
+  assert.ok(detailText.includes('Park fee sample'))
+  assert.ok(/(?:THB|฿)\s*300\.00/.test(detailText))
+  assert.ok(/(?:THB|฿)\s*500\.00/.test(detailText))
   assert.ok(detailText.includes('Is lunch included?'))
+  const gallery=page.locator('.public-image-gallery')
+  await gallery.waitFor();assert.equal(await gallery.getByRole('tab').count(),2)
+  const mainImage=gallery.locator('.public-image-gallery-main img')
+  assert.ok((await mainImage.getAttribute('src')).includes('surin-hero.webp'))
+  await gallery.getByRole('tab').nth(1).click();assert.ok((await mainImage.getAttribute('src')).includes('surin-coral.webp'))
+  await gallery.locator('.public-image-gallery-main').click();const preview=page.getByRole('dialog',{name:'Tour gallery',exact:true});await preview.waitFor();assert.ok((await preview.locator('figure img').getAttribute('src')).includes('surin-coral.webp'))
+  await page.keyboard.press('ArrowLeft');assert.ok((await preview.locator('figure img').getAttribute('src')).includes('surin-hero.webp'));await preview.getByRole('button',{name:'Close image',exact:true}).click();assert.equal(await preview.count(),0)
   // Route changes retain the actual shell nodes and browser document, including query detail links.
   await page.evaluate(() => {
     window.shellFixture = {header: document.querySelector('.site-header'), footer: document.querySelector('.public-footer'), language: document.querySelector('.language-selector')}
@@ -138,7 +162,7 @@ try {
   await page.setViewportSize({width:375,height:812})
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false)
   await page.evaluate(()=>window.dispatchEvent(new CustomEvent('greenview:locale',{detail:'th'})))
-  await page.waitForFunction(()=>document.documentElement.lang==='th'&&document.title==='ทัวร์เกาะสุรินทร์ CMS | Greenview Tour')
+  await page.waitForFunction(()=>document.documentElement.lang==='th'&&document.title==='ทัวร์เกาะสุรินทร์ CMS')
   await page.getByRole('heading',{name:'ทัวร์จาก CMS',exact:true}).waitFor()
   assert.ok((await page.locator('body').innerText()).includes('เนื้อหาต้นฉบับ CMS'))
   await chooseLanguage('EN')
@@ -230,10 +254,11 @@ try {
   await page.locator('#company h3').waitFor()
   assert.equal(await page.locator('#company h3').innerText(),company.name)
   assert.deepEqual(await page.locator('main > section').evaluateAll(nodes=>nodes.map(n=>n.id||n.className)),['hero home-hero','tours','home-welcome home-container','surin','company','home-final-cta'])
-  for(const image of await page.locator('img[src^="/images/home/"]').all()){
+  const homeEditorialImages=page.locator('.home-page>.hero .hero-image, .home-surin-layout>img')
+  for(const image of await homeEditorialImages.all()){
     await image.scrollIntoViewIfNeeded();await image.evaluate(el=>el.decode());assert.ok(await image.evaluate(el=>el.naturalWidth>0))
   }
-  assert.equal(await page.locator('img[src^="/images/home/"]').count(),2)
+  assert.equal(await homeEditorialImages.count(),2)
   const featured=page.locator('.featured-tour-card')
   await featured.first().waitFor();assert.equal(await featured.count(),3)
   assert.deepEqual(await featured.locator('h3').allTextContents(),['CMS Surin Tour','CMS Snorkel Explorer','CMS Overnight Tour'])
