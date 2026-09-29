@@ -1,5 +1,3 @@
-[Reading 350 lines from start (total: 350 lines, 0 remaining)]
-
 // Fixture-only public locale checks. All API requests are intercepted before network access.
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'

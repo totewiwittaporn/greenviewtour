@@ -1,5 +1,3 @@
-[Reading 58 lines from start (total: 58 lines, 0 remaining)]
-
 import {useEffect, useId} from 'react'
 import {useDisclosure} from '../useDisclosure.js'
 import {useLocale} from '../useLocale.js'

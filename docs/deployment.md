@@ -1,5 +1,3 @@
-[Reading 17 lines from start (total: 17 lines, 0 remaining)]
-
 # Deployment integration
 
 No hosting changes or deployment are performed by this foundation. Before connecting an existing host, inspect its current build settings and branch triggers.
