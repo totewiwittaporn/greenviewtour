@@ -5,6 +5,7 @@ import {programBookingPlan} from './booking-plan.js'
 import {requireBookingEdit} from './booking-ownership.js'
 import {requireOpenServiceDays} from './service-day.js'
 import {assessBookingCapacity,boatCategories,bookingLegs,capacityBookingInclude,capacityInclude,dayString,poolContainsRun,poolContext,poolsForLeg,selections,solveContext,usableCapacity,vanEstimate} from './capacity-core.js'
+import {readTransaction} from '../../platform/database/read-transaction.js'
 export async function capacityAccess(tx,actorId,kind='BOAT',edit=false) {
   const {actor,access} = await authorize(tx,actorId,'active')
   if (edit ? !(kind==='BOAT'?access.manageGuide:access.manageDriver) : !(access.booking || access.manageGuide || access.manageDriver)) fail('PERMISSION_DENIED',403)
@@ -62,7 +63,7 @@ export async function listCapacityPools(db,actorId,params) {
   const kind=params.get('kind')||'BOAT',date=params.get('date')||localStamp(new Date()).slice(0,10)
   if(!['BOAT','VEHICLE'].includes(kind))fail('INVALID_INPUT',400)
   await capacityAccess(db,actorId,kind)
-  return db.$transaction(async tx=>{
+  return readTransaction(db,async tx=>{
     const {access}=await capacityAccess(tx,actorId,kind)
     const pools=await tx.capacityPool.findMany({where:{serviceDate:dateOnly(date),kind},include:capacityInclude,orderBy:[{startsAt:'asc'},{id:'asc'}]})
     const rows=[]
@@ -72,7 +73,7 @@ export async function listCapacityPools(db,actorId,params) {
 }
 export async function bookingCapacityPreview(db,actorId,input) {
   await authorize(db,actorId,'islandBooking')
-  return db.$transaction(async tx=>{
+  return readTransaction(db,async tx=>{
     let booking
     if(input.bookingId){booking=await tx.tourBooking.findUnique({where:{id:uuid(input.bookingId)},include:capacityBookingInclude});if(!booking)fail('NOT_FOUND',404);await requireBookingEdit(tx,actorId,booking);if(input.capacitySelections)booking={...booking,programSnapshot:{...booking.programSnapshot,capacitySelections:selections(input.capacitySelections)}}}
     else {

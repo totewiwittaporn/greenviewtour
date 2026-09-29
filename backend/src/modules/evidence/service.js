@@ -3,6 +3,8 @@ import {createHash} from 'node:crypto'
 import {authorize,fail,uuid,keys,string,hash} from '../operations/common.js'
 import {canEditBooking,effectiveAccess} from '../../../../packages/contracts/access.js'
 import {personnelFinancePermission} from '../personnel-finance/service.js'
+import {isD1Client} from '../../platform/database/d1-runtime.js'
+import {readD1File} from '../../platform/files/bound-store.js'
 
 export const maxEvidenceBytes=5*1024*1024
 const metadata={id:true,createdAt:true,targetKind:true,targetId:true,uploadedBy:true,filename:true,mimeType:true,size:true,note:true,documentNumber:true,category:true}
@@ -65,5 +67,10 @@ export async function saveEvidence(prisma,actorId,input){
 export async function downloadEvidence(prisma,actorId,id){
  const row=await prisma.evidenceAttachment.findUnique({where:{id:uuid(id)},select:metadata});if(!row)fail('NOT_FOUND',404)
  await parentAccess(prisma,actorId,row.targetKind,row.targetId)
+ if(isD1Client(prisma)){
+  const file=await prisma.evidenceAttachment.findUnique({where:{id},select:{filename:true,mimeType:true,size:true,sha256:true,objectKey:true}})
+  const stored=await readD1File(prisma,file.objectKey,{size:file.size,sha256:file.sha256})
+  return {filename:file.filename,mimeType:file.mimeType,size:file.size,content:stored.body}
+ }
  return prisma.evidenceAttachment.findUnique({where:{id},select:{filename:true,mimeType:true,content:true,size:true}})
 }

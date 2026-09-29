@@ -4,6 +4,7 @@ import { profileInclude } from './policy.js'
 import { AccessError } from './membership.js'
 import {d1AtomicBatch,d1Date} from '../../platform/database/d1-atomic.js'
 import {isD1Client} from '../../platform/database/d1-runtime.js'
+import {readTransaction} from '../../platform/database/read-transaction.js'
 const fail=(code,status=403)=>{throw new AccessError(code,status)}
 const privileged=profile=>(profile?.roles||[]).some(g=>['ADMIN_MANAGER','MANAGER'].includes(g.roleCode))
 export function canConfigureAccess(actor,target) {
@@ -21,7 +22,7 @@ async function pair(tx,actorId,targetId){
  return {actor,target}
 }
 export async function readUserAccess(prisma,actorId,targetId) {
- return prisma.$transaction(async tx=>{
+ return readTransaction(prisma,async tx=>{
   const {actor,target}=await pair(tx,actorId,targetId)
   const history=await tx.auditEvent.findMany({where:{targetId,action:'users.access.changed'},orderBy:{createdAt:'desc'},take:20,select:{id:true,actorId:true,createdAt:true,details:true}})
   return result(actor,target,history)

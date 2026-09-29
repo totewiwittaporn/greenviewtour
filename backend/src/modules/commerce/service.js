@@ -12,6 +12,11 @@ import { validateEvidence } from '../evidence/service.js'
 import { randomUUID } from 'node:crypto'
 import { isoDay, saleDateAllowed, promotionAllowed, promotionUnits, cents, thailandDay } from '../../../../packages/contracts/commerce.js'
 import { authorize, fail, uuid, int, string, hash, keys } from '../operations/common.js'
+import {readTransaction} from '../../platform/database/read-transaction.js'
+import {isD1Client} from '../../platform/database/d1-runtime.js'
+import {d1AtomicBatch} from '../../platform/database/d1-atomic.js'
+import {d1FileStoreFor,readD1File} from '../../platform/files/bound-store.js'
+import {fileObjectKey} from '../../platform/files/keys.js'
 
 const publicContentSelect={locale:true,name:true,summary:true,introduction:true,longDescription:true,departureTimes:true,childPolicy:true,cancellationTerms:true,bookingCutoff:true,meals:true,fees:true,inclusions:true,exclusions:true,preparationNotes:true,specialConditions:true,suitableFor:true,meetingPoint:true,weatherNotes:true,seoTitle:true,metaDescription:true,ogTitle:true,ogDescription:true,contentReviewedAt:true}
 const publicMediaSelect={id:true,sortOrder:true,kind:true,url:true,altTh:true,altEn:true,captionTh:true,captionEn:true}
@@ -82,7 +87,7 @@ export async function saveCustomerProfile(db,user,input) {
  return {customer:await customerFor(db,user)}
 }
 export async function memberRequests(db,user,params) {
- return typeof db.$transaction==='function'?db.$transaction(tx=>readMemberRequests(tx,user,params),{isolationLevel:'RepeatableRead',timeout:30000}):readMemberRequests(db,user,params)
+ return readTransaction(db,tx=>readMemberRequests(tx,user,params),{isolationLevel:'RepeatableRead',timeout:30000})
 }
 async function readMemberRequests(db,user,params) {
  const customer=await customerFor(db,user),page=int(params.get('page')||1,1,100000),where={customerId:customer.id}
@@ -153,7 +158,7 @@ export async function submitCustomerRequest(db,user,input,now=new Date()) {
  })
 }
 export async function listCustomers(db,actorId,params) {
- if(params.get('view')==='list'||params.get('requestId'))return db.$transaction(tx=>readCustomers(tx,actorId,params),{isolationLevel:'RepeatableRead',timeout:15000})
+ if(params.get('view')==='list'||params.get('requestId'))return readTransaction(db,tx=>readCustomers(tx,actorId,params),{isolationLevel:'RepeatableRead',timeout:15000})
  return readCustomers(db,actorId,params)
 }
 async function readCustomers(db,actorId,params) {
@@ -260,10 +265,34 @@ export async function uploadCustomerProof(db,user,input){
  })
 }
 
+async function d1WebsiteImage(db,row){
+ const file=await readD1File(db,row.objectKey,{size:row.size,sha256:row.sha256})
+ return {...row,content:file.body}
+}
 export async function saveWebsiteImage(db,actorId,input){
- await authorize(db,actorId)
+ const {actor}=await authorize(db,actorId)
  const data=validateEvidence({...input,targetKind:'BOOKING',targetId:input.id,category:'OTHER',note:'',documentNumber:''})
  if(!['image/jpeg','image/png'].includes(data.mimeType))fail('INVALID_EVIDENCE_FILE',400)
+ if(isD1Client(db)){
+  const old=await db.websiteImage.findUnique({where:{id:input.id}})
+  if(old){if(old.sha256!==data.sha256||old.uploadedBy!==actorId)fail('COMMAND_CONFLICT');return {url:'/api/public/images/'+input.id}}
+  const store=d1FileStoreFor(db);if(!store)throw new Error('R2_BUCKET_REQUIRED')
+  const objectKey=fileObjectKey('websiteImage',input.id)
+  const object=await store.putIfAbsent(objectKey,data.content,{mimeType:data.mimeType,sha256:data.sha256})
+  if(!object.created&&(object.size!==data.size||object.mimeType!==data.mimeType||object.sha256!==data.sha256))fail('COMMAND_CONFLICT')
+  const [insert]=await d1AtomicBatch(db,[{
+   sql:'INSERT INTO "WebsiteImage" ("id","filename","mimeType","objectKey","size","sha256","uploadedBy") SELECT ?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM "WebsiteImage" WHERE "id"=?) AND EXISTS (SELECT 1 FROM "UserProfile" WHERE "id"=? AND "accessVersion"=? AND "status"=\'ACTIVE\')',
+   params:[input.id,data.filename,data.mimeType,objectKey,data.size,data.sha256,actorId,input.id,actorId,actor.accessVersion],
+  }])
+  if((insert?.meta?.changes||0)!==1){
+   const current=await db.websiteImage.findUnique({where:{id:input.id}})
+   if(current?.sha256===data.sha256&&current.uploadedBy===actorId)return {url:'/api/public/images/'+input.id}
+   if(object.created&&!current)await store.delete(objectKey)
+   await authorize(db,actorId)
+   fail('COMMAND_CONFLICT')
+  }
+  return {url:'/api/public/images/'+input.id}
+ }
  return db.$transaction(async tx=>{
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;await authorize(tx,actorId)
   const old=await tx.websiteImage.findUnique({where:{id:input.id}})
@@ -279,7 +308,7 @@ export async function websiteImage(db,id){
  const referenced=await db.tourProgram.count({where:{status:'ACTIVE',publicStatus:'PUBLISHED',imageUrls:{contains:path}}})||await db.websitePopup.count({where:{status:'ACTIVE',OR:[{imageUrl:path},{mobileImageUrl:path}]}})
  if(!referenced)fail('NOT_FOUND',404)
  const image=await db.websiteImage.findUnique({where:{id}});if(!image)fail('NOT_FOUND',404)
- return image
+ return isD1Client(db)?d1WebsiteImage(db,image):image
 }
 
 export async function saveCustomer(db,actorId,input){
@@ -311,6 +340,11 @@ export async function customerDocument(db,user,id){
  if(!file||file.targetKind!=='CUSTOMER_REQUEST')fail('NOT_FOUND',404)
  const request=await db.customerRequest.findUnique({where:{id:file.targetId},select:{customerId:true}})
  if(!request||request.customerId!==customer.id)fail('NOT_FOUND',404)
+ if(isD1Client(db)){
+  const stored=await db.evidenceAttachment.findUnique({where:{id},select:{filename:true,mimeType:true,size:true,sha256:true,objectKey:true}})
+  const object=await readD1File(db,stored.objectKey,{size:stored.size,sha256:stored.sha256})
+  return {filename:stored.filename,mimeType:stored.mimeType,size:stored.size,content:object.body}
+ }
  return db.evidenceAttachment.findUnique({where:{id},select:{filename:true,mimeType:true,size:true,content:true}})
 }
 
@@ -344,7 +378,7 @@ export async function cancelCustomerRequest(db,user,input){
 export async function previewWebsiteImage(db,actorId,id){
  await authorize(db,actorId);uuid(id)
  const file=await db.websiteImage.findUnique({where:{id}});if(!file)fail('NOT_FOUND',404)
- return file
+ return isD1Client(db)?d1WebsiteImage(db,file):file
 }
 
 function promotionUsageWhere(promotionId,now){return {promotionId,status:{notIn:['REJECTED','CANCELLED']},AND:[{OR:[{status:{notIn:['REQUESTED','WAITING_TEAM','DATE_PROPOSED']}},{holdUntil:null},{holdUntil:{gt:now}}]},{OR:[{bookingId:null},{booking:{status:{not:'CANCELLED'}}}]}]}}
@@ -356,7 +390,7 @@ export async function customerCapacity(tx,input,snapshot,now=new Date(),excludeR
  return assessBookingCapacity(tx,booking,{now,excludeRequestId})
 }
 export async function publicQuoteAvailability(db,input,now=new Date()){
- return db.$transaction(async tx=>{
+ return readTransaction(db,async tx=>{
   const quote=await quoteRequest(tx,input,now)
   const availability=await customerCapacity(tx,input,quote,now)
   return {...quote,quoteKey:hash(quote),availability}
@@ -364,7 +398,7 @@ export async function publicQuoteAvailability(db,input,now=new Date()){
 }
 export async function staffCustomerCapacity(db,actorId,params){
  await authorize(db,actorId,'customer')
- return db.$transaction(async tx=>{
+ return readTransaction(db,async tx=>{
   await authorize(tx,actorId,'customer')
   const row=await tx.customerRequest.findUnique({where:{id:uuid(params.get('requestId'))}})
   if(!row)fail('NOT_FOUND',404)

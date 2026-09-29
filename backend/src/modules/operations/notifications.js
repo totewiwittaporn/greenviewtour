@@ -2,6 +2,7 @@ import {Prisma} from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import { pushText, validatePush } from '../../platform/line/messaging.js'
 import {d1ProjectionValues} from '../../platform/database/json-projection.js'
+import {readTransaction} from '../../platform/database/read-transaction.js'
 import { authorize, dateOnly, fail, hash, write, uuid } from './common.js'
 
 // Preparation never sends. Delivery requires runner opt-in and server configuration.
@@ -60,7 +61,7 @@ export function summaryMessages(serviceDate, runs, baseUrl, revision = 1) {
 }
 
 export async function dailySummaryState(prisma, actorId, serviceDate, env = process.env, page = 1, options = {}) {
- if(options.view==='list'||options.snapshotId)return prisma.$transaction(tx=>readDailySummary(tx,actorId,serviceDate,env,page,options),{isolationLevel:'RepeatableRead',timeout:15000})
+ if(options.view==='list'||options.snapshotId)return readTransaction(prisma,tx=>readDailySummary(tx,actorId,serviceDate,env,page,options),{isolationLevel:'RepeatableRead',timeout:15000})
  return readDailySummary(prisma,actorId,serviceDate,env,page,options)
 }
 async function readDailySummary(prisma, actorId, serviceDate, env, page, options) {

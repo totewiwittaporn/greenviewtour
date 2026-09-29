@@ -13,6 +13,7 @@ import { managementScope } from '../../../modules/identity-access/user-managemen
 import { fail, dateOnly } from '../../../modules/operations/common.js'
 import { pendingPassengers } from '../../../modules/operations/dispatch.js'
 import { thailandDay } from '../../../modules/operations/check-in.js'
+import {readTransaction} from '../../../platform/database/read-transaction.js'
 
 const dayKey = value => value ? new Date(value).toISOString().slice(0, 10) : null
 const arrivalWhere = filter => ({ OR: [{ outboundDate: filter }, { outboundDate: null, returnStatus: 'OUR', returnDate: filter }] })
@@ -45,7 +46,7 @@ export function dashboardScope(actor) {
 
 // Counts are computed over complete authorized sets, never a paginated list response.
 export async function dashboardOverview(prisma, actorId, now = new Date(), {surface='legacy'} = {}) {
- return prisma.$transaction(async tx => {
+ return readTransaction(prisma,async tx => {
   const actor = await tx.userProfile.findUnique({ where: { id: actorId }, select: accessProfileSelect })
   const scope = dashboardScope(actor), allowed = code => effectiveAccess(actor, code, { now }).allowed
   const today = thailandDay(now), end = addDays(today, 14), date = dateOnly(today)
