@@ -33,3 +33,9 @@ coverage/
 *.private.*
 credentials.private.json
 playwright/.auth/
+
+# Cloudflare local state / generated runtime clients
+.wrangler/
+backend/src/generated/
+backend/prisma-d1/*.db
+backend/prisma-d1/*.db-*

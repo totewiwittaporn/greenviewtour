@@ -1,5 +1,7 @@
 import {cashSummary} from './cash-summary.js'
 import {apiStatus} from '../../../platform/monitoring/api-status.js'
+import {scalarArrayWhere} from '../../../platform/database/scalar-array.js'
+import {jsonRangeWhere} from '../../../platform/database/json-range.js'
 import {managerWidgetCounts} from './manager-widgets.js'
 import { workSummary } from './work-summary.js'
 import { bookingSummary } from './booking-summary.js'
@@ -108,12 +110,19 @@ export async function dashboardOverview(prisma, actorId, now = new Date(), {surf
     widgets.push({ id: route + '-allocation', title, href: '/operations/' + route, pending: pending.size, today: dueToday.size, overdue: null, review: null, scope: 'Company', detail: 'Unique bookings with passengers still unallocated in the next 14 days, excluding recorded no-shows.' })
    })())
   }
-  const duties = !pageManager&&allowed('inventory.request') && effectiveAccess(actor, 'operations.stock', { now }).source !== 'User restriction' ? await tx.warehouseResponsibility.findMany({ where: { OR: [{ primaryUserId: actorId }, { deputyUserIds: { has: actorId } }] }, select: { storeId: true } }) : []
+  let duties=[]
+  if(!pageManager&&allowed('inventory.request')&&effectiveAccess(actor,'operations.stock',{now}).source!=='User restriction'){
+   const deputyWhere=await scalarArrayWhere(tx,'WarehouseResponsibility.deputyUserIds',actorId)
+   duties=await tx.warehouseResponsibility.findMany({where:{OR:[{primaryUserId:actorId},deputyWhere]},select:{storeId:true}})
+  }
   for (const [route, definition] of Object.entries(companyRoutes)) {
    if (!(definition.anyPermissions || [definition.permission]).some(allowed)) continue
    const { kind, title, finance } = definition
    if (finance) {
-    tasks.push(countWidget({ id: route, title, href: '/company/' + route, model: 'financePersonnelRecord', base: { kind }, pending: { status: { in: ['DRAFT', 'SUBMITTED', 'REJECTED', ...(definition.permission === 'personnel.view' ? [] : ['APPROVED']), ...(['WORK_ADVANCE', 'SALARY_ADVANCE'].includes(kind) ? ['PAID', 'CLEARANCE_SUBMITTED'] : [])] } }, overdue: ['WORK_ADVANCE', 'SALARY_ADVANCE'].includes(kind) ? { status: { in: ['PAID', 'CLEARANCE_SUBMITTED'] }, payload: { path: ['dueOn'], lt: today } } : null, detail: 'Records awaiting submission, review or the next workflow step.', visibility: 'Authorized ' + (definition.permission === 'payroll.view' ? 'payroll' : definition.permission === 'personnel.view' ? 'personnel' : 'accounts') + ' records' }))
+    const overdue=['WORK_ADVANCE','SALARY_ADVANCE'].includes(kind)
+     ?{status:{in:['PAID','CLEARANCE_SUBMITTED']},...await jsonRangeWhere(tx,'FinancePersonnelRecord.payload.dueOn',{lt:today})}
+     :null
+    tasks.push(countWidget({ id: route, title, href: '/company/' + route, model: 'financePersonnelRecord', base: { kind }, pending: { status: { in: ['DRAFT', 'SUBMITTED', 'REJECTED', ...(definition.permission === 'personnel.view' ? [] : ['APPROVED']), ...(['WORK_ADVANCE', 'SALARY_ADVANCE'].includes(kind) ? ['PAID', 'CLEARANCE_SUBMITTED'] : [])] } }, overdue, detail: 'Records awaiting submission, review or the next workflow step.', visibility: 'Authorized ' + (definition.permission === 'payroll.view' ? 'payroll' : definition.permission === 'personnel.view' ? 'personnel' : 'accounts') + ' records' }))
    } else if (kind === 'RECEIVABLES') {
     tasks.push(countWidget({ id: route, title, href: '/company/' + route, model: 'agentBill', pending: { status: 'OPEN' }, overdue: { dueOn: { lt: date } }, todayWhere: { dueOn: date }, detail: 'Open agent bills, including partially paid bills.', visibility: 'Authorized accounts records' }))
    } else if (['JOB', 'STOCK_REQUEST', 'COUNT', 'MAINTENANCE'].includes(kind)) {

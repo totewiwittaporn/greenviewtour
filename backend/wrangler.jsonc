@@ -1,0 +1,28 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "greenviewtour-api",
+  "main": "src/cloudflare/worker.ts",
+  "compatibility_date": "2026-09-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "greenviewtour-preview",
+      "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "prisma-d1/migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FILES",
+      "bucket_name": "greenviewtour-preview-files"
+    }
+  ],
+  "vars": {
+    "APP_ENV": "preview",
+    "D1_LOCATION_HINT": "apac"
+  }
+}

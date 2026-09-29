@@ -9,6 +9,7 @@ import { operationAccess } from '../../../../packages/contracts/operation-access
 import { parseStamp, localStamp } from '../../../../packages/contracts/operations.js'
 import { active, audit, authorize, dateOnly, fail, hash, int, keys, string, uuid, write } from './common.js'
 import { profileInclude } from '../identity-access/policy.js'
+import {scalarArrayWhere} from '../../platform/database/scalar-array.js'
 
 export const dispatchCategories = ['TRANSFER', 'TOUR_BOAT', 'LONGTAIL_BOAT']
 const boatRoles = ['GUIDE', 'HEAD_GUIDE', 'ASSISTANT_TOUR_GUIDE', 'CAPTAIN', 'HEAD_CAPTAIN', 'ASSISTANT_CAPTAIN']
@@ -328,7 +329,7 @@ export async function bookingOptions(prisma, actorId, params) {
   const where = { status: 'ACTIVE' }
   let model, select = { id: true, code: true, name: true }
   if (entity === 'agents') {
-    model = 'businessPartner'; where.roles = { has: 'SALES_AGENT' }
+    model = 'businessPartner'
     select = { ...select, phone: true, allowedPaymentTerms: true, defaultPaymentTerms: true }
   } else if (entity === 'tours') {
     model = 'tourProgram'
@@ -342,8 +343,9 @@ export async function bookingOptions(prisma, actorId, params) {
   }
   if (q) where.OR = [{ code: { contains: q, mode: 'insensitive' } }, { name: { contains: q, mode: 'insensitive' } }]
   return prisma.$transaction(async tx => {
-    const total = await tx[model].count({ where }), page = Math.min(requested, Math.max(1, Math.ceil(total / 25)))
-    const rows = await tx[model].findMany({ where, select, skip: (page - 1) * 25, take: 25, orderBy: [{ name: 'asc' }, { id: 'asc' }] })
+    const scopedWhere=entity==='agents'?{...where,...await scalarArrayWhere(tx,'BusinessPartner.roles','SALES_AGENT')}:where
+    const total = await tx[model].count({ where:scopedWhere }), page = Math.min(requested, Math.max(1, Math.ceil(total / 25)))
+    const rows = await tx[model].findMany({ where:scopedWhere, select, skip: (page - 1) * 25, take: 25, orderBy: [{ name: 'asc' }, { id: 'asc' }] })
     return pageResult(rows, total, page)
   }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
 }

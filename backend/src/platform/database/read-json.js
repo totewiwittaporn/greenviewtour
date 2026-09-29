@@ -1,15 +1,37 @@
-import { Prisma } from '@prisma/client'
+const sources=new Map([
+  ['TourBooking.programSnapshot','tourBooking'],
+  ['BookingComponent.snapshot','bookingComponent'],
+  ['CustomerRequest.snapshot','customerRequest'],
+  ['CustomerRequest.details','customerRequest'],
+  ['CompanyWorkRecord.payload','companyWorkRecord'],
+  ['FinancePersonnelRecord.payload','financePersonnelRecord'],
+  ['FinancePersonnelRecord.clearance','financePersonnelRecord'],
+])
+const identifier=value=>/^[A-Za-z][A-Za-z0-9]*$/.test(value)
 
-const sources = new Set(['TourBooking.programSnapshot', 'BookingComponent.snapshot', 'CustomerRequest.snapshot', 'CustomerRequest.details', 'CompanyWorkRecord.payload', 'FinancePersonnelRecord.payload', 'FinancePersonnelRecord.clearance'])
-const identifier = value => /^[A-Za-z][A-Za-z0-9]*$/.test(value)
-// Internal-only projection after the domain reader has selected authorized IDs.
-// JSON paths are fixed by source code, never accepted from a request. Values and
-// UUIDs stay parameterized. Keep the caller's read transaction for consistency.
-export async function readJsonFields(tx, table, column, ids, paths) {
- if (!ids.length) return new Map()
- if (!sources.has(`${table}.${column}`) || paths.some(path => !path.split('.').every(identifier))) throw new Error('INVALID_READ_PROJECTION')
- const field = Prisma.raw(`"${column}"`)
- const pairs = paths.flatMap(path => [Prisma.sql`${path}::text`, Prisma.sql`${field} #> ${path.split('.')}::text[]`])
- const rows = await tx.$queryRaw(Prisma.sql`SELECT id, jsonb_build_object(${Prisma.join(pairs)}) AS value FROM ${Prisma.raw(`app_private."${table}"`)} WHERE id IN (${Prisma.join(ids.map(id => Prisma.sql`${id}::uuid`))})`)
- return new Map(rows.map(row => [row.id, row.value]))
+const readPath=(value,path)=>{
+  let current=value
+  for(const key of path.split('.')){
+    if(!current||typeof current!=='object'||Array.isArray(current)||!Object.hasOwn(current,key))return null
+    current=current[key]
+  }
+  return current===undefined?null:current
+}
+
+// Portable projection for authorized, already-bounded row IDs. Keeping this in
+// Prisma instead of PostgreSQL jsonb operators lets the same business readers
+// run against PostgreSQL during migration and D1 after cutover.
+export async function readJsonFields(tx,table,column,ids,paths){
+  if(!ids.length)return new Map()
+  const delegate=sources.get(`${table}.${column}`)
+  if(!delegate||paths.some(path=>!path.split('.').every(identifier)))throw new Error('INVALID_READ_PROJECTION')
+  if(!tx[delegate]?.findMany)throw new Error('INVALID_READ_PROJECTION_MODEL')
+  const rows=await tx[delegate].findMany({
+    where:{id:{in:[...new Set(ids)]}},
+    select:{id:true,[column]:true},
+  })
+  return new Map(rows.map(row=>[
+    row.id,
+    Object.fromEntries(paths.map(path=>[path,readPath(row[column],path)])),
+  ]))
 }

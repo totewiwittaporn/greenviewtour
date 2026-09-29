@@ -13,16 +13,23 @@
     "preview": "npm run preview --workspace @greenviewtour/public-web",
     "preview:backoffice": "npm run preview --workspace @greenviewtour/backoffice",
     "lint": "eslint .",
-    "check": "npm run lint && npm run test:backend && npm run test:frontend && npm run build",
+    "check": "npm run lint && npm run test:backend && npm run test:frontend && npm run build && npm run cloudflare:check",
     "db:check": "npm run db:check --workspace @greenviewtour/api",
     "test:backend": "npm run test --workspace @greenviewtour/api",
     "postinstall": "npm run prisma:generate --workspace @greenviewtour/api",
     "db:migrate": "npm run db:migrate --workspace @greenviewtour/api",
     "owner:invite": "npm run owner:invite --workspace @greenviewtour/api --",
     "test:frontend": "node --test frontend/backoffice/test/*.test.js frontend/member/test/*.test.js frontend/public-web/test/*.test.js",
-    "build:member": "npm run build --workspace @greenviewtour/member"
+    "build:member": "npm run build --workspace @greenviewtour/member",
+    "cloudflare:d1:schema": "node backend/scripts/generate-d1-schema.js",
+    "cloudflare:d1:generate": "npm run cloudflare:d1:schema && npx prisma generate --schema backend/prisma-d1/schema.prisma --config backend/prisma-d1/prisma.config.ts",
+    "cloudflare:d1:migrate:local": "npm run cloudflare:d1:generate && npx wrangler d1 migrations apply DB --local --config backend/wrangler.jsonc --env-file backend/cloudflare.env",
+    "cloudflare:types": "npx wrangler types backend/src/cloudflare/env.d.ts --config backend/wrangler.jsonc --env-file backend/cloudflare.env",
+    "cloudflare:dev": "npm run cloudflare:d1:migrate:local && npm run cloudflare:types && npx wrangler dev --config backend/wrangler.jsonc --local --port 8787 --env-file backend/cloudflare.env",
+    "cloudflare:check": "npm run cloudflare:d1:generate && npm run cloudflare:types && npx wrangler deploy --dry-run --config backend/wrangler.jsonc --env-file backend/cloudflare.env"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260929.1",
     "@eslint/js": "^9.36.0",
     "@types/react": "^19.1.16",
     "@types/react-dom": "^19.1.9",
@@ -32,7 +39,8 @@
     "eslint-plugin-react-refresh": "^0.4.22",
     "globals": "^16.4.0",
     "playwright": "1.63.0",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "wrangler": "^4.143.0"
   },
   "workspaces": [
     "frontend/*",

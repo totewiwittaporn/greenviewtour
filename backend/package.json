@@ -4,9 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
+    "@prisma/adapter-d1": "^7.10.0",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
     "@supabase/supabase-js": "2.116.0",
+    "better-auth": "^1.7.6",
     "pg": "8.23.0"
   },
   "scripts": {
@@ -17,7 +19,9 @@
     "prisma:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
     "owner:invite": "node scripts/bootstrap-owner.js",
-    "db:identity-check": "node scripts/check-identity.js"
+    "db:identity-check": "node scripts/check-identity.js",
+    "d1:schema": "node scripts/generate-d1-schema.js",
+    "d1:generate": "npm run d1:schema && prisma generate --schema prisma-d1/schema.prisma --config prisma-d1/prisma.config.ts"
   },
   "devDependencies": {
     "prisma": "7.10.0"

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { bangkokSchedule, notificationReadiness, normalizeRuns, summaryMessages, deliverPrepared, prepareDailySummary, runNightlyTick } from '../src/modules/operations/notifications.js'
+import { bangkokSchedule, notificationReadiness, normalizeRuns, summaryMessages, deliverPrepared, prepareDailySummary, runNightlyTick, dailySummaryState } from '../src/modules/operations/notifications.js'
 const id='11111111-1111-4111-8111-111111111111'
 const run={id,kind:'BOAT',name:'Surin 1',adults:12,children:3,guestName:'SECRET GUEST',hotel:'SECRET HOTEL'}
 test('Bangkok cutoff and next service date cross UTC/month/year boundaries',()=>{
@@ -70,4 +70,29 @@ test('manual captures preserve revisions while automatic ticks capture only once
  await runNightlyTick(db,id,{now:new Date('2026-09-09T15:30:00Z'),env:{}})
  await runNightlyTick(db,id,{now:new Date('2026-09-09T15:31:00Z'),env:{}})
  assert.equal(snapshots.length,3);assert.equal(snapshots.at(-1).kind,'SUMMARY')
+})
+
+test('D1 lean summary list reads run counts from projection without PostgreSQL raw SQL',async()=>{
+ const actor={status:'ACTIVE',roles:[{roleCode:'MANAGER',scope:'COMPANY',role:{permissions:[{permissionCode:'users.read'}]}}],permissionOverrides:[]}
+ const snapshots=[
+  {id:'21111111-1111-4111-8111-111111111111',serviceDate:new Date('2026-09-10'),kind:'CLOSE',revision:2,createdAt:new Date()},
+  {id:'31111111-1111-4111-8111-111111111111',serviceDate:new Date('2026-09-10'),kind:'SUMMARY',revision:1,createdAt:new Date()},
+ ]
+ let rawCalls=0,projectionQuery
+ const tx={
+  userProfile:{findUnique:async()=>actor},
+  operationDailySnapshot:{count:async()=>2,findMany:async()=>snapshots.map(row=>({...row}))},
+  d1JsonProjection:{findMany:async args=>{projectionQuery=args;return [
+   {ownerId:snapshots[0].id,textValue:'4'},
+   {ownerId:snapshots[1].id,textValue:'2'},
+  ]}},
+  operationNotificationOutbox:{findMany:async()=>{throw new Error('lean list must not load outbox')}},
+  $queryRaw:async()=>{rawCalls++;throw new Error('D1 lean list must not use PostgreSQL raw SQL')},
+ }
+ const db={...tx,$transaction:async fn=>fn(tx)}
+ const result=await dailySummaryState(db,id,'2026-09-10',{},1,{view:'list'})
+ assert.equal(rawCalls,0)
+ assert.deepEqual(result.snapshots.map(row=>row.runCount),[4,2])
+ assert.deepEqual(projectionQuery.where,{source:'OperationDailySnapshot.runs.length',ownerId:{in:snapshots.map(row=>row.id)}})
+ assert.deepEqual(result.outbox,[])
 })

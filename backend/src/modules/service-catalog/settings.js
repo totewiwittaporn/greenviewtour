@@ -1,5 +1,6 @@
 import {canManageBookingTeam} from '../../../../packages/contracts/access.js'
 import {catalogReadSelect} from './read-models.js'
+import {scalarArrayWhere} from '../../platform/database/scalar-array.js'
 import {uuid} from '../operations/common.js'
 import thaiAreas from '../../../../packages/contracts/data/thai-areas.js'
 import { englishAddress, postalCodeFor, validateThaiAddress } from '../../../../packages/contracts/thai-address.js'
@@ -14,7 +15,7 @@ export async function authorizeCatalog(tx, actorId,entity) {
 }
 const referenceSelect={id:true,name:true,code:true}
 // Summary cards describe the full company-authorized dataset, independently of list filters.
-const summaryWhere={agreements:{signedOn:{not:null}},partners:{roles:{has:'SALES_AGENT'}},tours:{ownership:'GREENVIEW'},rates:{childPrice:{not:null}},locations:{kind:'HOTEL'},vehicles:{ownership:'GREENVIEW'},channels:{kind:'DIRECT'}}
+const summaryWhere={agreements:{signedOn:{not:null}},tours:{ownership:'GREENVIEW'},rates:{childPrice:{not:null}},locations:{kind:'HOTEL'},vehicles:{ownership:'GREENVIEW'},channels:{kind:'DIRECT'}}
 const includes={seasons:{tour:{select:referenceSelect}},promotions:{tour:{select:referenceSelect}},agreements:{agent:{select:referenceSelect}},tours:{operator:{select:referenceSelect}},rates:{agent:{select:referenceSelect},tour:{select:referenceSelect},agreement:{select:{...referenceSelect,startsOn:true,endsOn:true}}},vehicles:{provider:{select:referenceSelect}}}
 export async function listSettings(prisma,actorId,entity,params){
  if(!Object.hasOwn(catalog,entity))throw new AccessError('NOT_FOUND',404)
@@ -23,9 +24,11 @@ export async function listSettings(prisma,actorId,entity,params){
  if(entity==='company'){const rows=await prisma[model].findMany({take:1});return{rows,total:rows.length,page:1,pages:1}}
  const q=(params.get('q')||'').trim(),requested=Number(params.get('page')||1),role=params.get('role'),status=params.get('status')
  if(q.length>100||!Number.isSafeInteger(requested)||requested<1||requested>100000||(status&&!['ACTIVE','INACTIVE'].includes(status))||(role&&!['TOUR_OPERATOR','SALES_AGENT','TRANSPORT_PROVIDER','SERVICE_PROVIDER'].includes(role)))throw new AccessError('INVALID_FILTER',400)
- const where={...(status?{status}:{}),...(entity==='partners'&&role?{roles:{has:role}}:{})}
- if(q)where.OR=entity==='rates'?[{agent:{name:{contains:q,mode:'insensitive'}}},{tour:{name:{contains:q,mode:'insensitive'}}}]:(entity==='partners'?['name','code','shortName']:['name','code']).map(key=>({[key]:{contains:q,mode:'insensitive'}}))
+ const baseWhere={...(status?{status}:{})}
  return prisma.$transaction(async tx=>{
+  const roleWhere=entity==='partners'&&role?await scalarArrayWhere(tx,'BusinessPartner.roles',role):{}
+  const where={...baseWhere,...roleWhere}
+  if(q)where.OR=entity==='rates'?[{agent:{name:{contains:q,mode:'insensitive'}}},{tour:{name:{contains:q,mode:'insensitive'}}}]:(entity==='partners'?['name','code','shortName']:['name','code']).map(key=>({[key]:{contains:q,mode:'insensitive'}}))
   const recordId=params.get('recordId'),view=params.get('view')
   if(view&&!['list','options','detail'].includes(view))throw new AccessError('INVALID_FILTER',400)
   if(recordId){
@@ -37,15 +40,16 @@ export async function listSettings(prisma,actorId,entity,params){
   const select=catalogReadSelect(entity,view)
   const rows=await tx[model].findMany({where,...(select?{select}:{include:includes[entity]}),orderBy:entity==='rates'?[{createdAt:'desc'},{id:'asc'}]:[{name:'asc'},{id:'asc'}],skip:(page-1)*25,take:25})
   if(view==='options')return {rows,total,page,pages,pageSize:25}
+  const featuredWhere=entity==='partners'?await scalarArrayWhere(tx,'BusinessPartner.roles','SALES_AGENT'):summaryWhere[entity]
   if(view==='list'){
    const counts=await tx[model].groupBy({by:['status'],_count:{_all:true}})
    const all=counts.reduce((sum,row)=>sum+row._count._all,0),count=status=>counts.find(row=>row.status===status)?._count._all||0
-   const featured=summaryWhere[entity]?await tx[model].count({where:summaryWhere[entity]}):all
+   const featured=featuredWhere?await tx[model].count({where:featuredWhere}):all
    return {rows,total,page,pages,pageSize:25,summary:{total:all,active:count('ACTIVE'),inactive:count('INACTIVE'),featured}}
   }
   const [all,active,inactive,featured]=await Promise.all([
    tx[model].count(),tx[model].count({where:{status:'ACTIVE'}}),
-   tx[model].count({where:{status:'INACTIVE'}}),tx[model].count({where:summaryWhere[entity]}),
+   tx[model].count({where:{status:'INACTIVE'}}),featuredWhere?tx[model].count({where:featuredWhere}):tx[model].count(),
   ])
   return{rows,total,page,pages,pageSize:25,summary:{total:all,active,inactive,featured}}
  },{isolationLevel:'RepeatableRead'})

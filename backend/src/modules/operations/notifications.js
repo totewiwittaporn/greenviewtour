@@ -1,6 +1,7 @@
 import {Prisma} from '@prisma/client'
 import { randomUUID } from 'node:crypto'
 import { pushText, validatePush } from '../../platform/line/messaging.js'
+import {d1ProjectionValues} from '../../platform/database/json-projection.js'
 import { authorize, dateOnly, fail, hash, write, uuid } from './common.js'
 
 // Preparation never sends. Delivery requires runner opt-in and server configuration.
@@ -76,8 +77,13 @@ async function readDailySummary(prisma, actorId, serviceDate, env, page, options
   page = Math.min(page,Math.max(1,Math.ceil(total / 25)))
   const snapshots = await prisma.operationDailySnapshot.findMany({ ...(lean?{select:{id:true,serviceDate:true,kind:true,revision:true,createdAt:true}}:{}),where: { serviceDate: dateOnly(serviceDate) }, orderBy: [{ kind: 'asc' }, { revision: 'desc' }], take: 25, skip: (page - 1) * 25 })
   if(lean&&snapshots.length){
-    const counts=await prisma.$queryRaw(Prisma.sql`SELECT id,jsonb_array_length(runs)::int AS count FROM app_private."OperationDailySnapshot" WHERE id IN (${Prisma.join(snapshots.map(row=>Prisma.sql`${row.id}::uuid`))})`)
-    const byId=new Map(counts.map(row=>[row.id,row.count]));for(const row of snapshots)row.runCount=byId.get(row.id)
+    const projected=await d1ProjectionValues(prisma,'OperationDailySnapshot.runs.length',snapshots.map(row=>row.id))
+    if(projected){
+      for(const row of snapshots)row.runCount=Number(projected.get(row.id)||0)
+    }else{
+      const counts=await prisma.$queryRaw(Prisma.sql`SELECT id,jsonb_array_length(runs)::int AS count FROM app_private."OperationDailySnapshot" WHERE id IN (${Prisma.join(snapshots.map(row=>Prisma.sql`${row.id}::uuid`))})`)
+      const byId=new Map(counts.map(row=>[row.id,row.count]));for(const row of snapshots)row.runCount=byId.get(row.id)
+    }
   }
   const outbox = lean?[]:await prisma.operationNotificationOutbox.findMany({ where: { serviceDate: dateOnly(serviceDate) }, orderBy: { createdAt: 'desc' }, take:25, select: { id: true, snapshotId: true, status: true, createdAt: true, revision: true } })
   return { serviceDate, readiness: notificationReadiness(env), snapshots, outbox, page, pageSize:25, total, assignmentCoverage: 'NOT_VERIFIED' }
