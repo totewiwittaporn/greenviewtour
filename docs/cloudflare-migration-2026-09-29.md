@@ -194,3 +194,43 @@ Local D1 SQL probes confirmed:
 - multi-table access change updates accessVersion, roles, override and audit correctly.
 
 Full `npm run check` passes after this checkpoint.
+
+## Pause checkpoint — 29 September 2026 late evening
+
+Work is intentionally paused here before continuing the Cloudflare Auth/Worker cutover.
+
+Completed and committed on `feat/cloudflare-d1-foundation`:
+- `1530dcc` — initial Cloudflare D1 foundation.
+- `c11bf95` — atomic D1 identity/profile/access writes.
+- `9e28d37` — hardened R2 conditional file writes and D1/R2 client bindings.
+- `16a0c17` — `npm run check:quiet`; verbose validation writes to a temp log and prints only the summary/failure tail.
+- `e0737f5` — D1-safe read transactions plus R2-backed document/image/evidence reads.
+- `856e05d` — atomic D1 + R2 evidence writes, including customer payment-proof status transition and audit.
+
+Latest validated checkpoint:
+- Backend: 432 passed, 0 failed.
+- Frontend: 53 passed, 0 failed.
+- Public, Backoffice and Member production builds passed.
+- Cloudflare Worker dry-run passed.
+- D1/R2 targeted tests passed.
+- Production has not been touched.
+
+Current external state:
+- Wrangler is not authenticated.
+- No remote Greenview D1, R2 or Worker Preview resource exists yet.
+- No Cloudflare Production resource or DNS cutover exists.
+- The feature branch has not been pushed successfully to GitHub yet; an old hung push process was terminated.
+
+Exact resume point:
+- One uncommitted file remains: `backend/src/platform/auth/sessions.js`.
+- That edit only started session abstraction work (`replace`, `logout`, async `deleteUser`); it is not an accepted checkpoint yet.
+- Next gate is Cloudflare Auth/session: replace Supabase Auth + process-local `SessionStore.entries Map` with Better Auth/D1-backed persistent sessions.
+- Then adapt the existing API handler to the Worker runtime, keeping business handlers rather than rewriting routing unnecessarily.
+- Then port remaining write transactions in booking/capacity/stock, receivables/finance, invitations/settings/company work, with D1 batch/CAS semantics and concurrency regression.
+- After local acceptance: authenticate Wrangler, create Preview-only APAC D1/R2, apply reviewed remote migrations, migrate Preview data/files, and deploy Preview.
+- Production remains gated on owner acceptance.
+
+Timeout prevention rule:
+- Never broad-search `dist`, `node_modules`, generated clients or build artifacts.
+- Verbose tests/builds/searches must write to `/tmp` logs and return only summary/error tails.
+- The latest timeout was caused by a broad frontend auth grep reading minified `dist` bundles, not by a failed migration.
