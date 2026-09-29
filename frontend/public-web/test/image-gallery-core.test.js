@@ -1,3 +1,4 @@
+
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
@@ -12,4 +13,5 @@ test('Tour Detail delegates gallery interaction to Public Core',()=>{
  assert.match(gallery,/ArrowRight/)
  assert.match(gallery,/onTouchStart/)
  assert.match(gallery,/showModal/)
+ assert.match(gallery,/CloseButton/)
 })

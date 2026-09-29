@@ -1,3 +1,4 @@
+
 // Fixture-only public locale checks. All API requests are intercepted before network access.
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
@@ -30,6 +31,7 @@ const featuredTwo={...tour,id:'featured-two',slug:'featured-two',adultPrice:2900
 const featuredThree={...tour,id:'featured-three',slug:'featured-three',adultPrice:4500,durationDays:2,tourType:'OVERNIGHT',homeBadge:'SIGNATURE',publicContent:tour.publicContent.map(row=>({...row,name:row.locale==='th'?'ทัวร์ค้างคืน CMS':'CMS Overnight Tour'}))}
 let companyMode = 'ready'
 let tourMode = 'ready'
+let popupMode = false
 const tourQueries = []
 const company = {name: 'Greenview fixture company', address: 'Fixture address', phone: '+66 123 4567', email: 'fixture@example.com', mapUrl: 'https://maps.google.com/?q=Surin'}
 const browser = await chromium.launch({ headless: true })
@@ -53,9 +55,9 @@ try {
         const source=featured?[tour,featuredTwo,featuredThree]:ownership==='PARTNER'?[partner]:[tour]
         const duration=url.searchParams.get('duration')
         const rows=tourMode==='empty'&&(ownership||featured)?[]:source.filter(row=>!duration||(duration==='day'?row.durationDays===1:row.durationDays>1))
-        return route.fulfill({json:{rows,page:tourMode==='paginated'?Number(url.searchParams.get('page')||1):1,total:tourMode==='paginated'?13:rows.length}})
+        return route.fulfill({json:{rows,page:tourMode==='paginated'?Number(url.searchParams.get('page')||1):1,total:tourMode==='paginated'?73:rows.length}})
       }
-      if (url.pathname === '/api/public/popups') return route.fulfill({ json: { rows: [] } })
+      if (url.pathname === '/api/public/popups') return route.fulfill({ json: { rows: popupMode ? [{id:'popup-fixture',version:1,frequency:'SESSION',title:'DEMO · ตรวจหน้าจอเท่านั้น',imageUrl:'/images/home/surin-hero.webp',imageAlt:'Demo popup'}] : [] } })
       unexpectedApi.push(url.pathname)
       return route.fulfill({ status: 404, json: { code: 'UNEXPECTED_FIXTURE_REQUEST' } })
     }
@@ -317,11 +319,17 @@ try {
   tourMode = 'paginated'
   await page.goto(`${origin}/tours`)
   await page.locator('.catalog-trip').waitFor()
-  await page.getByRole('button', {name:'Next', exact:true}).click()
-  await page.waitForFunction(() => document.querySelector('.catalog-pages span')?.textContent === 'Page 2')
+  const pagination=page.getByRole('navigation',{name:'Tours'})
+  assert.equal(await pagination.locator('.public-pagination-ellipsis').count(),1)
+  await pagination.getByRole('button', {name:'Next', exact:true}).click()
+  await pagination.locator('.public-pagination-page[aria-current="page"]').filter({hasText:'2'}).waitFor()
+  await pagination.getByRole('button',{name:'7',exact:true}).click()
+  await pagination.locator('.public-pagination-page[aria-current="page"]').filter({hasText:'7'}).waitFor()
+  assert.ok(await pagination.getByRole('button',{name:'Next',exact:true}).isDisabled())
+  assert.ok(tourQueries.some(q => new URLSearchParams(q).get('page')==='7'))
   await page.locator('.catalog-duration a').nth(1).click()
   await page.waitForURL('**/tours?ownership=GREENVIEW&duration=day')
-  await page.waitForFunction(() => document.querySelector('.catalog-pages span')?.textContent === 'Page 1')
+  await page.getByRole('navigation',{name:'Tours'}).locator('.public-pagination-page[aria-current="page"]').filter({hasText:'1'}).waitFor()
   assert.ok(tourQueries.some(q => {const p = new URLSearchParams(q); return p.get('page')==='1' && p.get('duration')==='day' && p.get('ownership')==='GREENVIEW'}))
   tourMode = 'ready'
   await page.locator('.catalog-duration a').nth(2).click()
@@ -342,9 +350,19 @@ try {
   await page.getByRole('button',{name:'Try again',exact:true}).click()
   await page.locator('.catalog-trip').waitFor()
   assert.equal(await page.locator('.catalog-results [role="alert"]').count(),0)
+  popupMode=true
+  await page.goto(origin+'/?popup-test=1')
+  const popup=page.getByRole('dialog',{name:'DEMO · ตรวจหน้าจอเท่านั้น',exact:true})
+  await popup.waitFor()
+  const close=popup.locator('.public-close-button')
+  const closeStyle=await close.evaluate(el=>({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderTopWidth}))
+  assert.deepEqual(closeStyle,{background:'rgba(0, 0, 0, 0)',border:'0px'})
+  await popup.getByRole('button',{name:'Close announcement',exact:true}).click()
+  assert.equal(await popup.count(),0)
+  popupMode=false
   assert.deepEqual(unexpectedApi, [])
   assert.deepEqual(errors, [])
-  console.log('Public locale fixtures passed: titles, language, persistence, custom event, dates/currency, mobile layout, original CMS content, persistent shell nodes, history, anchors, native link behavior, Home section order, real photos, ownership queries, company safety and empty/error/retry states.')
+  console.log('Public locale fixtures passed: titles, language, persistence, custom event, dates/currency, mobile layout, Core numbered pagination, transparent Core close button, original CMS content, persistent shell nodes, history, anchors, native link behavior, Home section order, real photos, ownership queries, company safety and empty/error/retry states.')
 } finally {
   await browser.close()
 }

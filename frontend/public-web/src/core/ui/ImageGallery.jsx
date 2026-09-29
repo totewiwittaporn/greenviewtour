@@ -1,5 +1,7 @@
+
 import {useLayoutEffect,useRef,useState} from 'react'
 import {useLocale} from '../useLocale.js'
+import {CloseButton} from './Controls.jsx'
 
 export default function ImageGallery({items=[],initialId,title=''}){
  const {t}=useLocale()
@@ -30,7 +32,7 @@ function ImagePreview({items,index,onIndex,onClose,title}){
  },[])
  const keydown=event=>{if(event.key==='ArrowLeft'){event.preventDefault();move(-1)}else if(event.key==='ArrowRight'){event.preventDefault();move(1)}else if(event.key==='Home'){event.preventDefault();onIndex(0)}else if(event.key==='End'){event.preventDefault();onIndex(items.length-1)}}
  return <dialog ref={ref} className="public-image-preview" aria-label={t('แกลเลอรีโปรแกรมทัวร์')} onCancel={event=>{event.preventDefault();onClose()}} onKeyDown={keydown}>
-  <button type="button" className="public-image-preview-close" aria-label={t('ปิดรูปภาพ')} onClick={onClose}>×</button>
+  <CloseButton className="public-image-preview-close" label={t('ปิดรูปภาพ')} onClick={onClose}/>
   <div className="public-image-preview-stage" onTouchStart={event=>{touch.current=event.changedTouches[0].clientX}} onTouchEnd={event=>{const start=touch.current;if(start===null)return;const delta=event.changedTouches[0].clientX-start;touch.current=null;if(Math.abs(delta)>45)move(delta>0?-1:1)}}>
    {items.length>1&&<button type="button" className="public-image-preview-nav previous" aria-label={t('รูปก่อนหน้า')} onClick={()=>move(-1)}>‹</button>}
    <figure><img src={active.url} alt={active.alt||title}/>{active.caption&&<figcaption>{active.caption}</figcaption>}</figure>
