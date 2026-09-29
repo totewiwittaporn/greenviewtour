@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { accessDefinitions, effectiveAccess, isAdmin, isManager, roleNames } from '../../../../packages/contracts/access.js'
 import { profileInclude } from './policy.js'
 import { AccessError } from './membership.js'
+import {d1AtomicBatch,d1Date} from '../../platform/database/d1-atomic.js'
+import {isD1Client} from '../../platform/database/d1-runtime.js'
 const fail=(code,status=403)=>{throw new AccessError(code,status)}
 const privileged=profile=>(profile?.roles||[]).some(g=>['ADMIN_MANAGER','MANAGER'].includes(g.roleCode))
 export function canConfigureAccess(actor,target) {
@@ -39,7 +41,50 @@ export function validateAccessInput(actor,input) {
  if(new Set(overrides.map(r=>r.permissionCode)).size!==overrides.length)fail('INVALID_ACCESS_INPUT',400)
  return {roles:input.roles.map(roleCode=>({roleCode,scope:roleCode==='MANAGER'?'COMPANY':'SELF'})),overrides,reason:input.reason.trim()}
 }
+async function saveUserAccessD1(prisma,actorId,targetId,input){
+ const {actor,target}=await pair(prisma,actorId,targetId)
+ const next=validateAccessInput(actor,input)
+ if(target.accessVersion!==input.version)fail('ACCESS_CONFLICT',409)
+ const before={roles:target.roles.map(({roleCode,scope})=>({roleCode,scope})),overrides:(target.permissionOverrides||[]).map(({permissionCode,effect,startsAt,expiresAt})=>({permissionCode,effect,startsAt,expiresAt}))}
+ const targetGuard='EXISTS (SELECT 1 FROM "UserProfile" WHERE "id"=? AND "accessVersion"=?)'
+ const actorGuard='EXISTS (SELECT 1 FROM "UserProfile" WHERE "id"=? AND "accessVersion"=? AND "status"=\'ACTIVE\')'
+ const guard=`${targetGuard} AND ${actorGuard}`
+ const guardParams=[targetId,input.version,actorId,actor.accessVersion]
+ const statements=[
+  {sql:`DELETE FROM "UserRole" WHERE "userId"=? AND ${guard}`,params:[targetId,...guardParams]},
+  ...next.roles.map(role=>({
+   sql:`INSERT INTO "UserRole" ("userId","roleCode","scope") SELECT ?,?,? WHERE ${guard}`,
+   params:[targetId,role.roleCode,role.scope,...guardParams],
+  })),
+  {sql:`DELETE FROM "UserPermissionOverride" WHERE "userId"=? AND ${guard}`,params:[targetId,...guardParams]},
+  ...next.overrides.map(row=>({
+   sql:`INSERT INTO "UserPermissionOverride" ("id","userId","permissionCode","effect","scopeId","startsAt","expiresAt") SELECT ?,?,?,?,?,?,? WHERE ${guard}`,
+   params:[randomUUID(),targetId,row.permissionCode,row.effect,null,row.startsAt?d1Date(row.startsAt):null,row.expiresAt?d1Date(row.expiresAt):null,...guardParams],
+  })),
+ ]
+ const now=d1Date(new Date())
+ const updateIndex=statements.length
+ statements.push({
+  sql:`UPDATE "UserProfile" SET "accessVersion"="accessVersion"+1,"updatedAt"=? WHERE "id"=? AND "accessVersion"=? AND ${actorGuard}`,
+  params:[now,targetId,input.version,actorId,actor.accessVersion],
+ })
+ const details=JSON.stringify({reason:next.reason,before,after:{roles:next.roles,overrides:next.overrides},version:input.version+1})
+ const auditIndex=statements.length
+ statements.push({
+  sql:`INSERT INTO "AuditEvent" ("id","actorId","action","targetId","createdAt","details") SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM "UserProfile" WHERE "id"=? AND "accessVersion"=?) AND ${actorGuard}`,
+  params:[randomUUID(),actorId,'users.access.changed',targetId,now,details,targetId,input.version+1,actorId,actor.accessVersion],
+ })
+ const results=await d1AtomicBatch(prisma,statements)
+ if((results[updateIndex]?.meta?.changes||0)!==1){
+  await pair(prisma,actorId,targetId)
+  fail('ACCESS_CONFLICT',409)
+ }
+ if((results[auditIndex]?.meta?.changes||0)!==1)fail('ACCESS_AUDIT_FAILED',500)
+ return {ok:true,version:input.version+1}
+}
+
 export async function saveUserAccess(prisma,actorId,targetId,input) {
+ if(isD1Client(prisma))return saveUserAccessD1(prisma,actorId,targetId,input)
  return prisma.$transaction(async tx=>{
   // Same lock as invitations, profile changes and operational writes: revocation cannot race an authorized write.
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`

@@ -175,3 +175,22 @@ Checkpoint verification:
 - Wrangler remains unauthenticated, therefore no remote D1/R2/Worker resource exists yet.
 
 The next migration gate is transaction semantics. Prisma's D1 adapter explicitly does not provide ACID transaction guarantees, so no multi-write business flow is considered migrated until it is rewritten around D1 atomic batch / compare-and-set semantics and passes the existing finance, stock, booking and concurrency regressions.
+
+
+## Atomic write checkpoint
+
+Two identity write flows now have explicit D1 atomic implementations while retaining the PostgreSQL reference path:
+
+- Self profile edit: conditional audit + optimistic profile update in one D1 batch; stale timestamps and concurrent suspension fail closed.
+- Manager profile edit: batch guards actor accessVersion/status and target accessVersion/updatedAt so permission revocation or target access changes cannot race the update.
+- User access changes: roles, permission overrides, accessVersion/updatedAt and audit are written in one guarded D1 batch.
+- User access batch statements are guarded by both actor and target accessVersion. A stale target produces ACCESS_CONFLICT; a revoked manager produces PERMISSION_DENIED.
+- PostgreSQL implementations remain unchanged for parity testing.
+
+Local D1 SQL probes confirmed:
+- profile update + audit succeeds together;
+- stale profile update creates no audit;
+- manager profile guards compile and update correctly;
+- multi-table access change updates accessVersion, roles, override and audit correctly.
+
+Full `npm run check` passes after this checkpoint.

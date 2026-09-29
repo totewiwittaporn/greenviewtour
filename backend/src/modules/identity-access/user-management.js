@@ -3,6 +3,9 @@ import { postalCodeFor } from '../../../../packages/contracts/thai-address.js'
 import { addressFields, addressKeys, validateAddress } from '../../../../packages/contracts/address.js'
 import { AccessError } from './membership.js'
 import { profileInclude } from './policy.js'
+import {randomUUID} from 'node:crypto'
+import {d1AtomicBatch,d1Date} from '../../platform/database/d1-atomic.js'
+import {isD1Client} from '../../platform/database/d1-runtime.js'
 export const departments = ['MANAGEMENT', 'BOOKING', 'ACCOUNT', 'GUIDE', 'CAPTAIN', 'DRIVER', 'SALES', 'HOUSEKEEPING']
 const heads = { HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER', HEAD_HOUSEKEEPING: 'HOUSEKEEPING' }
 export function managementScope(actor) {
@@ -46,7 +49,41 @@ export function validateProfilePatch(input, scope) {
   }
   return data
 }
+async function editProfileD1(prisma,actorId,targetId,input){
+  const actor=await prisma.userProfile.findUnique({where:{id:actorId},include:profileInclude})
+  const target=await prisma.userProfile.findUnique({where:{id:targetId},include:profileInclude})
+  if(!canEditProfile(actor,target))throw new AccessError('PERMISSION_DENIED')
+  const data=validateProfilePatch(input,managementScope(actor))
+  data.postalCode=postalCodeFor({...target,...data},thaiAreas)||null
+  const fields=Object.keys(data)
+  const now=d1Date(new Date()),previous=d1Date(input.updatedAt)
+  const setSql=[...fields.map(field=>`"${field}"=?`),'"updatedAt"=?'].join(',')
+  const actorVersion=actor.accessVersion,targetVersion=target.accessVersion
+  const targetGuard='"id"=? AND "updatedAt"=? AND "accessVersion"=?'
+  const actorGuard='EXISTS (SELECT 1 FROM "UserProfile" WHERE "id"=? AND "accessVersion"=? AND "status"=\'ACTIVE\')'
+  const details=JSON.stringify({fields})
+  const results=await d1AtomicBatch(prisma,[
+    {
+      sql:`INSERT INTO "AuditEvent" ("id","actorId","action","targetId","createdAt","details") SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM "UserProfile" WHERE ${targetGuard}) AND ${actorGuard}`,
+      params:[randomUUID(),actorId,'profile.updated',targetId,now,details,targetId,previous,targetVersion,actorId,actorVersion],
+    },
+    {
+      sql:`UPDATE "UserProfile" SET ${setSql} WHERE ${targetGuard} AND ${actorGuard}`,
+      params:[...fields.map(field=>data[field]),now,targetId,previous,targetVersion,actorId,actorVersion],
+    },
+  ])
+  if((results[1]?.meta?.changes||0)!==1){
+    const currentActor=await prisma.userProfile.findUnique({where:{id:actorId},include:profileInclude})
+    const currentTarget=await prisma.userProfile.findUnique({where:{id:targetId},include:profileInclude})
+    if(!canEditProfile(currentActor,currentTarget))throw new AccessError('PERMISSION_DENIED')
+    throw new AccessError('PROFILE_CONFLICT',409)
+  }
+  if((results[0]?.meta?.changes||0)!==1)throw new AccessError('PROFILE_AUDIT_FAILED',500)
+  return {ok:true}
+}
+
 export async function editProfile(prisma, actorId, targetId, input) {
+  if(isD1Client(prisma))return editProfileD1(prisma,actorId,targetId,input)
   return prisma.$transaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
     const actor = await tx.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
@@ -61,7 +98,37 @@ export async function editProfile(prisma, actorId, targetId, input) {
   })
 }
 
+async function editOwnProfileD1(prisma,actorId,input){
+  const actor=await prisma.userProfile.findUnique({where:{id:actorId}})
+  if(actor?.status!=='ACTIVE')throw new AccessError('ACCOUNT_UNAVAILABLE')
+  const data=validateProfilePatch(input,{company:false})
+  data.postalCode=postalCodeFor({...actor,...data},thaiAreas)||null
+  const fields=Object.keys(data)
+  const now=d1Date(new Date()),previous=d1Date(input.updatedAt)
+  const setSql=[...fields.map(field=>`"${field}"=?`),'"updatedAt"=?'].join(',')
+  const auditId=randomUUID()
+  const details=JSON.stringify({fields,source:'self'})
+  const results=await d1AtomicBatch(prisma,[
+    {
+      sql:'INSERT INTO "AuditEvent" ("id","actorId","action","targetId","createdAt","details") SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM "UserProfile" WHERE "id"=? AND "updatedAt"=? AND "status"=\'ACTIVE\')',
+      params:[auditId,actorId,'profile.updated',actorId,now,details,actorId,previous],
+    },
+    {
+      sql:`UPDATE "UserProfile" SET ${setSql} WHERE "id"=? AND "updatedAt"=? AND "status"='ACTIVE'`,
+      params:[...fields.map(field=>data[field]),now,actorId,previous],
+    },
+  ])
+  if((results[1]?.meta?.changes||0)!==1){
+    const current=await prisma.userProfile.findUnique({where:{id:actorId},select:{status:true}})
+    if(current?.status!=='ACTIVE')throw new AccessError('ACCOUNT_UNAVAILABLE')
+    throw new AccessError('PROFILE_CONFLICT',409)
+  }
+  if((results[0]?.meta?.changes||0)!==1)throw new AccessError('PROFILE_AUDIT_FAILED',500)
+  return {ok:true}
+}
+
 export async function editOwnProfile(prisma, actorId, input) {
+  if(isD1Client(prisma))return editOwnProfileD1(prisma,actorId,input)
   return prisma.$transaction(async tx => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
     const actor = await tx.userProfile.findUnique({ where: { id: actorId } })
