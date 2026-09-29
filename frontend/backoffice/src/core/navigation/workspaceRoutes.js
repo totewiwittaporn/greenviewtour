@@ -15,6 +15,8 @@ export function workspaceRoute(pathname) {
  if(manualMatch)return {kind:'manuals',title:'User guides',path,role:manualMatch[1]}
  if (path === '/profile') return { kind: 'profile', title: 'Edit profile', path }
  if (path === '/settings/users') return { kind: 'users', title: 'Users', path }
+ const tourEditor=path.match(/^\/settings\/tours\/(new|[0-9a-f-]{36})$/i)
+ if(tourEditor)return {kind:'tour-editor',entity:'tours',tourId:tourEditor[1],title:'Tour program',path}
  const [, scope, entity, extra] = path.split('/')
  if (extra !== undefined) return null
  if(scope==='company'&&Object.hasOwn(companyRoutes,entity))return {kind:'company',entity,definition:companyRoutes[entity],title:companyRoutes[entity].title,path}

@@ -8,7 +8,7 @@ import { AccessError } from '../identity-access/membership.js'
 import { accessProfileSelect } from '../identity-access/policy.js'
 import { managementScope } from '../identity-access/user-management.js'
 export function canManageCatalog(profile,entity) { return managementScope(profile)?.company === true || entity==='partners'&&canManageBookingTeam(profile) }
-async function authorize(tx, actorId,entity) {
+export async function authorizeCatalog(tx, actorId,entity) {
  const actor=await tx.userProfile.findUnique({where:{id:actorId},select:accessProfileSelect})
  if(!canManageCatalog(actor,entity))throw new AccessError('PERMISSION_DENIED')
 }
@@ -18,7 +18,7 @@ const summaryWhere={agreements:{signedOn:{not:null}},partners:{roles:{has:'SALES
 const includes={seasons:{tour:{select:referenceSelect}},promotions:{tour:{select:referenceSelect}},agreements:{agent:{select:referenceSelect}},tours:{operator:{select:referenceSelect}},rates:{agent:{select:referenceSelect},tour:{select:referenceSelect},agreement:{select:{...referenceSelect,startsOn:true,endsOn:true}}},vehicles:{provider:{select:referenceSelect}}}
 export async function listSettings(prisma,actorId,entity,params){
  if(!Object.hasOwn(catalog,entity))throw new AccessError('NOT_FOUND',404)
- await authorize(prisma,actorId,entity)
+ await authorizeCatalog(prisma,actorId,entity)
  const model=catalog[entity].model
  if(entity==='company'){const rows=await prisma[model].findMany({take:1});return{rows,total:rows.length,page:1,pages:1}}
  const q=(params.get('q')||'').trim(),requested=Number(params.get('page')||1),role=params.get('role'),status=params.get('status')
@@ -50,12 +50,11 @@ export async function listSettings(prisma,actorId,entity,params){
   return{rows,total,page,pages,pageSize:25,summary:{total:all,active,inactive,featured}}
  },{isolationLevel:'RepeatableRead'})
 }
-export async function saveSettings(prisma,actorId,entity,input){
+export async function saveSettingsRecord(tx,actorId,entity,input){
  if(!Object.hasOwn(catalog,entity))throw new AccessError('NOT_FOUND',404)
  const definition=catalog[entity]
- try{return await prisma.$transaction(async tx=>{
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
-  await authorize(tx,actorId,entity)
+  await authorizeCatalog(tx,actorId,entity)
   if(Object.keys(input).some(key=>!['id','version',...definition.fields.map(f=>f.key)].includes(key)))throw new AccessError('INVALID_SETTINGS',400)
   if(typeof input.id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.id)||!Number.isSafeInteger(input.version)||input.version<0)throw new AccessError('INVALID_SETTINGS',400)
   const{data,errors}=validateCatalog(entity,input)
@@ -103,5 +102,8 @@ export async function saveSettings(prisma,actorId,entity,input){
   const row=existing?await tx[definition.model].update({where:{id:input.id},data:{...data,version:{increment:1}}}):await tx[definition.model].create({data:{...data,id:input.id}})
   await tx.auditEvent.create({data:{actorId,targetId:row.id,action:`settings.${entity}.${existing?'updated':'created'}`,details:{fields:Object.keys(data),version:row.version}}})
   return{row}
- })}catch(error){if(error.code==='P2002')throw new AccessError('SETTINGS_DUPLICATE',409);throw error}
+}
+export async function saveSettings(prisma,actorId,entity,input){
+ try{return await prisma.$transaction(tx=>saveSettingsRecord(tx,actorId,entity,input))}
+ catch(error){if(error.code==='P2002')throw new AccessError('SETTINGS_DUPLICATE',409);throw error}
 }

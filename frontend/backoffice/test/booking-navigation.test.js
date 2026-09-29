@@ -18,6 +18,9 @@ test('new directory route is independent of company-only catalog permissions',()
  assert.deepEqual(workspaceRoute('/settings/customers/'),{kind:'customers',title:'Customers',path:'/settings/customers'})
  assert.equal(workspaceRoute('/customers').kind,'legacy-customers')
  assert.equal(workspaceRoute('/operations/bookings').entity,'bookings')
+ const editorId='11111111-1111-4111-8111-111111111111'
+ assert.equal(workspaceRoute('/settings/tours/new').kind,'tour-editor')
+ assert.deepEqual(workspaceRoute('/settings/tours/'+editorId),{kind:'tour-editor',entity:'tours',tourId:editorId,title:'Tour program',path:'/settings/tours/'+editorId})
 })
 test('legacy links preserve their old default dataset and explicit destination',()=>{
  assert.equal(legacyCustomersHref(actor('MANAGER',true)),'/operations/bookings?tab=requests')

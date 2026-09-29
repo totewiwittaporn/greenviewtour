@@ -13,15 +13,15 @@ export default function App() {
   const {locale, label} = useLocale()
   const route = useNavigation()
   useEffect(() => {
-    document.title = pageTitle(locale, route.pathname)
-    const info = publicInfo(route.pathname)
-    if (!info) return
-    const meta = document.createElement('meta')
-    meta.name = 'description'
-    meta.content = info.description[locale === 'en' ? 'en' : 'th']
+    const tourDetail=route.pathname==='/tours'&&new URLSearchParams(route.search).has('tour')
+    if(!tourDetail)document.title=pageTitle(locale,route.pathname)
+    const info=publicInfo(route.pathname)
+    if(!info)return
+    const meta=document.createElement('meta')
+    meta.name='description';meta.content=info.description[locale==='en'?'en':'th']
     document.head.appendChild(meta)
-    return () => meta.remove()
-  }, [locale, route.pathname])
+    return()=>meta.remove()
+  },[locale,route.pathname,route.search])
   return <>
     <a className="skip-link" href="#content">{label('ข้ามไปเนื้อหา')}</a>
     <SiteHeader/>

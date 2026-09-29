@@ -48,3 +48,11 @@ Only local development services were started. No migration, seed, business recor
 ## Final verification
 
 The complete `node scripts/smoke-browser-fixtures.js` run passed after all application changes (exit 0), including existing Backoffice/Member regressions and the new Public content suite. A separate actual read through Local Public `/api/public/company` returned HTTP 200 with Greenview Tour and configured phone/email/map; no values were written. Local Public/Backoffice/Member/API are running through the existing launcher. Safari, physical phones and hosted deployments were not tested. Review was a self-review of the source/diff and rendered evidence, not an independent agent review.
+
+## Later Public commerce update — 28 September 2026
+
+The later owner-approved Tour Program work supersedes the earlier release-limit paragraph only for programme content. Public Home now uses an explicit three-programme featured query and Tour Detail V2 reads the additive localized Tour Program content model. This later phase includes Preview-only additive migrations and Preview sample records; it does not change Production.
+
+Home is conversion-first: Hero, trip finder, three featured programme cards, company/Surin trust content and a final link to the complete tour catalogue. The featured list is controlled in Backoffice with Home visibility, order and optional Best seller/Recommended/Signature editorial badges.
+
+Tour Detail V2 reads localized customer copy, structured highlights, itinerary, FAQ and media plus service seasons and safe operator attribution. It renders price/availability, overview, highlights, itinerary, package/fee copy, important conditions, gallery, FAQs and related programmes. Public read models remain explicit: no supplier cost, Agent rates, partner verification evidence, component notes or private partner contact data are exposed. Reviews/ratings remain absent until a verified review source exists.

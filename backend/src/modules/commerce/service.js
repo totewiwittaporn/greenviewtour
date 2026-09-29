@@ -13,25 +13,28 @@ import { randomUUID } from 'node:crypto'
 import { isoDay, saleDateAllowed, promotionAllowed, promotionUnits, cents, thailandDay } from '../../../../packages/contracts/commerce.js'
 import { authorize, fail, uuid, int, string, hash, keys } from '../operations/common.js'
 
-export const publicTourSelect={id:true,name:true,slug:true,tourType:true,description:true,highlights:true,imageUrls:true,route:true,departureTimes:true,childPolicy:true,cancellationTerms:true,bookingCutoff:true,adultPrice:true,childPrice:true,meals:true,fees:true,inclusions:true,exclusions:true,preparationNotes:true,ownership:true,durationDays:true,journeyMode:true,version:true,components:{where:{status:'ACTIVE',selection:'OPTIONAL'},select:{id:true,resource:{select:{name:true,salePrice:true}},basis:true,quantity:true}}}
-export const publicCardSelect = { id:true, name:true, slug:true, description:true, highlights:true, imageUrls:true, adultPrice:true, childPrice:true, ownership:true, durationDays:true }
-const publicHighlightSelect = { id:true, name:true, slug:true, description:true, imageUrls:true, durationDays:true }
+const publicContentSelect={locale:true,name:true,summary:true,introduction:true,longDescription:true,departureTimes:true,childPolicy:true,cancellationTerms:true,bookingCutoff:true,meals:true,fees:true,inclusions:true,exclusions:true,preparationNotes:true,specialConditions:true,suitableFor:true,meetingPoint:true,weatherNotes:true,seoTitle:true,metaDescription:true,ogTitle:true,ogDescription:true,contentReviewedAt:true}
+const publicMediaSelect={id:true,sortOrder:true,kind:true,url:true,altTh:true,altEn:true,captionTh:true,captionEn:true}
+export const publicTourSelect={id:true,name:true,slug:true,tourType:true,description:true,highlights:true,imageUrls:true,route:true,departureTimes:true,childPolicy:true,cancellationTerms:true,bookingCutoff:true,adultPrice:true,childPrice:true,meals:true,fees:true,inclusions:true,exclusions:true,preparationNotes:true,ownership:true,durationDays:true,journeyMode:true,version:true,homeBadge:true,confirmationMode:true,operator:{select:{name:true}},publicContent:{select:publicContentSelect},publicHighlights:{where:{status:'ACTIVE'},select:{id:true,sortOrder:true,titleTh:true,titleEn:true,descriptionTh:true,descriptionEn:true},orderBy:[{sortOrder:'asc'},{id:'asc'}]},itinerarySteps:{where:{status:'ACTIVE'},select:{id:true,day:true,sortOrder:true,timeLabel:true,titleTh:true,titleEn:true,descriptionTh:true,descriptionEn:true,locationTh:true,locationEn:true},orderBy:[{day:'asc'},{sortOrder:'asc'},{id:'asc'}]},publicFaqs:{where:{status:'ACTIVE'},select:{id:true,sortOrder:true,questionTh:true,answerTh:true,questionEn:true,answerEn:true},orderBy:[{sortOrder:'asc'},{id:'asc'}]},publicMedia:{where:{status:'ACTIVE'},select:publicMediaSelect,orderBy:[{sortOrder:'asc'},{id:'asc'}]},components:{where:{status:'ACTIVE'},select:{id:true,selection:true,basis:true,quantity:true,day:true,resource:{select:{name:true,category:true,baseUnit:true,salePrice:true}}}}}
+export const publicCardSelect = { id:true, name:true, slug:true, description:true, highlights:true, imageUrls:true, adultPrice:true, childPrice:true, ownership:true, durationDays:true, tourType:true, journeyMode:true, homeBadge:true, publicContent:{select:{locale:true,name:true,summary:true}}, publicMedia:{where:{status:'ACTIVE',kind:'HERO'},select:publicMediaSelect,orderBy:[{sortOrder:'asc'},{id:'asc'}],take:1} }
+const publicHighlightSelect = { id:true, name:true, slug:true, description:true, highlights:true, imageUrls:true, adultPrice:true, childPrice:true, ownership:true, durationDays:true, tourType:true, journeyMode:true, homeBadge:true, publicContent:{select:{locale:true,name:true,summary:true}}, publicMedia:{where:{status:'ACTIVE',kind:'HERO'},select:publicMediaSelect,orderBy:[{sortOrder:'asc'},{id:'asc'}],take:1} }
 const liveTour={status:'ACTIVE',publicStatus:'PUBLISHED'}
 export async function publicCatalog(db,params,now=new Date()) {
  const page=int(params.get('page')||1,1,100000),q=string(params.get('q')||'',100,false)||'',slug=params.get('slug')
  const view=params.get('view')||'detail'
  if(!['detail','cards','highlights'].includes(view))fail('INVALID_INPUT',400)
  const detail=Boolean(slug)||view==='detail',promotionsNeeded=detail||params.get('promotionsOnly')==='true'
- const pageSize=view==='highlights'&&!slug?int(params.get('pageSize')||2,1,2):12
+ const pageSize=view==='highlights'&&!slug?int(params.get('pageSize')||3,1,6):12
  const ownership=params.get('ownership')
  if(ownership!==null&&!['GREENVIEW','PARTNER'].includes(ownership))fail('INVALID_INPUT',400)
  const duration=params.get('duration')
  if(duration!==null&&!['day','overnight'].includes(duration))fail('INVALID_INPUT',400)
  const today=new Date(thailandDay(now)+'T00:00:00Z')
  const promotionWindow={status:'ACTIVE',startsOn:{lte:today},endsOn:{gte:today}}
- const where={...liveTour,...(ownership?{ownership}:{}),...(duration?{durationDays:duration==='day'?1:{gt:1}}:{}),...(params.get('promotionsOnly')==='true'?{promotions:{some:promotionWindow}}:{}),...(slug?{slug}:{}),...(q?{name:{contains:q,mode:'insensitive'}}:{})}
+ const featuredOnly=params.get('featuredOnly')==='true'
+ const where={...liveTour,...(featuredOnly?{homeFeatured:true}:{}),...(ownership?{ownership}:{}),...(duration?{durationDays:duration==='day'?1:{gt:1}}:{}),...(params.get('promotionsOnly')==='true'?{promotions:{some:promotionWindow}}:{}),...(slug?{slug}:{}),...(q?{name:{contains:q,mode:'insensitive'}}:{})}
  const total=await db.tourProgram.count({where}),actual=Math.min(page,Math.max(1,Math.ceil(total/pageSize)))
- const rows=await db.tourProgram.findMany({where,select:detail?publicTourSelect:view==='highlights'?publicHighlightSelect:publicCardSelect,orderBy:[{name:'asc'},{id:'asc'}],skip:(actual-1)*pageSize,take:pageSize})
+ const rows=await db.tourProgram.findMany({where,select:detail?publicTourSelect:view==='highlights'?publicHighlightSelect:publicCardSelect,orderBy:featuredOnly?[{homeFeaturedOrder:'asc'},{name:'asc'},{id:'asc'}]:[{name:'asc'},{id:'asc'}],skip:(actual-1)*pageSize,take:pageSize})
  if(rows.length&&(detail||promotionsNeeded)){
   const ids=rows.map(row=>row.id)
   const seasons=detail?await db.tourSeason.findMany({where:{tourId:{in:ids},status:'ACTIVE',endsOn:{gte:today}},select:{tourId:true,startsOn:true,endsOn:true,onlineStartsOn:true,onlineEndsOn:true,bookingStartsOn:true,bookingEndsOn:true,closedDates:true,cutoffDays:true,status:true},orderBy:{startsOn:'asc'}}):[]

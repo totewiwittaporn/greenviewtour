@@ -64,3 +64,32 @@ Existing role codes remain stable: HEAD_BOOKING is Booking Manager and BOOKING i
 Agent and Tour Program each explicitly enable Booking staff commission; either disabled takes precedence. Defaults are disabled, including previously unconfigured catalog records. Direct bookings have no Agent condition and use the program condition; standalone services without a program have no Booking commission. Program adult/child rates are independently configured in THB per passenger, separate from supplier commission. Missing rates are unconfigured, not zero. No rates are seeded.
 
 New Booking saves capture eligibility, catalog versions, rates and beneficiary in commissionSnapshot. Ordinary edits preserve those conditions and update the passenger-based estimate; changing Agent or program captures the new conditions while retaining an existing beneficiary. Legacy bookings with no snapshot do not gain inferred historical commission. Reassignments do not transfer commission. This is an estimate, not a payroll posting, approval or payment.
+
+## Tour Program public content workspace — owner update 28 September 2026
+
+Tour Program editing is a full-page Company Manager workspace at `/settings/tours/:id`, not the generic settings dialog. The existing `TourProgram` remains the operational master for booking identity, journey mode, direct/supplier pricing and publication state. `TourSeason`, `ProgramComponent` and `TourPromotion` remain the structured sources for service dates, package services/fees/meals/accommodation/transfers and promotions; SEO copy must not duplicate those values as an alternative source of truth.
+
+Localized customer content is additive. `TourProgramContent` stores Thai and English name/summary/introduction/long description, customer terms, SEO/OG copy and review date. `TourHighlight`, `TourItineraryStep`, `TourFaq` and `TourMedia` store structured scan-friendly highlights, itinerary timeline, program-specific FAQs and Hero/Gallery media. Existing single-language TourProgram public fields remain as a compatibility projection until Public Tour Detail V2 reads these models directly. No translation is guessed: old content initially appears only as the Thai editor fallback and English remains author-controlled.
+
+Partner tours additionally store private source/reference and verification dates. These fields, supplier prices, Agent prices, Booking commission and provider internals are not part of the Public API allowlist. New content tables live in `app_private`, have RLS enabled and grants revoked from browser roles. Editor GET/POST routes require a live workspace session and the same Company Manager catalog authorization used by existing Tour settings.
+
+## Public Home and Tour Detail fields — owner update 28 September 2026
+
+Public Home uses an explicit Tour Program marketing selection instead of inferring popularity from bookings. `homeFeatured` opts a published programme into Home, `homeFeaturedOrder` controls its order and `homeBadge` is an optional editorial label (`BEST_SELLER`, `RECOMMENDED`, `SIGNATURE`). The Home UI currently requests three featured programmes and links to the full Tour catalogue. These labels are controlled editorial metadata; they do not calculate sales ranking.
+
+Tour Program localized content also includes `suitableFor`, `meetingPoint` and `weatherNotes`, which feed customer-facing Quick facts and Important information on Tour Detail V2. Public reads localized names, summaries, highlights, itinerary, FAQ, media and these customer terms through explicit read models. Partner attribution exposes only the operator name. Supplier prices, Agent rates, partner source/verification fields, component notes, procurement cost and provider/internal ownership remain outside Public responses.
+
+The approved Public Tour Detail composition is: gallery + quick decision summary, price/availability, overview, highlights, structured itinerary, included/excluded and fee information, important conditions, gallery, programme FAQ, related tours and final CTA. Rating/review counts are intentionally not staff-editable or fabricated; they require a verified review source before being displayed.
+
+
+## Tour Program view and collection editor — owner update 29 September 2026
+
+Tour Program list actions have distinct semantics. **View** stays on the Tour Programs dataset and opens a read-only modal loaded from the full authorized editor read model. The modal summarizes program identity, public content, prices, structured-content counts and package/availability data; **Edit** is the action that opens the full-page editor at `/settings/tours/:id`. View and Edit must never be aliases for the same navigation action.
+
+The full-page editor separates **Media** and **FAQ** into independent tabs. Both use a reusable master-detail interaction: the left column selects a record and the right column edits that record. Adding a Media or FAQ record selects the new record immediately, brings its detail pane into view and moves focus into the editor. On narrow screens the two columns stack, and selecting a record brings the detail pane into view.
+
+Media list identity uses its thumbnail/type/status/caption while the detail owns type, status, URL, localized alt text and captions. FAQ list identity uses its authored question/status while the detail owns status plus Thai/English questions and answers. This interaction is intended to be reused for other long structured collections such as itinerary after their own review; it does not change the underlying content schema or Public API boundary.
+
+## Final Tour Program editor audit — 29 September 2026
+
+All eight editor tabs were audited against Backoffice Core before Preview checkpoint. Overview owns program classification (including Tour type), Public content uses Core MasterDetail for Highlights, Package & availability keeps Program Components / Tour Seasons / Promotions as structured sources, Itinerary uses Core MasterDetail, Terms & conditions are grouped into schedule/booking, guest suitability/preparation, and meals/fees/package notes, Media and FAQ use Core MasterDetail, and SEO & publish contains website publication / URL / Home merchandising plus localized search metadata. Full-page field density is regression-tested against a standard Core Add/Edit modal, including desktop field width, control height and typography.

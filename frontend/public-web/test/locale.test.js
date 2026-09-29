@@ -1,3 +1,4 @@
+
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
@@ -12,7 +13,7 @@ test('public titles follow locale and route with a Thai fallback',()=>{
 })
 
 test('every static translation reference has both language variants',()=>{
-  for(const file of ['features/company/CompanyLocation.jsx','features/home/HomePage.jsx','features/catalog/Catalog.jsx','features/catalog/PublishedHighlights.jsx','features/catalog/Popup.jsx','core/ui/Controls.jsx','core/ui/SiteNavigation.jsx']) {
+  for(const file of ['features/company/CompanyLocation.jsx','features/home/HomePage.jsx','features/catalog/Catalog.jsx','features/catalog/PublishedHighlights.jsx','features/catalog/TourDetail.jsx','features/catalog/Popup.jsx','core/ui/Controls.jsx','core/ui/ImageGallery.jsx','core/ui/Pagination.jsx','core/ui/SiteNavigation.jsx']) {
     const source=readFileSync(new URL('../src/'+file,import.meta.url),'utf8')
     for(const match of source.matchAll(/\b(?:t|label)\(["']([^"']+)["']\)/g)) {
       const key=match[1]

@@ -1,17 +1,37 @@
+
 // Fixture-only public locale checks. All API requests are intercepted before network access.
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
 
 const origin = process.env.GREENVIEW_PUBLIC_ORIGIN || 'http://localhost:5173'
 const tour = {
-  id: 'locale-fixture', slug: 'locale-fixture', name: '\u0e17\u0e31\u0e27\u0e23\u0e4c\u0e08\u0e32\u0e01 CMS',
-  description: '\u0e40\u0e19\u0e37\u0e49\u0e2d\u0e2b\u0e32\u0e15\u0e49\u0e19\u0e09\u0e1a\u0e31\u0e1a CMS',
-  durationDays: 1, ownership: 'GREENVIEW', adultPrice: 2500, childPrice: null,
-  promotions: [], seasons: [{ onlineStartsOn: '2026-09-21', onlineEndsOn: '2026-10-21', cutoffDays: 2 }],
+  id:'locale-fixture',slug:'locale-fixture',name:'Tour CMS source',description:'Legacy CMS description',durationDays:1,ownership:'GREENVIEW',adultPrice:2500,childPrice:1500,
+  tourType:'DAY_TRIP',journeyMode:'FIXED',homeBadge:'BEST_SELLER',confirmationMode:'REQUEST',operator:null,promotions:[],
+  seasons:[{onlineStartsOn:'2026-09-21',onlineEndsOn:'2026-10-21',cutoffDays:2}],
+  publicContent:[
+    {locale:'th',name:'ทัวร์จาก CMS',summary:'เนื้อหาต้นฉบับ CMS',introduction:'เกริ่นนำภาษาไทย',longDescription:'รายละเอียดภาษาไทย',meetingPoint:'ท่าเรือกรีนวิว',suitableFor:'ครอบครัวและกลุ่มเพื่อน',weatherNotes:'ปรับตามสภาพทะเล',preparationNotes:'ชุดเล่นน้ำ',cancellationTerms:'ยกเลิกตามเงื่อนไข',inclusions:'เรือ\nอาหาร',exclusions:'ค่าธรรมเนียม',fees:'ค่าธรรมเนียมตามจริง',seoTitle:'ทัวร์เกาะสุรินทร์ CMS',metaDescription:'คำอธิบาย SEO ภาษาไทย'},
+    {locale:'en',name:'CMS Surin Tour',summary:'Original CMS content',introduction:'English introduction',longDescription:'English long description',meetingPoint:'Greenview Tour Pier',suitableFor:'Families and friends',weatherNotes:'Subject to sea conditions',preparationNotes:'Swimwear',cancellationTerms:'Cancellation conditions apply',inclusions:'Boat\nLunch',exclusions:'Park fee',fees:'Official fees apply',seoTitle:'CMS Surin Tour',metaDescription:'English SEO description'}
+  ],
+  publicHighlights:[{id:'h1',sortOrder:0,titleTh:'ทะเลใส',titleEn:'Clear sea',descriptionTh:'จุดเด่นภาษาไทย',descriptionEn:'English highlight'}],
+  itinerarySteps:[{id:'i1',day:1,sortOrder:0,timeLabel:'08:30',titleTh:'ออกเรือ',titleEn:'Departure',descriptionTh:'ออกจากคุระบุรี',descriptionEn:'Depart Khura Buri',locationTh:'คุระบุรี',locationEn:'Khura Buri'}],
+  publicFaqs:[{id:'f1',sortOrder:0,questionTh:'รวมอาหารไหม?',answerTh:'รวมอาหารกลางวัน',questionEn:'Is lunch included?',answerEn:'Lunch is included.'}],
+  publicMedia:[
+    {id:'m1',sortOrder:0,kind:'HERO',url:'/images/home/surin-hero.webp',altTh:'ทะเลสุรินทร์',altEn:'Surin sea',captionTh:'ภาพหลัก',captionEn:'Hero view'},
+    {id:'m2',sortOrder:1,kind:'GALLERY',url:'/images/home/surin-coral.webp',altTh:'ปะการังสุรินทร์',altEn:'Surin coral',captionTh:'แนวปะการัง',captionEn:'Coral view'},
+  ],
+  components:[
+    {id:'component-required',selection:'REQUIRED',basis:'PER_PERSON',quantity:1,day:1,resource:{name:'Boat passage',category:'TOUR_BOAT',baseUnit:'PERSON',salePrice:'0'}},
+    {id:'component-included',selection:'INCLUDED',basis:'PER_PERSON',quantity:1,day:1,resource:{name:'Lunch service',category:'MEAL',baseUnit:'PERSON_MEAL',salePrice:'0'}},
+    {id:'component-excluded',selection:'EXCLUDED',basis:'PER_PERSON',quantity:1,day:1,resource:{name:'Park fee sample',category:'PARK_FEE',baseUnit:'PERSON',salePrice:'500'}},
+    {id:'component-optional',selection:'OPTIONAL',basis:'PER_PERSON',quantity:1,day:1,resource:{name:'Hotel transfer',category:'TRANSFER',baseUnit:'PERSON',salePrice:'300'}},
+  ]
 }
-const partner = {...tour, id: 'partner-fixture', slug: 'partner-fixture', name: 'Partner CMS tour', ownership: 'PARTNER'}
+const partner = {...tour,id:'partner-fixture',slug:'partner-fixture',name:'Partner CMS tour',ownership:'PARTNER',publicContent:tour.publicContent.map(row=>({...row,name:row.locale==='th'?'ทัวร์พันธมิตร CMS':'Partner CMS tour'}))}
+const featuredTwo={...tour,id:'featured-two',slug:'featured-two',adultPrice:2900,homeBadge:'RECOMMENDED',publicContent:tour.publicContent.map(row=>({...row,name:row.locale==='th'?'ทัวร์ดำน้ำ CMS':'CMS Snorkel Explorer'}))}
+const featuredThree={...tour,id:'featured-three',slug:'featured-three',adultPrice:4500,durationDays:2,tourType:'OVERNIGHT',homeBadge:'SIGNATURE',publicContent:tour.publicContent.map(row=>({...row,name:row.locale==='th'?'ทัวร์ค้างคืน CMS':'CMS Overnight Tour'}))}
 let companyMode = 'ready'
 let tourMode = 'ready'
+let popupMode = false
 const tourQueries = []
 const company = {name: 'Greenview fixture company', address: 'Fixture address', phone: '+66 123 4567', email: 'fixture@example.com', mapUrl: 'https://maps.google.com/?q=Surin'}
 const browser = await chromium.launch({ headless: true })
@@ -29,15 +49,15 @@ try {
         return route.fulfill({json: {company: companyMode === 'verified' ? {...company, mapUrl:'https://maps.app.goo.gl/1ErL2zJHXys3hdPX6'} : companyMode === 'empty' ? null : companyMode === 'unsafe' ? {...company, mapUrl: 'javascript:alert(1)'} : company}})
       }
       if (url.pathname === '/api/public/tours') {
-        const ownership = url.searchParams.get('ownership')
+        const ownership=url.searchParams.get('ownership'),featured=url.searchParams.get('featuredOnly')==='true'
         tourQueries.push(url.search)
-        if (tourMode === 'error' && ownership) return route.fulfill({status: 503, json: {}})
-        const source = ownership === 'PARTNER' ? [partner] : [tour]
-        const duration = url.searchParams.get('duration')
-        const rows = tourMode === 'empty' && ownership ? [] : source.filter(row => !duration || (duration === 'day' ? row.durationDays === 1 : row.durationDays > 1))
-        return route.fulfill({json: {rows, page: tourMode === 'paginated' ? Number(url.searchParams.get('page') || 1) : 1, total: tourMode === 'paginated' ? 13 : rows.length}})
+        if(tourMode==='error'&&(ownership||featured))return route.fulfill({status:503,json:{}})
+        const source=featured?[tour,featuredTwo,featuredThree]:ownership==='PARTNER'?[partner]:[tour]
+        const duration=url.searchParams.get('duration')
+        const rows=tourMode==='empty'&&(ownership||featured)?[]:source.filter(row=>!duration||(duration==='day'?row.durationDays===1:row.durationDays>1))
+        return route.fulfill({json:{rows,page:tourMode==='paginated'?Number(url.searchParams.get('page')||1):1,total:tourMode==='paginated'?73:rows.length}})
       }
-      if (url.pathname === '/api/public/popups') return route.fulfill({ json: { rows: [] } })
+      if (url.pathname === '/api/public/popups') return route.fulfill({ json: { rows: popupMode ? [{id:'popup-fixture',version:1,frequency:'SESSION',title:'DEMO · ตรวจหน้าจอเท่านั้น',imageUrl:'/images/home/surin-hero.webp',imageAlt:'Demo popup'}] : [] } })
       unexpectedApi.push(url.pathname)
       return route.fulfill({ status: 404, json: { code: 'UNEXPECTED_FIXTURE_REQUEST' } })
     }
@@ -45,24 +65,41 @@ try {
     return route.continue()
   })
   await page.goto(`${origin}/tours?tour=${tour.slug}`)
-  await page.getByRole('heading', { name: tour.name, exact: true }).waitFor()
-  assert.equal(await page.locator('html').getAttribute('lang'), 'th')
-  assert.equal(await page.locator('h1').innerText(), 'โปรแกรมทัวร์')
-  const chooseLanguage = async code => {
+  await page.getByRole('heading',{name:'ทัวร์จาก CMS',exact:true}).waitFor()
+  assert.equal(await page.locator('html').getAttribute('lang'),'th')
+  assert.equal(await page.locator('h1').innerText(),'ทัวร์จาก CMS')
+  const chooseLanguage=async code=>{
     await page.locator('.language-selector > button').click()
-    await page.locator('.language-options button').filter({hasText: code}).click()
+    await page.locator('.language-options button').filter({hasText:code}).click()
   }
-  assert.match(await page.locator('.language-selector > button').innerText(), /TH/)
+  assert.match(await page.locator('.language-selector > button').innerText(),/TH/)
   await chooseLanguage('EN')
-  await page.getByRole('heading', { name: 'Tours', exact: true }).waitFor()
-  await page.waitForFunction(() => document.title === 'Tours | Greenview Tour')
-  assert.equal(await page.locator('html').getAttribute('lang'), 'en')
-  assert.equal(await page.evaluate(() => localStorage.getItem('greenview.locale')), 'en')
-  assert.ok((await page.locator('body').innerText()).includes('Booking closes before departure by'))
-  assert.ok((await page.locator('body').innerText()).includes('21 Sept 2026'))
-  assert.ok((await page.locator('body').innerText()).includes('2,500.00'))
-  await page.getByRole('heading', { name: tour.name, exact: true }).waitFor()
-  assert.ok((await page.locator('body').innerText()).includes(tour.description))
+  await page.getByRole('heading',{name:'CMS Surin Tour',exact:true}).waitFor()
+  await page.waitForFunction(()=>document.title==='CMS Surin Tour')
+  assert.equal(await page.locator('html').getAttribute('lang'),'en')
+  assert.equal(await page.evaluate(()=>localStorage.getItem('greenview.locale')),'en')
+  const detailText=await page.locator('body').innerText()
+  assert.ok(detailText.includes('Greenview Tour Pier'))
+  assert.ok(detailText.includes('21 Sept 2026'))
+  assert.ok(/(?:THB|฿)\s*2,500\.00/.test(detailText))
+  assert.ok(detailText.includes('English introduction'))
+  assert.ok(detailText.includes('Clear sea'))
+  assert.ok(detailText.includes('Journey arrangement'))
+  assert.ok(detailText.includes('Fixed return itinerary'))
+  assert.ok(detailText.includes('Included · required'))
+  assert.ok(detailText.includes('Optional services'))
+  assert.ok(detailText.includes('Hotel transfer'))
+  assert.ok(detailText.includes('Park fee sample'))
+  assert.ok(/(?:THB|฿)\s*300\.00/.test(detailText))
+  assert.ok(/(?:THB|฿)\s*500\.00/.test(detailText))
+  assert.ok(detailText.includes('Is lunch included?'))
+  const gallery=page.locator('.public-image-gallery')
+  await gallery.waitFor();assert.equal(await gallery.getByRole('tab').count(),2)
+  const mainImage=gallery.locator('.public-image-gallery-main img')
+  assert.ok((await mainImage.getAttribute('src')).includes('surin-hero.webp'))
+  await gallery.getByRole('tab').nth(1).click();assert.ok((await mainImage.getAttribute('src')).includes('surin-coral.webp'))
+  await gallery.locator('.public-image-gallery-main').click();const preview=page.getByRole('dialog',{name:'Tour gallery',exact:true});await preview.waitFor();assert.ok((await preview.locator('figure img').getAttribute('src')).includes('surin-coral.webp'))
+  await page.keyboard.press('ArrowLeft');assert.ok((await preview.locator('figure img').getAttribute('src')).includes('surin-hero.webp'));await preview.getByRole('button',{name:'Close image',exact:true}).click();assert.equal(await preview.count(),0)
   // Route changes retain the actual shell nodes and browser document, including query detail links.
   await page.evaluate(() => {
     window.shellFixture = {header: document.querySelector('.site-header'), footer: document.querySelector('.public-footer'), language: document.querySelector('.language-selector')}
@@ -95,7 +132,7 @@ try {
   await page.getByRole('heading', {name: 'Tours', exact: true}).waitFor()
   await page.locator('.catalog-trip .catalog-outline-link[href="/tours?tour=locale-fixture"]').click()
   await page.waitForURL(`${origin}/tours?tour=locale-fixture`)
-  await page.getByRole('heading', {name: 'Travel dates available for online booking', exact: true}).waitFor()
+  await page.getByRole('heading',{name:'Tour overview',exact:true}).waitFor()
   await assertShell()
   await page.goBack()
   await page.waitForURL(`${origin}/tours`)
@@ -123,13 +160,13 @@ try {
   })
   assert.deepEqual(nativeChecks, Array(8).fill(true))
   await page.reload()
-  await page.getByRole('heading', { name: 'Tours', exact: true }).waitFor()
-  await page.setViewportSize({ width: 375, height: 812 })
-  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false)
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('greenview:locale', { detail: 'th' })))
-  await page.waitForFunction(() => document.documentElement.lang === 'th' && document.title !== 'Tours | Greenview Tour')
-  await page.getByRole('heading', { name: tour.name, exact: true }).waitFor()
-  assert.ok((await page.locator('body').innerText()).includes(tour.description))
+  await page.getByRole('heading',{name:'CMS Surin Tour',exact:true}).waitFor()
+  await page.setViewportSize({width:375,height:812})
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false)
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('greenview:locale',{detail:'th'})))
+  await page.waitForFunction(()=>document.documentElement.lang==='th'&&document.title==='ทัวร์เกาะสุรินทร์ CMS')
+  await page.getByRole('heading',{name:'ทัวร์จาก CMS',exact:true}).waitFor()
+  assert.ok((await page.locator('body').innerText()).includes('เนื้อหาต้นฉบับ CMS'))
   await chooseLanguage('EN')
   await page.goto(`${origin}/promotions`)
   await page.waitForFunction(() => document.title === 'Tour promotions | Greenview Tour')
@@ -210,43 +247,39 @@ try {
   await page.locator('.public-footer').scrollIntoViewIfNeeded()
   const backTop = page.locator('.public-back-top')
   assert.equal(await backTop.evaluate(el => getComputedStyle(el).position), 'fixed')
-  assert.equal(await page.locator('.public-footer-bottom > .staff-login').getAttribute('href'), 'http://localhost:5174/login')
-  assert.equal(await page.locator('.public-footer nav .staff-login').count(), 0)
+  const staffLogin=page.locator('.public-footer-bottom .staff-login')
+  await staffLogin.waitFor()
+  assert.equal(await staffLogin.getAttribute('href'),'http://localhost:5174/login')
+  assert.equal(await staffLogin.innerText(),'Staff login')
+  assert.equal(await page.locator('.public-footer-bottom').evaluate(el=>getComputedStyle(el).display),'grid')
+  assert.equal(await staffLogin.evaluate(el=>getComputedStyle(el).gridColumnStart),'2')
   await backTop.click()
   await page.waitForFunction(() => window.scrollY < 2)
-  // Home consumes public company data and ownership-filtered published tours.
-  await page.setViewportSize({width: 1440, height: 1000})
+  // Home consumes public company data and exactly three explicitly featured tours.
+  await page.setViewportSize({width:1440,height:1000})
   await page.goto(origin)
   await page.locator('#company h3').waitFor()
-  assert.equal(await page.locator('#company h3').innerText(), company.name)
-  assert.deepEqual(await page.locator('main > section').evaluateAll(nodes => nodes.map(n => n.id || n.className)), ['hero', 'home-welcome home-container', 'company', 'surin', 'tours'])
-  for (const image of await page.locator('img[src^="/images/home/"]').all()) {
-    await image.scrollIntoViewIfNeeded()
-    await image.evaluate(el => el.decode())
-    assert.ok(await image.evaluate(el => el.naturalWidth > 0))
+  assert.equal(await page.locator('#company h3').innerText(),company.name)
+  assert.deepEqual(await page.locator('main > section').evaluateAll(nodes=>nodes.map(n=>n.id||n.className)),['hero home-hero','tours','home-welcome home-container','surin','company','home-final-cta'])
+  const homeEditorialImages=page.locator('.home-page>.hero .hero-image, .home-surin-layout>img')
+  for(const image of await homeEditorialImages.all()){
+    await image.scrollIntoViewIfNeeded();await image.evaluate(el=>el.decode());assert.ok(await image.evaluate(el=>el.naturalWidth>0))
   }
-  assert.equal(await page.locator('img[src^="/images/home/"]').count(), 2)
-  const own = page.locator('.home-tour-group').filter({has: page.locator('#tours-GREENVIEW')})
-  const other = page.locator('.home-tour-group').filter({has: page.locator('#tours-PARTNER')})
-  const ownToggle = page.locator('.published-highlight-options button').nth(0)
-  const partnerToggle = page.locator('.published-highlight-options button').nth(1)
-  await own.getByRole('heading', {name: tour.name}).waitFor()
-  assert.equal(await ownToggle.getAttribute('aria-pressed'), 'true')
-  assert.equal(await other.count(), 0)
-  assert.ok(!(await own.innerText()).includes(partner.name))
-  await partnerToggle.click()
-  await other.getByRole('heading', {name: partner.name}).waitFor()
-  assert.equal(await partnerToggle.getAttribute('aria-pressed'), 'true')
-  assert.equal(await ownToggle.getAttribute('aria-pressed'), 'false')
-  assert.equal(await own.count(), 0)
-  assert.ok(!(await other.innerText()).includes(tour.name))
-  assert.ok(tourQueries.some(q => new URLSearchParams(q).get('ownership') === 'GREENVIEW'))
-  assert.ok(tourQueries.some(q => new URLSearchParams(q).get('ownership') === 'PARTNER'))
-  await page.evaluate(() => {window.homeShell = document.querySelector('.site-header')})
-  await other.locator('a[href="/tours?ownership=PARTNER"]').click()
-  await page.waitForURL(`${origin}/tours?ownership=PARTNER`)
-  await page.getByRole('heading', {name: partner.name, exact:true}).waitFor()
-  assert.equal(await page.evaluate(() => window.homeShell === document.querySelector('.site-header')), true)
+  assert.equal(await homeEditorialImages.count(),2)
+  const featured=page.locator('.featured-tour-card')
+  await featured.first().waitFor();assert.equal(await featured.count(),3)
+  assert.deepEqual(await featured.locator('h3').allTextContents(),['CMS Surin Tour','CMS Snorkel Explorer','CMS Overnight Tour'])
+  assert.ok((await featured.nth(0).innerText()).includes('Best seller'))
+  assert.ok((await featured.nth(1).innerText()).includes('Recommended'))
+  assert.ok((await featured.nth(2).innerText()).includes('Signature'))
+  assert.ok(tourQueries.some(q=>{const p=new URLSearchParams(q);return p.get('featuredOnly')==='true'&&p.get('pageSize')==='3'}))
+  assert.equal(await page.locator('.published-highlight-options').count(),0)
+  assert.equal(await page.locator('.home-all-tours').getAttribute('href'),'/tours')
+  await page.evaluate(()=>{window.homeShell=document.querySelector('.site-header')})
+  await page.locator('.home-all-tours').click()
+  await page.waitForURL(`${origin}/tours`)
+  await page.getByRole('heading',{name:'Tours',exact:true}).waitFor()
+  assert.equal(await page.evaluate(()=>window.homeShell===document.querySelector('.site-header')),true)
   companyMode = 'verified'
   await page.goto(origin)
   const mapOptions = page.locator('.home-map-options button')
@@ -264,45 +297,39 @@ try {
   await page.getByText('Company information is not available yet.', {exact:true}).waitFor()
   assert.equal(await page.locator('#company a').count(), 0)
   await page.locator('.home-empty').first().waitFor()
-  assert.equal(await own.locator('.home-empty').count(), 1)
-  await partnerToggle.click()
-  await other.locator('.home-empty').waitFor()
-  assert.equal(await own.count(), 0)
-  assert.equal(await page.locator('.home-empty').count(), 1)
-  companyMode = 'unsafe'
-  tourMode = 'ready'
+  assert.equal(await page.locator('.home-empty').count(),1)
+  assert.equal(await page.locator('.featured-tour-card').count(),0)
+  companyMode='unsafe';tourMode='ready'
   await page.reload()
   await page.locator('#company h3').waitFor()
-  assert.equal(await page.locator('#company a[target="_blank"]').count(), 0)
-  companyMode = 'error'
-  tourMode = 'error'
+  assert.equal(await page.locator('#company a[target="_blank"]').count(),0)
+  companyMode='error';tourMode='error'
   await page.reload()
   await page.locator('#company [role="alert"]').waitFor()
-  await own.locator('[role="alert"]').waitFor()
-  companyMode = 'ready'
-  tourMode = 'ready'
+  await page.locator('.home-featured [role="alert"]').waitFor()
+  companyMode='ready';tourMode='ready'
   await page.locator('#company button').click()
   await page.locator('#company h3').waitFor()
-  assert.equal(await page.locator('#company a[target="_blank"]').getAttribute('href'), company.mapUrl)
-  await own.getByRole('button').click()
-  await own.locator('.tour-card').waitFor()
-  tourMode = 'error'
-  await partnerToggle.click()
-  await other.locator('[role="alert"]').waitFor()
-  assert.equal(await own.count(), 0)
-  tourMode = 'ready'
-  await other.getByRole('button').click()
-  await other.locator('.tour-card').waitFor()
-  assert.equal(await page.locator('[role="alert"]').count(), 0)
+  assert.equal(await page.locator('#company a[target="_blank"]').getAttribute('href'),company.mapUrl)
+  await page.locator('.home-featured button').click()
+  await page.locator('.featured-tour-card').first().waitFor()
+  assert.equal(await page.locator('.featured-tour-card').count(),3)
+  assert.equal(await page.locator('[role="alert"]').count(),0)
   // Catalog filters affect requests, reset paging and remain navigable through browser history.
   tourMode = 'paginated'
   await page.goto(`${origin}/tours`)
   await page.locator('.catalog-trip').waitFor()
-  await page.getByRole('button', {name:'Next', exact:true}).click()
-  await page.waitForFunction(() => document.querySelector('.catalog-pages span')?.textContent === 'Page 2')
+  const pagination=page.getByRole('navigation',{name:'Tours'})
+  assert.equal(await pagination.locator('.public-pagination-ellipsis').count(),1)
+  await pagination.getByRole('button', {name:'Next', exact:true}).click()
+  await pagination.locator('.public-pagination-page[aria-current="page"]').filter({hasText:'2'}).waitFor()
+  await pagination.getByRole('button',{name:'7',exact:true}).click()
+  await pagination.locator('.public-pagination-page[aria-current="page"]').filter({hasText:'7'}).waitFor()
+  assert.ok(await pagination.getByRole('button',{name:'Next',exact:true}).isDisabled())
+  assert.ok(tourQueries.some(q => new URLSearchParams(q).get('page')==='7'))
   await page.locator('.catalog-duration a').nth(1).click()
   await page.waitForURL('**/tours?ownership=GREENVIEW&duration=day')
-  await page.waitForFunction(() => document.querySelector('.catalog-pages span')?.textContent === 'Page 1')
+  await page.getByRole('navigation',{name:'Tours'}).locator('.public-pagination-page[aria-current="page"]').filter({hasText:'1'}).waitFor()
   assert.ok(tourQueries.some(q => {const p = new URLSearchParams(q); return p.get('page')==='1' && p.get('duration')==='day' && p.get('ownership')==='GREENVIEW'}))
   tourMode = 'ready'
   await page.locator('.catalog-duration a').nth(2).click()
@@ -323,9 +350,19 @@ try {
   await page.getByRole('button',{name:'Try again',exact:true}).click()
   await page.locator('.catalog-trip').waitFor()
   assert.equal(await page.locator('.catalog-results [role="alert"]').count(),0)
+  popupMode=true
+  await page.goto(origin+'/?popup-test=1')
+  const popup=page.getByRole('dialog',{name:'DEMO · ตรวจหน้าจอเท่านั้น',exact:true})
+  await popup.waitFor()
+  const close=popup.locator('.public-close-button')
+  const closeStyle=await close.evaluate(el=>({background:getComputedStyle(el).backgroundColor,border:getComputedStyle(el).borderTopWidth}))
+  assert.deepEqual(closeStyle,{background:'rgba(0, 0, 0, 0)',border:'0px'})
+  await popup.getByRole('button',{name:'Close announcement',exact:true}).click()
+  assert.equal(await popup.count(),0)
+  popupMode=false
   assert.deepEqual(unexpectedApi, [])
   assert.deepEqual(errors, [])
-  console.log('Public locale fixtures passed: titles, language, persistence, custom event, dates/currency, mobile layout, original CMS content, persistent shell nodes, history, anchors, native link behavior, Home section order, real photos, ownership queries, company safety and empty/error/retry states.')
+  console.log('Public locale fixtures passed: titles, language, persistence, custom event, dates/currency, mobile layout, Core numbered pagination, transparent Core close button, original CMS content, persistent shell nodes, history, anchors, native link behavior, Home section order, real photos, ownership queries, company safety and empty/error/retry states.')
 } finally {
   await browser.close()
 }

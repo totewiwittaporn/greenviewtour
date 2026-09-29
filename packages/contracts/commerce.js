@@ -14,6 +14,7 @@ export function commerceErrors(entity,data) {
   if(data.slug&&!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(data.slug))errors.slug='Use lowercase letters, numbers and hyphens.'
   if(data.imageUrls&&data.imageUrls.split('\n').filter(Boolean).some(x=>!safeImageUrl(x.trim())))errors.imageUrls='Enter one HTTPS image URL per line.'
   if(data.imageUrls?.split('\n').filter(Boolean).length>10)errors.imageUrls='Use at most 10 images.'
+  if(data.partnerSourceUrl&&!safeWebUrl(data.partnerSourceUrl))errors.partnerSourceUrl='Enter an HTTPS URL without credentials.'
   if(data.publicStatus==='PUBLISHED')for(const key of ['slug','description','imageUrls','tourType'])if(!data[key])errors[key]='Complete this field before publishing.'
  }
  if(entity==='seasons') {

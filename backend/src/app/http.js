@@ -23,6 +23,7 @@ import { getBlueprint, saveBooking, bookingStatus, tripPreparation, amendBooking
 import { stockCommand, boatPreparation } from '../modules/operations/stock.js'
 import { operationMessages } from '../modules/operations/messages.js'
 import { listSettings, saveSettings } from '../modules/service-catalog/settings.js'
+import { readTourEditor, saveTourEditor } from '../modules/service-catalog/tour-editor.js'
 import { assertDeliverableInvitationEmail, canInvite, canResetPassword, listInvitations, createInvitation, changeInvitation, lookupInvitation, acceptInvitation, requestUserReset } from '../modules/identity-access/invitations.js'
 import { managementScope, canEditProfile, editProfile, editOwnProfile } from '../modules/identity-access/user-management.js'
 import { createHash, timingSafeEqual } from 'node:crypto'
@@ -273,6 +274,14 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
         if(entity==='bind-booking-window'&&req.method==='POST')return send(200,await bindLegacyBookingWindow(prisma,user.id,input))
         if(entity==='move-boat-group'&&req.method==='POST')return send(200,await moveBoatGroup(prisma,user.id,input))
         return send(200, entity === 'booking-assignment' ? await assignBooking(prisma,user.id,input) : entity === 'check-in' ? await checkInCommand(prisma,user.id,input) : entity === 'daily-summary' ? await prepareDailySummary(prisma,user.id,input) : entity === 'runs' ? await saveRun(prisma,user.id,input) : entity === 'dispatch-command' ? await dispatchCommand(prisma,user.id,input) : entity === 'stock-command' ? await stockCommand(prisma,user.id,input) : entity === 'booking-return' ? await amendBookingReturn(prisma,user.id,input) : entity === 'booking-details' ? await amendBookingDetails(prisma,user.id,input) : entity === 'booking-price' ? await bookingPriceCommand(prisma,user.id,input) : entity === 'booking-status' ? await bookingStatus(prisma,user.id,input) : entity === 'bookings' ? await saveBooking(prisma,user.id,input) : await saveOperationCatalog(prisma,user.id,entity,input))
+      }
+      const tourEditorMatch = path.match(/^\/api\/settings\/tours\/([0-9a-f-]{36})\/editor$/i)
+      if (tourEditorMatch) {
+        const { user, entry } = await sessions.authenticated(req, provider, pool)
+        if (entry.purpose !== 'workspace') throw new AccessError('LOGIN_REQUIRED', 401)
+        return send(200, req.method === 'GET'
+          ? await readTourEditor(prisma, user.id, tourEditorMatch[1])
+          : await saveTourEditor(prisma, user.id, tourEditorMatch[1], await body(req, 2097152)))
       }
       const settingsMatch = path.match(/^\/api\/settings\/(company|partners|tours|rates|agreements|locations|vehicles|channels)$/)
       if (settingsMatch) {

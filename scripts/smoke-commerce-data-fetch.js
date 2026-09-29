@@ -22,7 +22,7 @@ try{
    if(path==='/api/public/popups')return route.fulfill({json:{rows:[]}})
    if(path==='/api/public/tours'){
     assert.ok(p.get('slug')||['cards','highlights'].includes(p.get('view')),'List must declare a lean view')
-    const pageNumber=Number(p.get('page')||1),pageSize=p.get('view')==='highlights'?2:12
+    const pageNumber=Number(p.get('page')||1),pageSize=p.get('view')==='highlights'?3:12
     const all=Array.from({length:31},(_,i)=>({...tour,id:'tour-'+i,name:'Lean Island Tour '+i,slug:'lean-tour-'+i}))
     return route.fulfill({json:{rows:p.get('slug')?[full]:all.slice((pageNumber-1)*pageSize,pageNumber*pageSize),page:pageNumber,pageSize,total:p.get('slug')?1:31}})
    }
@@ -50,9 +50,9 @@ try{
    assert.ok(await article.getByRole('button',{name:/Next|ถัดไป/,exact:true}).isDisabled())
    assert.equal(reads.filter(url=>/^\/api\/member\/documents\//.test(url)).length,0)
   }else{
-   await page.goto(origin+'/');await page.locator('.published-highlight-group .tour-card').first().waitFor()
-   assert.equal(await page.locator('.published-highlight-group .tour-card').count(),2)
-   assert.ok(reads.some(url=>url.includes('view=highlights')&&url.includes('pageSize=2')))
+   await page.goto(origin+'/');await page.locator('.featured-tour-card').first().waitFor()
+   assert.equal(await page.locator('.featured-tour-card').count(),3)
+   assert.ok(reads.some(url=>url.includes('view=highlights')&&url.includes('pageSize=3')&&url.includes('featuredOnly=true')))
   }
   await page.goto(origin+'/tours');await page.getByRole('heading',{name:'Lean Island Tour 0',exact:true}).waitFor()
   assert.ok(reads.some(url=>url.startsWith('/api/public/tours?')&&url.includes('view=cards')))
@@ -74,7 +74,7 @@ try{
   assert.deepEqual(errors,[]);assert.deepEqual(writes,[])
   assert.equal(await page.locator('vite-error-overlay').count(),0)
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))
-  results.push({surface:member?'member':'public',locale,width,checks:['lean cards','all 31 catalogue records through pagination','full details and terms',...(member?['61 document metadata records through pagination','no eager document bytes','changed-date consent terms','no payment form for unpayable requests','debounced final quote only']:['only two home highlights'])],runtimeErrors:0,businessWrites:0})
+  results.push({surface:member?'member':'public',locale,width,checks:['lean cards','all 31 catalogue records through pagination','full details and terms',...(member?['61 document metadata records through pagination','no eager document bytes','changed-date consent terms','no payment form for unpayable requests','debounced final quote only']:['three explicit Home featured tours'])],runtimeErrors:0,businessWrites:0})
   await context.close()
  }
  console.log(JSON.stringify({result:'PASS',test:'commerce-data-fetch',results,liveAccounts:false,realWrites:0},null,2))
