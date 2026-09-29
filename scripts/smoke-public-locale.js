@@ -1,3 +1,5 @@
+[Reading 350 lines from start (total: 350 lines, 0 remaining)]
+
 // Fixture-only public locale checks. All API requests are intercepted before network access.
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
@@ -245,7 +247,12 @@ try {
   await page.locator('.public-footer').scrollIntoViewIfNeeded()
   const backTop = page.locator('.public-back-top')
   assert.equal(await backTop.evaluate(el => getComputedStyle(el).position), 'fixed')
-  assert.equal(await page.locator('a[href*="5174"], a[href*="backoffice"], .staff-login').count(), 0, 'Public must not advertise Back Office URLs')
+  const staffLogin=page.locator('.public-footer-bottom .staff-login')
+  await staffLogin.waitFor()
+  assert.equal(await staffLogin.getAttribute('href'),'http://localhost:5174/login')
+  assert.equal(await staffLogin.innerText(),'Staff login')
+  assert.equal(await page.locator('.public-footer-bottom').evaluate(el=>getComputedStyle(el).display),'grid')
+  assert.equal(await staffLogin.evaluate(el=>getComputedStyle(el).gridColumnStart),'2')
   await backTop.click()
   await page.waitForFunction(() => window.scrollY < 2)
   // Home consumes public company data and exactly three explicitly featured tours.
@@ -343,3 +350,5 @@ try {
 } finally {
   await browser.close()
 }
+
+[executed on device: Wutcharapongs-MacBook-Air.local (df69a579-c325-4180-ad88-edccd35dfdc1)]

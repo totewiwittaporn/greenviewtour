@@ -1,3 +1,5 @@
+[Reading 17 lines from start (total: 17 lines, 0 remaining)]
+
 # Deployment integration
 
 No hosting changes or deployment are performed by this foundation. Before connecting an existing host, inspect its current build settings and branch triggers.
@@ -12,6 +14,8 @@ Rollback of the structural migration should revert its commit through review; th
 
 ## Search crawler boundary
 
-Only the Public website is intended for search indexing. Member and Backoffice ship `meta robots` with `noindex, nofollow, noarchive, nosnippet`, a root `robots.txt` with `Disallow: /`, and a static-host `_headers` rule emitting the same `X-Robots-Tag`. Public must not advertise or link the Backoffice login URL. Member Login/Register remains a customer-facing entry point but is excluded from indexing.
+Only the Public website is intended for search indexing. Member and Backoffice ship `meta robots` with `noindex, nofollow, noarchive, nosnippet`, a root `robots.txt` with `Disallow: /`, and a static-host `_headers` rule emitting the same `X-Robots-Tag`. Public Core keeps the owner-approved quiet Staff login entry centered in the footer bottom bar: Local points to Backoffice port 5174 and hosted Public renders it only when `VITE_STAFF_LOGIN_URL` is configured. Member Login/Register remains a customer-facing entry point but is excluded from indexing.
 
 Crawler directives are not an authentication mechanism. Backoffice and Member security continues to depend on server-side sessions, authorization, origin checks and private `app_private` database grants. If Backoffice is hosted on a public network, a separate edge access policy such as Cloudflare Access may be added after the actual deployment target and staff access requirements are verified; do not treat URL secrecy or robots rules as that security boundary.
+
+[executed on device: Wutcharapongs-MacBook-Air.local (df69a579-c325-4180-ad88-edccd35dfdc1)]
