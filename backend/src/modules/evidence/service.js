@@ -1,10 +1,12 @@
 import {receivableAccess} from '../receivables/service.js'
-import {createHash} from 'node:crypto'
+import {createHash,randomUUID} from 'node:crypto'
 import {authorize,fail,uuid,keys,string,hash} from '../operations/common.js'
 import {canEditBooking,effectiveAccess} from '../../../../packages/contracts/access.js'
 import {personnelFinancePermission} from '../personnel-finance/service.js'
 import {isD1Client} from '../../platform/database/d1-runtime.js'
-import {readD1File} from '../../platform/files/bound-store.js'
+import {d1AtomicBatch,d1Date} from '../../platform/database/d1-atomic.js'
+import {d1FileStoreFor,readD1File} from '../../platform/files/bound-store.js'
+import {fileObjectKey} from '../../platform/files/keys.js'
 
 export const maxEvidenceBytes=5*1024*1024
 const metadata={id:true,createdAt:true,targetKind:true,targetId:true,uploadedBy:true,filename:true,mimeType:true,size:true,note:true,documentNumber:true,category:true}
@@ -51,8 +53,52 @@ export async function listEvidence(prisma,actorId,params){
  const rows=await prisma.evidenceAttachment.findMany({where,select:metadata,orderBy:[{createdAt:'desc'},{id:'asc'}],take:25,skip:(page-1)*25})
  return {rows,total,page,access}
 }
+const d1EvidenceParents={AGENT_BILL:'AgentBill',AGENT_PAYMENT:'AgentPayment',CUSTOMER_REQUEST:'CustomerRequest',BOOKING:'TourBooking',PERSONNEL_FINANCE:'FinancePersonnelRecord'}
+async function saveEvidenceD1(prisma,actorId,input,data,requestHash){
+ const access=await parentAccess(prisma,actorId,input.targetKind,input.targetId)
+ if(!access.upload)fail('PERMISSION_DENIED',403)
+ const previous=await prisma.evidenceAttachment.findUnique({where:{id:input.id},select:{...metadata,requestHash:true,sha256:true}})
+ if(previous){
+  if(previous.uploadedBy!==actorId||previous.requestHash!==requestHash||previous.sha256!==data.sha256)fail('COMMAND_CONFLICT')
+  const {requestHash:ignored,sha256:ignoredHash,...row}=previous;void ignored;void ignoredHash;return {row}
+ }
+ const actor=await prisma.userProfile.findUnique({where:{id:actorId},select:{accessVersion:true,status:true}})
+ if(actor?.status!=='ACTIVE')fail('PERMISSION_DENIED',403)
+ const store=d1FileStoreFor(prisma);if(!store)throw new Error('R2_BUCKET_REQUIRED')
+ const objectKey=fileObjectKey('evidenceAttachment',input.id)
+ const object=await store.putIfAbsent(objectKey,data.content,{mimeType:data.mimeType,sha256:data.sha256})
+ if(!object.created&&(object.size!==data.size||object.mimeType!==data.mimeType||object.sha256!==data.sha256))fail('COMMAND_CONFLICT')
+ const createdAt=d1Date(new Date()),parent=d1EvidenceParents[input.targetKind]
+ if(!parent)fail('INVALID_REFERENCE',400)
+ const actorGuard='EXISTS (SELECT 1 FROM "UserProfile" WHERE "id"=? AND "accessVersion"=? AND "status"=\'ACTIVE\')'
+ const parentGuard=`EXISTS (SELECT 1 FROM "${parent}" WHERE "id"=?)`
+ const details=JSON.stringify({attachmentId:input.id,targetKind:input.targetKind,sha256:data.sha256})
+ try{
+  const results=await d1AtomicBatch(prisma,[
+   {
+    sql:`INSERT INTO "EvidenceAttachment" ("id","createdAt","targetKind","targetId","uploadedBy","filename","mimeType","size","sha256","objectKey","note","documentNumber","category","requestHash") SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM "EvidenceAttachment" WHERE "id"=?) AND ${actorGuard} AND ${parentGuard}`,
+    params:[input.id,createdAt,input.targetKind,input.targetId,actorId,data.filename,data.mimeType,data.size,data.sha256,objectKey,data.note,data.documentNumber,data.category,requestHash,input.id,actorId,actor.accessVersion,input.targetId],
+   },
+   {
+    sql:'INSERT INTO "AuditEvent" ("id","actorId","action","targetId","createdAt","details") VALUES (CASE WHEN EXISTS (SELECT 1 FROM "EvidenceAttachment" WHERE "id"=? AND "createdAt"=? AND "uploadedBy"=? AND "requestHash"=?) THEN ? ELSE NULL END,?,?,?,?,?)',
+    params:[input.id,createdAt,actorId,requestHash,randomUUID(),actorId,'evidence.attached',input.targetId,createdAt,details],
+   },
+  ])
+  if((results[0]?.meta?.changes||0)!==1||(results[1]?.meta?.changes||0)!==1)throw new Error('D1_EVIDENCE_ATOMIC_WRITE_FAILED')
+ }catch(error){
+  const current=await prisma.evidenceAttachment.findUnique({where:{id:input.id},select:{...metadata,requestHash:true,sha256:true}})
+  if(current?.uploadedBy===actorId&&current.requestHash===requestHash&&current.sha256===data.sha256){
+   const {requestHash:ignored,sha256:ignoredHash,...row}=current;void ignored;void ignoredHash;return {row}
+  }
+  await parentAccess(prisma,actorId,input.targetKind,input.targetId)
+  throw error
+ }
+ const row=await prisma.evidenceAttachment.findUnique({where:{id:input.id},select:metadata})
+ return {row}
+}
 export async function saveEvidence(prisma,actorId,input){
  const data=validateEvidence(input),requestHash=hash(input)
+ if(isD1Client(prisma))return saveEvidenceD1(prisma,actorId,input,data,requestHash)
  return prisma.$transaction(async tx=>{
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
   const access=await parentAccess(tx,actorId,input.targetKind,input.targetId)

@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { AccessError, hashToken, normalizeEmail } from './membership.js'
 import { profileInclude, roles } from './policy.js'
 import { departments } from './user-management.js'
+import {readTransaction} from '../../platform/database/read-transaction.js'
 const ttl = 72 * 3600000
 const has = (actor, codes, permission) => actor?.status === 'ACTIVE' && actor.roles.some(grant => codes.includes(grant.roleCode) && grant.scope === 'COMPANY' && grant.role.permissions.some(item => item.permissionCode === permission))
 export const canInvite = actor => has(actor, ['ADMIN_MANAGER', 'MANAGER'], 'users.invite')
@@ -33,7 +34,7 @@ export function validateInvitation(input, actor) {
 const publicInvite = item => ({ id: item.id, email: item.email, displayName: item.displayName, department: item.department, expiresAt: item.expiresAt, createdAt: item.createdAt,
   status: item.consumedAt ? 'Joined' : item.revokedAt ? 'Revoked' : item.expiresAt <= new Date() ? 'Expired' : item.acceptedAt ? 'Awaiting activation' : 'Pending', roles: item.roles.map(role => role.roleCode) })
 export async function listInvitations(prisma, actorId, params = new URLSearchParams()) {
-  return prisma.$transaction(async tx => {
+  return readTransaction(prisma,async tx => {
     const actor = await tx.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
     if (!canInvite(actor)) throw new AccessError('PERMISSION_DENIED')
     const allowed = invitationRoles(actor).map(role => role.code)

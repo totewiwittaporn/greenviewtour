@@ -14,7 +14,7 @@ import { isoDay, saleDateAllowed, promotionAllowed, promotionUnits, cents, thail
 import { authorize, fail, uuid, int, string, hash, keys } from '../operations/common.js'
 import {readTransaction} from '../../platform/database/read-transaction.js'
 import {isD1Client} from '../../platform/database/d1-runtime.js'
-import {d1AtomicBatch} from '../../platform/database/d1-atomic.js'
+import {d1AtomicBatch,d1Date} from '../../platform/database/d1-atomic.js'
 import {d1FileStoreFor,readD1File} from '../../platform/files/bound-store.js'
 import {fileObjectKey} from '../../platform/files/keys.js'
 
@@ -247,8 +247,48 @@ export async function commandCustomerRequest(db,actorId,input) {
   return result
  })
 }
+async function uploadCustomerProofD1(db,user,input,data,requestHash){
+ const customer=await customerFor(db,user),row=await db.customerRequest.findUnique({where:{id:input.targetId}})
+ if(!row||row.customerId!==customer.id)fail('NOT_FOUND',404)
+ const old=await db.evidenceAttachment.findUnique({where:{id:input.id}})
+ if(old){if(old.requestHash!==requestHash||old.uploadedBy!==user.id||old.sha256!==data.sha256)fail('COMMAND_CONFLICT');return {ok:true,status:'PAYMENT_REVIEW'}}
+ if(!['AWAITING_PAYMENT','PAYMENT_REVIEW'].includes(row.status))fail('BOOKING_LOCKED')
+ const booking=row.bookingId?await db.tourBooking.findUnique({where:{id:row.bookingId},select:{status:true}}):null
+ if(booking?.status!=='CONFIRMED')fail('BOOKING_LOCKED')
+ if(await db.evidenceAttachment.count({where:{targetKind:'CUSTOMER_REQUEST',targetId:row.id}})>=10)fail('TOO_MANY_DOCUMENTS',409)
+ const store=d1FileStoreFor(db);if(!store)throw new Error('R2_BUCKET_REQUIRED')
+ const objectKey=fileObjectKey('evidenceAttachment',input.id)
+ const object=await store.putIfAbsent(objectKey,data.content,{mimeType:data.mimeType,sha256:data.sha256})
+ if(!object.created&&(object.size!==data.size||object.mimeType!==data.mimeType||object.sha256!==data.sha256))fail('COMMAND_CONFLICT')
+ const stamp=d1Date(new Date()),auditId=randomUUID()
+ const customerGuard='EXISTS (SELECT 1 FROM "CustomerProfile" WHERE "id"=? AND "authUserId"=? AND "status"=\'ACTIVE\')'
+ try{
+  const results=await d1AtomicBatch(db,[
+   {
+    sql:`INSERT INTO "EvidenceAttachment" ("id","createdAt","targetKind","targetId","uploadedBy","filename","mimeType","size","sha256","objectKey","note","documentNumber","category","requestHash") SELECT ?,?,'CUSTOMER_REQUEST',?,?,?,?,?,?,?,?,?,'PAYMENT',? WHERE NOT EXISTS (SELECT 1 FROM "EvidenceAttachment" WHERE "id"=?) AND ${customerGuard} AND EXISTS (SELECT 1 FROM "CustomerRequest" r JOIN "TourBooking" b ON b."id"=r."bookingId" WHERE r."id"=? AND r."customerId"=? AND r."status" IN ('AWAITING_PAYMENT','PAYMENT_REVIEW') AND b."status"='CONFIRMED') AND (SELECT COUNT(*) FROM "EvidenceAttachment" WHERE "targetKind"='CUSTOMER_REQUEST' AND "targetId"=?)<10`,
+    params:[input.id,stamp,row.id,user.id,data.filename,data.mimeType,data.size,data.sha256,objectKey,data.note,data.documentNumber,requestHash,input.id,customer.id,user.id,row.id,customer.id,row.id],
+   },
+   {
+    sql:`UPDATE "CustomerRequest" SET "status"='PAYMENT_REVIEW',"version"="version"+1,"updatedAt"=? WHERE "id"=? AND "customerId"=? AND "status" IN ('AWAITING_PAYMENT','PAYMENT_REVIEW') AND ${customerGuard} AND EXISTS (SELECT 1 FROM "EvidenceAttachment" WHERE "id"=? AND "createdAt"=? AND "requestHash"=? AND "uploadedBy"=?)`,
+    params:[stamp,row.id,customer.id,customer.id,user.id,input.id,stamp,requestHash,user.id],
+   },
+   {
+    sql:'INSERT INTO "AuditEvent" ("id","actorId","action","targetId","createdAt","details") VALUES (CASE WHEN EXISTS (SELECT 1 FROM "CustomerRequest" WHERE "id"=? AND "updatedAt"=? AND "status"=\'PAYMENT_REVIEW\') AND EXISTS (SELECT 1 FROM "EvidenceAttachment" WHERE "id"=? AND "createdAt"=?) THEN ? ELSE NULL END,?,?,?,?,?)',
+    params:[row.id,stamp,input.id,stamp,auditId,user.id,'customer-proof.uploaded',row.id,stamp,JSON.stringify({attachmentId:input.id})],
+   },
+  ])
+  if(results.some(result=>(result?.meta?.changes||0)!==1))throw new Error('D1_CUSTOMER_PROOF_ATOMIC_WRITE_FAILED')
+ }catch(error){
+  const current=await db.evidenceAttachment.findUnique({where:{id:input.id}})
+  if(current?.requestHash===requestHash&&current.uploadedBy===user.id&&current.sha256===data.sha256)return {ok:true,status:'PAYMENT_REVIEW'}
+  await customerFor(db,user)
+  throw error
+ }
+ return {ok:true,status:'PAYMENT_REVIEW'}
+}
 export async function uploadCustomerProof(db,user,input){
  const data=validateEvidence({...input,targetKind:'CUSTOMER_REQUEST',category:'PAYMENT'}),requestHash=hash(input)
+ if(isD1Client(db))return uploadCustomerProofD1(db,user,input,data,requestHash)
  return db.$transaction(async tx=>{
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
   const customer=await customerFor(tx,user),row=await tx.customerRequest.findUnique({where:{id:input.targetId}})
@@ -261,6 +301,7 @@ export async function uploadCustomerProof(db,user,input){
   if(await tx.evidenceAttachment.count({where:{targetKind:'CUSTOMER_REQUEST',targetId:row.id}})>=10)fail('TOO_MANY_DOCUMENTS',409)
   await tx.evidenceAttachment.create({data:{...data,id:input.id,targetKind:'CUSTOMER_REQUEST',targetId:row.id,uploadedBy:user.id,requestHash}})
   await tx.customerRequest.update({where:{id:row.id},data:{status:'PAYMENT_REVIEW',version:{increment:1}}})
+  await tx.auditEvent.create({data:{actorId:user.id,targetId:row.id,action:'customer-proof.uploaded',details:{attachmentId:input.id}}})
   return {ok:true,status:'PAYMENT_REVIEW'}
  })
 }
@@ -287,7 +328,7 @@ export async function saveWebsiteImage(db,actorId,input){
   if((insert?.meta?.changes||0)!==1){
    const current=await db.websiteImage.findUnique({where:{id:input.id}})
    if(current?.sha256===data.sha256&&current.uploadedBy===actorId)return {url:'/api/public/images/'+input.id}
-   if(object.created&&!current)await store.delete(objectKey)
+   // Keep a matching orphan object on a failed database guard. Deleting here could race a concurrent successful insert.
    await authorize(db,actorId)
    fail('COMMAND_CONFLICT')
   }

@@ -6,6 +6,7 @@ import { effectiveAccess } from '../../../../packages/contracts/access.js'
 import { personnelFinanceKinds, financialTotal, cents, recordActions } from '../../../../packages/contracts/personnel-finance.js'
 import { accessProfileSelect } from '../identity-access/policy.js'
 import { fail,uuid,keys,string,dateOnly,hash,int } from '../operations/common.js'
+import {readTransaction} from '../../platform/database/read-transaction.js'
 
 export async function personnelFinancePermission(tx,actorId,kind){
  const definition=personnelFinanceKinds[kind];if(!definition)fail('INVALID_KIND',400)
@@ -41,7 +42,7 @@ async function supplierBalance(tx,row){
  if(reserved.reduce((sum,r)=>sum+cents(r.payload.amount),0)+cents(row.payload.amount)>cents(String(order.receivedTotal)))fail('SUPPLIER_BALANCE_EXCEEDED')
 }
 export async function listPersonnelFinance(prisma,actorId,params=new URLSearchParams()){
- if((params.get('view')==='list'||params.get('recordId'))&&!params.get('lookup'))return prisma.$transaction(tx=>readPersonnelFinance(tx,actorId,params),{isolationLevel:'RepeatableRead',timeout:15000})
+ if((params.get('view')==='list'||params.get('recordId'))&&!params.get('lookup'))return readTransaction(prisma,tx=>readPersonnelFinance(tx,actorId,params),{isolationLevel:'RepeatableRead',timeout:15000})
  return readPersonnelFinance(prisma,actorId,params)
 }
 async function readPersonnelFinance(prisma,actorId,params){

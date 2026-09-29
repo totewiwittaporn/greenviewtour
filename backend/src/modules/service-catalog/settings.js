@@ -8,6 +8,7 @@ import { catalog, validateCatalog } from '../../../../packages/contracts/catalog
 import { AccessError } from '../identity-access/membership.js'
 import { accessProfileSelect } from '../identity-access/policy.js'
 import { managementScope } from '../identity-access/user-management.js'
+import {readTransaction} from '../../platform/database/read-transaction.js'
 export function canManageCatalog(profile,entity) { return managementScope(profile)?.company === true || entity==='partners'&&canManageBookingTeam(profile) }
 export async function authorizeCatalog(tx, actorId,entity) {
  const actor=await tx.userProfile.findUnique({where:{id:actorId},select:accessProfileSelect})
@@ -25,7 +26,7 @@ export async function listSettings(prisma,actorId,entity,params){
  const q=(params.get('q')||'').trim(),requested=Number(params.get('page')||1),role=params.get('role'),status=params.get('status')
  if(q.length>100||!Number.isSafeInteger(requested)||requested<1||requested>100000||(status&&!['ACTIVE','INACTIVE'].includes(status))||(role&&!['TOUR_OPERATOR','SALES_AGENT','TRANSPORT_PROVIDER','SERVICE_PROVIDER'].includes(role)))throw new AccessError('INVALID_FILTER',400)
  const baseWhere={...(status?{status}:{})}
- return prisma.$transaction(async tx=>{
+ return readTransaction(prisma,async tx=>{
   const roleWhere=entity==='partners'&&role?await scalarArrayWhere(tx,'BusinessPartner.roles',role):{}
   const where={...baseWhere,...roleWhere}
   if(q)where.OR=entity==='rates'?[{agent:{name:{contains:q,mode:'insensitive'}}},{tour:{name:{contains:q,mode:'insensitive'}}}]:(entity==='partners'?['name','code','shortName']:['name','code']).map(key=>({[key]:{contains:q,mode:'insensitive'}}))
