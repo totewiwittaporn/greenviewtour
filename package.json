@@ -23,11 +23,16 @@
     "test:frontend": "node --test frontend/backoffice/test/*.test.js frontend/member/test/*.test.js frontend/public-web/test/*.test.js",
     "build:member": "npm run build --workspace @greenviewtour/member",
     "cloudflare:d1:schema": "node backend/scripts/generate-d1-schema.js",
-    "cloudflare:d1:generate": "npm run cloudflare:d1:schema && npx prisma generate --schema backend/prisma-d1/schema.prisma --config backend/prisma-d1/prisma.config.ts",
-    "cloudflare:d1:migrate:local": "npm run cloudflare:d1:generate && npx wrangler d1 migrations apply DB --local --config backend/wrangler.jsonc --env-file backend/cloudflare.env",
-    "cloudflare:types": "npx wrangler types backend/src/cloudflare/env.d.ts --config backend/wrangler.jsonc --env-file backend/cloudflare.env",
-    "cloudflare:dev": "npm run cloudflare:d1:migrate:local && npm run cloudflare:types && npx wrangler dev --config backend/wrangler.jsonc --local --port 8787 --env-file backend/cloudflare.env",
-    "cloudflare:check": "npm run cloudflare:d1:generate && npm run cloudflare:types && npx wrangler deploy --dry-run --config backend/wrangler.jsonc --env-file backend/cloudflare.env"
+    "cloudflare:d1:generate": "node scripts/local-cloudflare.js generate",
+    "cloudflare:d1:migrate:local": "node scripts/local-cloudflare.js migrate",
+    "cloudflare:types": "node scripts/local-cloudflare.js types",
+    "cloudflare:dev": "npm run local:dev",
+    "cloudflare:check": "node scripts/local-cloudflare.js bundle",
+    "local:setup": "node scripts/local-cloudflare.js setup",
+    "local:dev": "npm run local:setup && node scripts/local-cloudflare.js dev",
+    "local:db:migrate": "node scripts/local-cloudflare.js migrate",
+    "local:check": "npm run local:setup && node scripts/local-cloudflare.js test",
+    "backup:source": "node scripts/backup-source.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260929.1",

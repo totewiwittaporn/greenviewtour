@@ -15,6 +15,9 @@ const json=(data:unknown,status=200)=>new Response(JSON.stringify(data),{
 export default {
   async fetch(request:Request,env:Env,ctx:ExecutionContext):Promise<Response>{
     const url=new URL(request.url)
+    // Infrastructure-only checkpoint: hosted execution stays closed until full cutover acceptance.
+    if(env.APP_ENV!== 'local')return json({code:'PRODUCTION_NOT_ENABLED'},503)
+    if(!['localhost','127.0.0.1','[::1]'].includes(url.hostname))return json({code:'LOCAL_HOST_REQUIRED'},403)
     if(request.method!=='GET')return json({code:'METHOD_NOT_ALLOWED'},405)
     if(url.pathname==='/health/live')return json({status:'UP',service:'greenviewtour-cloudflare-api',environment:env.APP_ENV})
     if(url.pathname==='/health/db'){

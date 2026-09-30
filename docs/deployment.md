@@ -1,5 +1,7 @@
 # Deployment integration
 
+> Current policy: Local development/testing on the Mac and Production on Cloudflare only. No hosted Preview. Older Preview guidance below is historical; follow [the current migration checkpoint](local-migration-2026-09-30.md). No Production deployment is currently authorized.
+
 No hosting changes or deployment are performed by this foundation. Before connecting an existing host, inspect its current build settings and branch triggers.
 
 Use repository root as install/build working directory and `npm ci` for the frontend applications. Public command: `npm run build:public`; output: `frontend/public-web/dist`. Backoffice command: `npm run build:backoffice`; output: `frontend/backoffice/dist`. The previous root `dist` path is no longer produced. Do not change a production build path without verifying it in preview first.

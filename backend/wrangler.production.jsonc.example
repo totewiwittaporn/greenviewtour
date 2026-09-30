@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/wrangler/config-schema.json",
-  "name": "greenviewtour-api-local",
+  "name": "greenviewtour-api",
   "main": "src/cloudflare/worker.ts",
   "compatibility_date": "2026-09-29",
   "compatibility_flags": [
@@ -12,8 +12,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "greenviewtour-local",
-      "database_id": "00000000-0000-0000-0000-000000000002",
+      "database_name": "greenviewtour-production",
+      "database_id": "SET_ONLY_AFTER_PRODUCTION_RELEASE_APPROVAL",
       "migrations_dir": "prisma-d1/migrations",
       "remote": false
     }
@@ -21,19 +21,14 @@
   "r2_buckets": [
     {
       "binding": "FILES",
-      "bucket_name": "greenviewtour-local-files",
+      "bucket_name": "greenviewtour-production-files",
       "remote": false
     }
   ],
   "vars": {
-    "APP_ENV": "local",
+    "APP_ENV": "production",
     "D1_LOCATION_HINT": "apac"
   },
   "workers_dev": false,
-  "preview_urls": false,
-  "dev": {
-    "ip": "127.0.0.1",
-    "port": 8787,
-    "local_protocol": "http"
-  }
+  "preview_urls": false
 }

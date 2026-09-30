@@ -39,3 +39,10 @@ playwright/.auth/
 backend/src/generated/
 backend/prisma-d1/*.db
 backend/prisma-d1/*.db-*
+
+# Local-only database/files, runtime checks, and private exports
+.local/
+*.dump
+*.bundle
+.dev.vars
+.dev.vars.*

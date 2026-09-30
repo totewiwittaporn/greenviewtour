@@ -1,5 +1,7 @@
 # Cloudflare migration audit and foundation — 29 September 2026
 
+> Historical checkpoint. The 30 September Local/Production-only policy supersedes ALL Preview creation/deployment steps below. Do not execute them. See [the current checkpoint](local-migration-2026-09-30.md).
+
 ## Decision
 
 Greenview Tour will use Cloudflare as the target runtime before hosted Preview is created. The end state removes Supabase/PostgreSQL from application runtime:

@@ -53,5 +53,6 @@ test('Cloudflare config is isolated from Supabase and PostgreSQL secrets',()=>{
   assert.match(config,/"D1_LOCATION_HINT": "apac"/)
   assert.doesNotMatch(config,/SUPABASE|PGPASSWORD|PGHOST/)
   assert.doesNotMatch(env,/SUPABASE|PGPASSWORD|PGHOST/)
-  assert.match(rootPackage,/--env-file backend\/cloudflare\.env/)
+  assert.match(rootPackage,/node scripts\/local-cloudflare\.js/)
+  assert.match(read('../../scripts/local-cloudflare-policy.js'),/'--env-file','backend\/cloudflare\.env'/)
 })

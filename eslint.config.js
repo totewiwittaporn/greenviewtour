@@ -5,9 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['**/dist/**', '**/node_modules/**', '**/.wrangler/**', 'backend/src/generated/**']),
+  globalIgnores(['**/dist/**', '**/node_modules/**', '**/.wrangler/**', 'backend/src/generated/**', '**/.local/**']),
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['**/*.{js,jsx}', 'scripts/**/*.mjs'],
     extends: [
       js.configs.recommended,
       reactHooks.configs['recommended-latest'],
@@ -30,7 +30,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['backend/**/*.js', 'scripts/**/*.js', '**/vite.config.js'],
+    files: ['backend/**/*.js', 'scripts/**/*.{js,mjs}', '**/vite.config.js'],
     languageOptions: { globals: globals.node },
     rules: {
       'no-restricted-imports': ['error', { patterns: [

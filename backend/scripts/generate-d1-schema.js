@@ -133,9 +133,12 @@ END;`
 }).join('\n\n')
 
 await mkdir(migrationsDir,{recursive:true})
+// Applied migrations are immutable. Schema changes require NEW migration files.
+for(const [name,sql] of [['0002_scalar_array_lookups.sql',triggerSql],['0003_json_range_projections.sql',projectionTriggerSql]]){
+  const current=await readFile(path.join(migrationsDir,name),'utf8')
+  if(current!==sql.trim()+'\n')throw new Error('D1_MIGRATION_HISTORY_IMMUTABLE: add a new migration; do not regenerate '+name)
+}
 await writeFile(target,schema)
-await writeFile(path.join(migrationsDir,'0002_scalar_array_lookups.sql'),triggerSql.trim()+'\n')
-await writeFile(path.join(migrationsDir,'0003_json_range_projections.sql'),projectionTriggerSql.trim()+'\n')
 console.log(`Generated D1 Prisma schema: ${path.relative(backend,target)}`)
-console.log('Generated D1 scalar-array lookup triggers')
-console.log('Generated D1 JSON range projection triggers')
+console.log('Verified immutable D1 scalar-array lookup triggers')
+console.log('Verified immutable D1 JSON range projection triggers')
