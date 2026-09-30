@@ -32,7 +32,10 @@
     "local:dev": "npm run local:setup && node scripts/local-cloudflare.js dev",
     "local:db:migrate": "node scripts/local-cloudflare.js migrate",
     "local:check": "npm run local:setup && node scripts/local-cloudflare.js test",
-    "backup:source": "node scripts/backup-source.mjs"
+    "backup:source": "node scripts/backup-source.mjs",
+    "local:data:plan": "node scripts/local-data.js plan",
+    "local:data:import": "node scripts/local-data.js apply",
+    "local:data:verify": "node scripts/local-data.js verify"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260929.1",

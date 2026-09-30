@@ -1,5 +1,7 @@
 # Local / Production migration — 30 September 2026
 
+> Current data checkpoint: [Local D1/R2 data migration](local-data-migration-2026-09-30.md). Business data and files are now imported and verified. The foundation record below describes the earlier empty-database stage; Auth, business SQL/transactions and application cutover are still pending.
+
 ## Approved policy
 
 Local on the owner's Mac is the ONLY development/test target. Production on Cloudflare is for real use only. There is no hosted Preview. No remote resource creation, removal, DNS change or Production deployment is authorized by this checkpoint.
@@ -68,4 +70,4 @@ Business API endpoints intentionally remain unavailable in the new Worker. These
 
 ## Resume order
 
-Review schema/value conversion and import the private snapshot into Local D1/R2 with count/hash/financial reconciliation. Then migrate Auth and API transport, port business transactions, wire all three frontends, and replace legacy npm/dev/seed/integration scripts. Only after Local acceptance may a separately approved Production release be prepared. Remove remaining active Preview/Supabase dependencies after replacement behavior is verified. Historical documents remain evidence, not executable instructions.
+Source/schema validation and Local D1/R2 import are completed in the linked data checkpoint. Next resolve the recorded source identity issue, migrate Auth and API transport, port remaining business SQL/transactions, wire all three frontends, and replace legacy npm/dev/seed/integration scripts. Only after Local acceptance may a separately approved Production release be prepared. Remove remaining active Preview/Supabase dependencies after replacement behavior is verified. Historical documents remain evidence, not executable instructions.

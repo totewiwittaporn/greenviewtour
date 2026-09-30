@@ -1,4 +1,6 @@
-# Preview database connection
+# Retired source database reference
+
+> Historical Supabase connection instructions only. All new development/testing must use Local; do not run the legacy connection/startup steps below. See [the Local data checkpoint](local-data-migration-2026-09-30.md). The source has not been deleted, and Auth/application cutover remains pending.
 
 ## Verified project
 

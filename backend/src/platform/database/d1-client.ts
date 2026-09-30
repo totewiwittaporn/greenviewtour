@@ -1,10 +1,10 @@
-import {PrismaD1} from '@prisma/adapter-d1'
+import {createGuardedD1Adapter,guardD1Transactions} from './d1-adapter.js'
 import {PrismaClient} from '../../generated/d1/client.ts'
 import {d1QueryArgs} from './d1-query.js'
 import {registerD1Client} from './d1-runtime.js'
 
 export function createD1Prisma(database,{files=null}={}){
-  const client=new PrismaClient({adapter:new PrismaD1(database)})
+  const client=new PrismaClient({adapter:createGuardedD1Adapter(database)})
   const extended=client.$extends({
     name:'greenview-d1-portability',
     query:{
@@ -15,5 +15,5 @@ export function createD1Prisma(database,{files=null}={}){
       },
     },
   })
-  return registerD1Client(extended,database,{files})
+  return registerD1Client(guardD1Transactions(extended),database,{files})
 }
