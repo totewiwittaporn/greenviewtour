@@ -1,3 +1,4 @@
+import {readTransaction} from '../platform/database/read-transaction.js'
 import {createD1Prisma} from '../platform/database/d1-client.ts'
 import {Prisma} from '../generated/d1/client.ts'
 import {d1Date} from '../platform/database/d1-atomic.js'
@@ -49,10 +50,11 @@ export default {
     }else if(count)throw new Error('SAMPLE_REQUIRED')
     modelsVerified++;rows+=count
    }
-   let transactionGuardVerified=false
-   try{await prisma.$transaction(async()=>true)}catch(error){transactionGuardVerified=String(error).includes('D1_ATOMIC_BATCH_REQUIRED')}
-   if(!transactionGuardVerified)throw new Error('TRANSACTION_GUARD_REQUIRED')
-   return response({status:'PASS',runtime:'workerd',readOnly:true,modelsVerified,rows,transactionGuardVerified})
+   const transactionReadVerified=await readTransaction(prisma,async tx=>(await tx.role.count())===(await tx.role.count()))
+   if(!transactionReadVerified)throw new Error('TRANSACTION_READ_MISMATCH')
+   const guards=await env.DB.prepare('SELECT COUNT(*) AS n FROM D1TxnGuard').first<{n:number}>()
+   if(guards?.n!==0)throw new Error('TRANSACTION_GUARD_LEAK')
+   return response({status:'PASS',runtime:'workerd',readOnly:true,modelsVerified,rows,transactionReadVerified,transactionGuardRows:guards.n})
   }catch(error){const message=error instanceof Error?error.message:'';return response({code:'PRISMA_LOCAL_VERIFICATION_FAILED',model:current,column:columnName,reason:/^[A-Z_]+$/.test(message)?message:'PRISMA_RUNTIME_ERROR'},500)}
   finally{await prisma.$disconnect()}
  },

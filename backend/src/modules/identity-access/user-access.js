@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import { randomUUID } from 'node:crypto'
 import { accessDefinitions, effectiveAccess, isAdmin, isManager, roleNames } from '../../../../packages/contracts/access.js'
 import { profileInclude } from './policy.js'
@@ -88,7 +89,7 @@ export async function saveUserAccess(prisma,actorId,targetId,input) {
  if(isD1Client(prisma))return saveUserAccessD1(prisma,actorId,targetId,input)
  return prisma.$transaction(async tx=>{
   // Same lock as invitations, profile changes and operational writes: revocation cannot race an authorized write.
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const {actor,target}=await pair(tx,actorId,targetId)
   const next=validateAccessInput(actor,input)
   if(target.accessVersion!==input.version)fail('ACCESS_CONFLICT',409)

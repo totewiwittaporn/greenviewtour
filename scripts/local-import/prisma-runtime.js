@@ -6,6 +6,7 @@ import {createServer} from 'node:net'
 import path from 'node:path'
 import {root,configPath,localEnvironment,validateLocalConfig} from '../local-cloudflare-policy.js'
 import {fail} from './values.js'
+export const validPrismaProof=(proof,models,rows)=>proof?.status==='PASS'&&proof.runtime==='workerd'&&proof.readOnly===true&&proof.modelsVerified===models&&proof.rows===rows&&proof.transactionReadVerified===true&&proof.transactionGuardRows===0
 export async function verifyPrismaRuntime(source,persist,directory){
   const config=validateLocalConfig(JSON.parse(await readFile(configPath,'utf8')))
   if(!path.resolve(persist).startsWith(path.join(root,'.local')+path.sep))fail('LOCAL_STATE_PATH_REQUIRED')
@@ -45,7 +46,7 @@ export async function verifyPrismaRuntime(source,persist,directory){
     const response=await fetch(origin+'/verify',{method:'POST',headers:{...headers,'content-type':'application/json'},body:JSON.stringify({models}),signal:AbortSignal.timeout(30000)})
     const proof=await response.json()
     await writeFile(path.join(directory,`prisma-proof-${stamp}.json`),JSON.stringify(proof,null,2),{mode:0o600})
-    if(!response.ok||proof.status!=='PASS'||proof.modelsVerified!==models.length||proof.rows!==source.summary.rows||proof.transactionGuardVerified!==true)fail('PRISMA_WORKER_VERIFICATION_FAILED:'+String(proof.model||'contract')+':'+String(proof.column||'')+':'+String(proof.reason||''))
+    if(!response.ok||!validPrismaProof(proof,models.length,source.summary.rows))fail('PRISMA_WORKER_VERIFICATION_FAILED:'+String(proof.model||'contract')+':'+String(proof.column||'')+':'+String(proof.reason||''))
     return proof
   }finally{
     kill('SIGTERM');const timer=setTimeout(()=>kill('SIGKILL'),4000);timer.unref()

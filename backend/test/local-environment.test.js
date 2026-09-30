@@ -33,7 +33,7 @@ test('Every mutating D1 plan is local and every deploy plan is dry-run only',()=
 test('Existing D1 migration SQL has not been rewritten',()=>{
   const directory=path.join(root,'backend/prisma-d1')
   const hashes=JSON.parse(readFileSync(path.join(directory,'migration-checksums.json'),'utf8'))
-  assert.equal(Object.keys(hashes).length,3)
+  assert.deepEqual(Object.keys(hashes),['0001_baseline.sql','0002_scalar_array_lookups.sql','0003_json_range_projections.sql','0004_atomic_unit_of_work.sql','0005_json_projection_null_values.sql','0006_identity_optional_created_at.sql'])
   for(const [name,expected] of Object.entries(hashes))assert.equal(createHash('sha256').update(readFileSync(path.join(directory,'migrations',name))).digest('hex'),expected)
 })
 test('Production config remains an unbound example, not an enabled environment',()=>{

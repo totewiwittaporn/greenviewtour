@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {canManageBookingTeam} from '../../../../packages/contracts/access.js'
 import { operationAccess } from '../../../../packages/contracts/operation-access.js'
 import { createHash } from 'node:crypto'
@@ -16,7 +17,7 @@ export async function authorize(tx,actorId,duty='manager') {
  if(duty==='active' ? actor?.status!=='ACTIVE' : duty==='customer' ? !(managementScope(actor)?.company||canManageBookingTeam(actor)) : duty==='manager' ? !managementScope(actor)?.company : duty==='stockOrPrepare' ? !(access.stock||access.prepareStock) : duty==='stockOrBooking' ? !(access.stock||access.booking) : !access[duty]) fail('PERMISSION_DENIED',403)
  return {actor,access}
 }
-export function write(prisma,actorId,fn,duty='manager'){return prisma.$transaction(async tx=>{await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;await authorize(tx,actorId,duty);return fn(tx)},{maxWait:15000,timeout:30000}).catch(error=>{if(error.code==='P2002')fail('SETTINGS_DUPLICATE');throw error})}
+export function write(prisma,actorId,fn,duty='manager'){return prisma.$transaction(async tx=>{await acquireWriteLock(tx);await authorize(tx,actorId,duty);return fn(tx)},{maxWait:15000,timeout:30000}).catch(error=>{if(error.code==='P2002')fail('SETTINGS_DUPLICATE');throw error})}
 export async function active(tx,model,id){const row=await tx[model].findUnique({where:{id:uuid(id)}});if(!row||!['ACTIVE','OPEN'].includes(row.status))fail('RELATED_RECORD_UNAVAILABLE');return row}
 export async function audit(tx,actorId,targetId,action,details={}){await tx.auditEvent.create({data:{actorId,targetId,action:`operations.${action}`,details}})}
 export function money(value){if(value===null||value===undefined||value==='')return null;const s=String(value);if(!/^(0|[1-9]\d{0,7})(\.\d{1,2})?$/.test(s))fail('INVALID_PRICE',400);return s}

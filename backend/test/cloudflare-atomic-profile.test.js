@@ -1,3 +1,4 @@
+import {withNativeTriggerCounts} from './helpers/d1-native-batch.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {editOwnProfile} from '../src/modules/identity-access/user-management.js'
@@ -29,7 +30,7 @@ function fixture({changes=[1,1],afterStatus='ACTIVE',initialStatus='ACTIVE'}={})
       return changes.map(value=>({success:true,meta:{changes:value}}))
     },
   }
-  registerD1Client(client,database)
+  registerD1Client(client,withNativeTriggerCounts(database))
   return {client,statements,reads:()=>reads,transactions:()=>transactions}
 }
 
@@ -120,7 +121,7 @@ function managerProfileFixture({changes=[1,1],afterActorRole='MANAGER',afterTarg
       return changes.map(value=>({success:true,meta:{changes:value}}))
     },
   }
-  registerD1Client(client,database)
+  registerD1Client(client,withNativeTriggerCounts(database))
   return {client,statements,reads:()=>reads,transactions:()=>transactions}
 }
 

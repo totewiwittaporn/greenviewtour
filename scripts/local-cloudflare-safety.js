@@ -13,6 +13,8 @@ export async function localPreflight(){
   const environment=await readFile(path.join(root,'backend/cloudflare.env'),'utf8')
   if(environment.split(/\r?\n/).some(line=>line.trim()&&!line.trim().startsWith('#')))throw new Error('LOCAL_ENV_FILE_MUST_BE_EMPTY')
   const checksums=JSON.parse(await readFile(path.join(root,'backend/prisma-d1/migration-checksums.json'),'utf8'))
+  const migrationFiles=(await readdir(path.join(root,'backend/prisma-d1/migrations'))).filter(name=>name.endsWith('.sql')).sort()
+  if(JSON.stringify(migrationFiles)!==JSON.stringify(Object.keys(checksums).sort()))throw new Error('MIGRATION_CHECKSUM_COVERAGE_REQUIRED')
   for(const [name,expected] of Object.entries(checksums)){
     const sql=await readFile(path.join(root,'backend/prisma-d1/migrations',name))
     if(createHash('sha256').update(sql).digest('hex')!==expected)throw new Error('APPLIED_MIGRATION_MODIFIED:'+name)

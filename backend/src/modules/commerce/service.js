@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {capacityDemandRows} from '../operations/capacity-read.js'
 import {requestListSelect,customerDirectorySelect,requestListDetails,memberRequestSnapshots} from './read-models.js'
 import {assessBookingCapacity,selections} from '../operations/capacity-core.js'
@@ -138,7 +139,7 @@ export async function quoteRequest(tx,input,now=new Date(),excludeRequestId=null
 export async function submitCustomerRequest(db,user,input,now=new Date()) {
  uuid(input.id)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const customer=await customerFor(tx,user),requestHash=hash(input)
   const prior=await tx.customerRequest.findUnique({where:{id:input.id}})
   if(prior){if(prior.customerId!==customer.id||prior.requestHash!==requestHash)fail('COMMAND_CONFLICT',409);return {id:prior.id,status:prior.status}}
@@ -179,7 +180,7 @@ export async function commandCustomerRequest(db,actorId,input) {
  uuid(input.id);uuid(input.requestId);int(input.version)
  if(!['ACCEPT','REJECT','VERIFY_PAYMENT','RETURN_PROOF','PROPOSE_DATE'].includes(input.action))fail('INVALID_ACTION',400)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const {actor}=await authorize(tx,actorId,'customer')
   const requestHash=hash({...input,actorId}),prior=await tx.operationCommand.findUnique({where:{id:input.id}})
   if(prior){if(prior.requestHash!==requestHash)fail('COMMAND_CONFLICT');return prior.result}
@@ -290,7 +291,7 @@ export async function uploadCustomerProof(db,user,input){
  const data=validateEvidence({...input,targetKind:'CUSTOMER_REQUEST',category:'PAYMENT'}),requestHash=hash(input)
  if(isD1Client(db))return uploadCustomerProofD1(db,user,input,data,requestHash)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const customer=await customerFor(tx,user),row=await tx.customerRequest.findUnique({where:{id:input.targetId}})
   if(!row||row.customerId!==customer.id)fail('NOT_FOUND',404)
   const old=await tx.evidenceAttachment.findUnique({where:{id:input.id}})
@@ -335,7 +336,7 @@ export async function saveWebsiteImage(db,actorId,input){
   return {url:'/api/public/images/'+input.id}
  }
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;await authorize(tx,actorId)
+  await acquireWriteLock(tx);await authorize(tx,actorId)
   const old=await tx.websiteImage.findUnique({where:{id:input.id}})
   if(old&&(old.sha256!==data.sha256||old.uploadedBy!==actorId))fail('COMMAND_CONFLICT')
   if(!old)await tx.websiteImage.create({data:{id:input.id,filename:data.filename,mimeType:data.mimeType,content:data.content,size:data.size,sha256:data.sha256,uploadedBy:actorId}})
@@ -358,7 +359,7 @@ export async function saveCustomer(db,actorId,input){
  const data={displayName:string(input.displayName,200),phone:string(input.phone||'',32,false),email:string(input.email||'',254,false),status:input.status}
  if(data.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))fail('INVALID_EMAIL',400)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;await authorize(tx,actorId,'customer')
+  await acquireWriteLock(tx);await authorize(tx,actorId,'customer')
   const old=await tx.customerProfile.findUnique({where:{id:input.id}})
   if(old?.authUserId&&data.email!==old.email)fail('CUSTOMER_EMAIL_LOCKED',409)
   if(old&&input.version===0&&old.version===1&&!old.authUserId&&Object.entries(data).every(([key,value])=>old[key]===value))return {customer:old}
@@ -404,7 +405,7 @@ export function requestDisplayStatus(row,now=new Date()){
 export async function cancelCustomerRequest(db,user,input){
  uuid(input.requestId);int(input.version)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const customer=await customerFor(tx,user),row=await tx.customerRequest.findUnique({where:{id:input.requestId}})
   if(!row||row.customerId!==customer.id)fail('NOT_FOUND',404)
   if(row.status==='CANCELLED'&&!row.bookingId)return {ok:true}
@@ -467,7 +468,7 @@ export async function answerCustomerDate(db,user,input,now=new Date()){
  uuid(input.id);uuid(input.requestId);int(input.version)
  if(!['ACCEPT','DECLINE'].includes(input.answer))fail('INVALID_ACTION',400)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const customer=await customerFor(tx,user),row=await tx.customerRequest.findUnique({where:{id:input.requestId}})
   if(!row||row.customerId!==customer.id)fail('NOT_FOUND',404)
   const requestHash=hash({...input,customerId:customer.id}),prior=await tx.operationCommand.findUnique({where:{id:input.id}})

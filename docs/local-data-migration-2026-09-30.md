@@ -1,5 +1,7 @@
 # Local data migration checkpoint — 30 September 2026
 
+> Current status: Item 3 is accepted. See [D1 data-layer acceptance](d1-data-layer-acceptance-2026-09-30.md) for the completed SQL/transaction work, SIX applied Local migrations, identity metadata and final tests. Earlier pending data-layer notes below are historical; application cutover remains separate.
+
 ## Result and boundary
 
 The backed-up Greenview business data and embedded files have been imported, reconciled and promoted into the active Local D1/R2 state on the owner's Mac. No remote database/API was used during this migration, no source rows or Cloudflare resources were changed, and no Production deployment was performed.

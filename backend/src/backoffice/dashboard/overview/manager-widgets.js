@@ -1,3 +1,5 @@
+import {reportSets} from '../../../platform/database/sql-dialect.js'
+import {isD1Client} from '../../../platform/database/d1-runtime.js'
 import {Prisma} from '@prisma/client'
 import {dateOnly} from '../../../modules/operations/common.js'
 // Inputs are widget definitions already admitted by dashboardOverview's fresh
@@ -16,18 +18,20 @@ export async function managerWidgetCounts(tx,runWidgets,allocationWidgets,{today
   WHERE r.status='OPEN' AND s."startsAt"<${endTime} AND (${Prisma.join(scope,' OR ')}) GROUP BY r.kind
  `:Prisma.sql`SELECT NULL::text AS kind WHERE FALSE`
  const categories=allocationWidgets.flatMap(widget=>widget.categories)
+ const legDate=isD1Client(tx)?Prisma.sql`CASE WHEN leg.direction='OUTBOUND' THEN b."outboundDate" WHEN b."returnStatus"='OUR' THEN b."returnDate" END`:Prisma.sql`leg.day`
+ const legSource=isD1Client(tx)?Prisma.sql`CROSS JOIN (SELECT 'OUTBOUND' AS direction UNION ALL SELECT 'RETURN') leg`:Prisma.sql`CROSS JOIN LATERAL (VALUES ('OUTBOUND',b."outboundDate"),('RETURN',CASE WHEN b."returnStatus"='OUR' THEN b."returnDate" END)) leg(direction,day)`
  const allocationQuery=categories.length?Prisma.sql`
   WITH legs AS (
    SELECT c.id AS line,b.id AS booking,CASE WHEN resource.category='TRANSFER' THEN 'driver' ELSE 'guide' END AS area,
-    c.quantity,resource."baseUnit",b.adults,b.children,leg.direction,leg.day,
+    c.quantity,resource."baseUnit",b.adults,b.children,leg.direction,${legDate} AS day,
     COALESCE(att."noShowAdults",0) AS "noShowAdults",COALESCE(att."noShowChildren",0) AS "noShowChildren"
    FROM app_private."BookingComponent" c
    JOIN app_private."OperationResource" resource ON resource.id=c."resourceId"
    JOIN app_private."TourBooking" b ON b.id=c."bookingId"
-   CROSS JOIN LATERAL (VALUES ('OUTBOUND',b."outboundDate"),('RETURN',CASE WHEN b."returnStatus"='OUR' THEN b."returnDate" END)) leg(direction,day)
-   LEFT JOIN app_private."BookingAttendance" att ON att."bookingId"=b.id AND att.direction=leg.direction AND att."serviceDate"=leg.day
+   ${legSource}
+   LEFT JOIN app_private."BookingAttendance" att ON att."bookingId"=b.id AND att.direction=leg.direction AND att."serviceDate"=${legDate}
    WHERE c.selected=true AND b.status='CONFIRMED' AND resource.category IN (${Prisma.join(categories)})
-    AND c."dispatchDirection" IN ('BOTH',leg.direction) AND leg.day>=${dateOnly(today)} AND leg.day<${dateOnly(end)}
+    AND c."dispatchDirection" IN ('BOTH',leg.direction) AND ${legDate}>=${dateOnly(today)} AND ${legDate}<${dateOnly(end)}
   ), assigned AS (
    SELECT a."bookingLineId" AS line,r.direction,SUM(a.adults) AS adults,SUM(a.children) AS children
    FROM app_private."DispatchAssignment" a JOIN app_private."DispatchRun" r ON r.id=a."runId"
@@ -41,7 +45,7 @@ export async function managerWidgetCounts(tx,runWidgets,allocationWidgets,{today
   GROUP BY leg.area
  `:Prisma.sql`SELECT NULL::text AS area WHERE FALSE`
  if(!admitted.length&&!categories.length)return []
- const [batch]=await tx.$queryRaw(Prisma.sql`SELECT (SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${runQuery}) x) AS runs,(SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${allocationQuery}) x) AS allocations`)
+ const batch=await reportSets(tx,Prisma.sql`SELECT (SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${runQuery}) x) AS runs,(SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${allocationQuery}) x) AS allocations`,{runs:runQuery,allocations:allocationQuery})
  const widgets=runWidgets.map(widget=>{
   const row=batch.runs.find(row=>row.kind===widget.base.kind),crew=widget.id.endsWith('-crew')
   return {id:widget.id,title:widget.title,href:widget.href,pending:crew?row?.crew||0:row?.pending||0,overdue:crew?null:row?.overdue||0,today:crew?null:row?.today||0,review:null,detail:widget.detail,scope:widget.visibility}

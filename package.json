@@ -35,7 +35,11 @@
     "backup:source": "node scripts/backup-source.mjs",
     "local:data:plan": "node scripts/local-data.js plan",
     "local:data:import": "node scripts/local-data.js apply",
-    "local:data:verify": "node scripts/local-data.js verify"
+    "local:data:verify": "node scripts/local-data.js verify",
+    "local:check:business": "node scripts/test-d1-business.mjs core capacity operations dispatch reports finance identity member catalog attendance demo",
+    "local:identity:plan": "node scripts/local-identity.js plan",
+    "local:identity:import": "node scripts/local-identity.js apply",
+    "local:identity:verify": "node scripts/local-identity.js verify"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260929.1",

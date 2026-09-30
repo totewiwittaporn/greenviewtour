@@ -1,3 +1,4 @@
+import {withNativeTriggerCounts} from './helpers/d1-native-batch.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {saveUserAccess} from '../src/modules/identity-access/user-access.js'
@@ -33,7 +34,7 @@ function fixture({batchChanges,initialTargetVersion=1,afterActorStatus='ACTIVE',
    return values.map(changes=>({success:true,meta:{changes}}))
   },
  }
- registerD1Client(client,database)
+ registerD1Client(client,withNativeTriggerCounts(database))
  return {client,statements,reads:()=>reads,transactions:()=>transactions}
 }
 

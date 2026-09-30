@@ -1,3 +1,4 @@
+import {registerAtomicFactory} from '../src/platform/database/atomic/executor.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {registerD1Client,d1FilesFor} from '../src/platform/database/d1-runtime.js'
@@ -18,10 +19,13 @@ class Bucket{
  async head(key){const row=this.objects.get(key);return row?{size:row.data.byteLength,httpMetadata:row.httpMetadata,customMetadata:row.customMetadata}:null}
  async delete(key){this.objects.delete(key)}
 }
-test('D1 read transaction bypasses Prisma transaction while PostgreSQL keeps it',async()=>{
- const d1={value:7,$transaction:async()=>{throw new Error('D1 must not use Prisma transaction')}}
- registerD1Client(d1,{prepare(){}})
+test('D1 reads validate a stable atomic snapshot while PostgreSQL retains its transaction',async()=>{
+ const d1={value:7,$transaction:async()=>{throw new Error('raw Prisma transaction must not run')}}
+ let revisionReads=0,closed=0
+ registerD1Client(d1,{prepare(sql){assert.match(sql,/SELECT version FROM D1TxnRevision/);return {first:async()=>{revisionReads++;return {version:4}}}}})
+ registerAtomicFactory(d1,planner=>{assert.equal(planner.readOnly,true);return {value:7,$disconnect:async()=>{closed++}}})
  assert.equal(await readTransaction(d1,db=>db.value),7)
+ assert.equal(revisionReads,2);assert.equal(closed,1)
  let calls=0
  const pg={value:9,$transaction:async fn=>{calls++;return fn(pg)}}
  assert.equal(await readTransaction(pg,db=>db.value),9)

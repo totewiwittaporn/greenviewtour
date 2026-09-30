@@ -34,10 +34,10 @@ try{
   assert.ok(Object.keys(platform.env).every(key=>['APP_ENV','D1_LOCATION_HINT','DB','FILES'].includes(key)))
   const db=platform.env.DB,bucket=platform.env.FILES
   const migrated=(await db.prepare('SELECT name FROM d1_migrations ORDER BY id').all()).results.map(row=>row.name)
-  assert.deepEqual(migrated,['0001_baseline.sql','0002_scalar_array_lookups.sql','0003_json_range_projections.sql'])
+  assert.deepEqual(migrated,['0001_baseline.sql','0002_scalar_array_lookups.sql','0003_json_range_projections.sql','0004_atomic_unit_of_work.sql','0005_json_projection_null_values.sql','0006_identity_optional_created_at.sql'])
   assert.equal((await db.prepare('SELECT count(*) AS n FROM "TourBooking"').first()).n,0)
   assert.equal((await db.prepare('PRAGMA foreign_key_check').all()).results.length,0)
-  checks.push('fresh schema / three migrations / foreign keys')
+  checks.push('fresh schema / five migrations / foreign keys')
   await db.prepare('CREATE TABLE _local_runtime_probe(id TEXT PRIMARY KEY, amount INTEGER NOT NULL CHECK(amount>=0))').run()
   await db.prepare('INSERT INTO _local_runtime_probe VALUES (?, ?)').bind('balance',100).run()
   await assert.rejects(()=>db.batch([

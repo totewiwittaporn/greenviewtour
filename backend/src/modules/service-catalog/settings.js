@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {canManageBookingTeam} from '../../../../packages/contracts/access.js'
 import {catalogReadSelect} from './read-models.js'
 import {scalarArrayWhere} from '../../platform/database/scalar-array.js'
@@ -58,7 +59,7 @@ export async function listSettings(prisma,actorId,entity,params){
 export async function saveSettingsRecord(tx,actorId,entity,input){
  if(!Object.hasOwn(catalog,entity))throw new AccessError('NOT_FOUND',404)
  const definition=catalog[entity]
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   await authorizeCatalog(tx,actorId,entity)
   if(Object.keys(input).some(key=>!['id','version',...definition.fields.map(f=>f.key)].includes(key)))throw new AccessError('INVALID_SETTINGS',400)
   if(typeof input.id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.id)||!Number.isSafeInteger(input.version)||input.version<0)throw new AccessError('INVALID_SETTINGS',400)

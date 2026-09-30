@@ -1,5 +1,7 @@
 # Local / Production migration — 30 September 2026
 
+> Current status: Item 3 is accepted. See [D1 data-layer acceptance](d1-data-layer-acceptance-2026-09-30.md) for the completed SQL/transaction work, SIX applied Local migrations, identity metadata and final tests. Earlier pending data-layer notes below are historical; application cutover remains separate.
+
 > Current data checkpoint: [Local D1/R2 data migration](local-data-migration-2026-09-30.md). Business data and files are now imported and verified. The foundation record below describes the earlier empty-database stage; Auth, business SQL/transactions and application cutover are still pending.
 
 ## Approved policy

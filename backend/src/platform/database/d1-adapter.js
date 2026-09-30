@@ -1,12 +1,16 @@
+import {d1SearchQuery} from './atomic/search.js'
 import {PrismaD1} from '@prisma/adapter-d1'
 
 // The installed Prisma adapter otherwise turns transactions into independent
-// queries. Fail closed until each multi-write flow uses reviewed native D1 batch.
+// queries. This low-level reader remains fail-closed; application writes use the
+// planning adapter and commit through the guarded native D1 unit of work.
 export function createGuardedD1Adapter(database){
   const factory=new PrismaD1(database)
   const connect=factory.connect.bind(factory)
   factory.connect=async()=>{
     const adapter=await connect()
+    const queryRaw=adapter.queryRaw.bind(adapter)
+    adapter.queryRaw=query=>queryRaw(d1SearchQuery(query))
     adapter.startTransaction=async()=>{
       const error=new Error('D1_ATOMIC_BATCH_REQUIRED')
       error.code='D1_ATOMIC_BATCH_REQUIRED'

@@ -35,6 +35,7 @@ export function localPlan(command,persist=statePath){
   const wrangle=args=>[wrangler,...args,...common]
   const generate=[
     ['backend/scripts/generate-d1-schema.js'],
+    ['backend/scripts/generate-d1-atomic-metadata.mjs'],
     ['node_modules/prisma/build/index.js','generate','--schema','backend/prisma-d1/schema.prisma','--config','backend/prisma-d1/prisma.config.ts'],
   ]
   const types=wrangle(['types','backend/src/cloudflare/env.d.ts'])

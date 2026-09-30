@@ -7,6 +7,7 @@ const jsonPath=parts=>{
 export function d1QueryArgs(value){
   if(Array.isArray(value))return value.map(d1QueryArgs)
   if(!value||typeof value!=='object'||value instanceof Date||value instanceof Uint8Array)return value
+  if(![Object.prototype,null].includes(Object.getPrototypeOf(value)))return value
   const next={}
   for(const [key,item] of Object.entries(value)){
     if(key==='mode'&&item==='insensitive')continue

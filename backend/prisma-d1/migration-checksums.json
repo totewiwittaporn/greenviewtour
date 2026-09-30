@@ -1,5 +1,8 @@
 {
   "0001_baseline.sql": "ff8aa4f1bf29d2eaa8f2770e2d480de670a5d2f9c684902bf8a4156f6166161a",
   "0002_scalar_array_lookups.sql": "869549e3f29c1f7cffefdcc6a914a1b61552d0d9f45cc81e5e25994d9cb6edf0",
-  "0003_json_range_projections.sql": "cec48c21dbfd89d81d3d7e5f4a3ec99a51a087485e0df0b5eff665b6f96410ff"
+  "0003_json_range_projections.sql": "cec48c21dbfd89d81d3d7e5f4a3ec99a51a087485e0df0b5eff665b6f96410ff",
+  "0004_atomic_unit_of_work.sql": "28cdd6d321522fa483c06b5a4879ceaa87be02a9bd3cb388682c368e1a541813",
+  "0005_json_projection_null_values.sql": "ef19a1f9d0c328b46f32657676d10b04e4dbb878a2a9f0780566cfd7bde5848a",
+  "0006_identity_optional_created_at.sql": "d3975c8111612a0944e71bd4940a9fcd3a7308946517cf4c78ea065c63605501"
 }

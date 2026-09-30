@@ -1,3 +1,5 @@
+import {existingStaffIdentity,identityEmail} from '../../platform/database/identity-directory.js'
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import { randomBytes } from 'node:crypto'
 import { AccessError, hashToken, normalizeEmail } from './membership.js'
 import { profileInclude, roles } from './policy.js'
@@ -57,10 +59,10 @@ export async function listInvitations(prisma, actorId, params = new URLSearchPar
 }
 export async function createInvitation(prisma, actorId, input) {
   return prisma.$transaction(async tx => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+    await acquireWriteLock(tx)
     const actor = await tx.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
     const data = validateInvitation(input, actor)
-    const existing = await tx.$queryRaw`SELECT u.id FROM auth.users u JOIN app_private."UserProfile" p ON p.id=u.id WHERE lower(u.email)=${data.email} LIMIT 1`
+    const existing = await existingStaffIdentity(tx,data.email)
     if (existing.length) throw new AccessError('ACCOUNT_ALREADY_EXISTS', 409)
     if (await tx.invitation.findUnique({ where: { email: data.email } })) throw new AccessError('INVITATION_ALREADY_EXISTS', 409)
     const code = randomBytes(32).toString('hex')
@@ -71,7 +73,7 @@ export async function createInvitation(prisma, actorId, input) {
 }
 export async function changeInvitation(prisma, actorId, id, action) {
   return prisma.$transaction(async tx => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+    await acquireWriteLock(tx)
     const actor = await tx.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
     const invitation = await tx.invitation.findUnique({ where: { id }, include: { roles: true } })
     const allowed = invitationRoles(actor).map(role => role.code)
@@ -99,7 +101,7 @@ async function registerInvitedUser(prisma, provider, code, password) {
   if (result.session) await provider.logout(result.session).catch(() => {})
   // The provider is outside the transaction: recheck revocation/token rotation afterward.
   await prisma.$transaction(async tx => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+    await acquireWriteLock(tx)
     const current = await lookupInvitation(tx, code)
     await tx.invitation.update({ where: { id: current.id }, data: { acceptedAt: new Date() } })
     await tx.auditEvent.create({ data: { targetId: current.id, action: 'invitation.password.submitted', details: {} } })
@@ -114,11 +116,11 @@ export function canResetPassword(actor, target) {
 }
 export async function requestUserReset(prisma, provider, actorId, targetId) {
   const email = await prisma.$transaction(async tx => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+    await acquireWriteLock(tx)
     const actor = await tx.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
     const target = await tx.userProfile.findUnique({ where: { id: targetId }, include: profileInclude })
     if (!canResetPassword(actor, target)) throw new AccessError('PERMISSION_DENIED')
-    const [identity] = await tx.$queryRaw`SELECT email FROM auth.users WHERE id=${targetId}::uuid`
+    const identity = await identityEmail(tx,targetId)
     if (!identity?.email) throw new AccessError('ACCOUNT_UNAVAILABLE')
     await tx.auditEvent.create({ data: { actorId, targetId, action: 'password.reset.requested', details: {} } })
     return identity.email

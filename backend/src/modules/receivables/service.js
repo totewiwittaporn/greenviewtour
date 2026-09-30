@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {bookingReceived} from './collections.js'
 import {billingDueDate,validateBillingPolicy} from '../../../../packages/contracts/agent-billing.js'
 import {billDocument,billSignatures,signBill} from './signatures.js'
@@ -40,7 +41,7 @@ export async function commandReceivable(prisma,actorId,input){
  if(!['CREATE','PAY','VOID','SIGN','RESCHEDULE'].includes(input.action))fail('INVALID_INPUT',400)
  const requestHash=hash(input)
  return prisma.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   await receivableAccess(tx,actorId)
   if(input.action==='RESCHEDULE'&&input.rescheduleKind!=='REQUEST'){const actor=await tx.userProfile.findUnique({where:{id:actorId},select:accessProfileSelect});if(!effectiveAccess(actor,'expenses.approve').allowed)fail('PERMISSION_DENIED',403)}
   const prior=await tx.financePersonnelCommand.findUnique({where:{id:input.id}})

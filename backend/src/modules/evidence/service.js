@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {receivableAccess} from '../receivables/service.js'
 import {createHash,randomUUID} from 'node:crypto'
 import {authorize,fail,uuid,keys,string,hash} from '../operations/common.js'
@@ -100,7 +101,7 @@ export async function saveEvidence(prisma,actorId,input){
  const data=validateEvidence(input),requestHash=hash(input)
  if(isD1Client(prisma))return saveEvidenceD1(prisma,actorId,input,data,requestHash)
  return prisma.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const access=await parentAccess(tx,actorId,input.targetKind,input.targetId)
   if(!access.upload)fail('PERMISSION_DENIED',403)
   const previous=await tx.evidenceAttachment.findUnique({where:{id:input.id},select:{...metadata,requestHash:true}})

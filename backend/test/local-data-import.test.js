@@ -84,3 +84,14 @@ test('public D1 transaction guard never evaluates the callback or underlying tra
  await assert.rejects(()=>client.$transaction(async()=>{calls++;return true}),/D1_ATOMIC_BATCH_REQUIRED/)
  assert.equal(calls,0);assert.equal(client.value,7)
 })
+
+test('post-import proof requires the current atomic read contract, not the retired transaction blocker',async()=>{
+ const {validPrismaProof}=await import('../../scripts/local-import/prisma-runtime.js')
+ const proof={status:'PASS',runtime:'workerd',readOnly:true,modelsVerified:2,rows:3,transactionReadVerified:true,transactionGuardRows:0}
+ assert.equal(validPrismaProof(proof,2,3),true)
+ assert.equal(validPrismaProof({...proof,transactionReadVerified:false},2,3),false)
+ assert.equal(validPrismaProof({...proof,transactionGuardRows:1},2,3),false)
+ assert.equal(validPrismaProof({...proof,transactionReadVerified:undefined,transactionGuardVerified:true},2,3),false)
+ assert.equal(validPrismaProof(proof,3,3),false)
+ assert.equal(validPrismaProof(proof,2,4),false)
+})

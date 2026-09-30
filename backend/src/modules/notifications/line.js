@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {randomUUID} from 'node:crypto'
 import {pushText} from '../../platform/line/messaging.js'
 import {notificationFor} from './service.js'
@@ -22,7 +23,7 @@ export async function deliverPersonalNotification(prisma,{eventId,userId,mode='s
  const payload={to,messages:[{type:'text',text:notification.label+'\n'+base.origin+notification.href}]}
  if(mode==='simulation')return pushText({payload,retryKey:randomUUID(),mode:'simulation',transport})
  const item=await prisma.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const where={eventId_userId_mode:{eventId,userId,mode}}
   let old=await tx.personalLineDelivery.findUnique({where})
   if(old?.status==='ACCEPTED')return old

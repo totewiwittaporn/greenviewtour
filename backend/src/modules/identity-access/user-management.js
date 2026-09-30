@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import thaiAreas from '../../../../packages/contracts/data/thai-areas.js'
 import { postalCodeFor } from '../../../../packages/contracts/thai-address.js'
 import { addressFields, addressKeys, validateAddress } from '../../../../packages/contracts/address.js'
@@ -85,7 +86,7 @@ async function editProfileD1(prisma,actorId,targetId,input){
 export async function editProfile(prisma, actorId, targetId, input) {
   if(isD1Client(prisma))return editProfileD1(prisma,actorId,targetId,input)
   return prisma.$transaction(async tx => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+    await acquireWriteLock(tx)
     const actor = await tx.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
     const target = await tx.userProfile.findUnique({ where: { id: targetId }, include: profileInclude })
     if (!canEditProfile(actor,target)) throw new AccessError('PERMISSION_DENIED')
@@ -130,7 +131,7 @@ async function editOwnProfileD1(prisma,actorId,input){
 export async function editOwnProfile(prisma, actorId, input) {
   if(isD1Client(prisma))return editOwnProfileD1(prisma,actorId,input)
   return prisma.$transaction(async tx => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+    await acquireWriteLock(tx)
     const actor = await tx.userProfile.findUnique({ where: { id: actorId } })
     if (actor?.status !== 'ACTIVE') throw new AccessError('ACCOUNT_UNAVAILABLE')
     const data = validateProfilePatch(input, { company: false })

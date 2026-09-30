@@ -1,7 +1,10 @@
+import {isD1Client} from '../../platform/database/d1-runtime.js'
+import {listD1Users} from './list-users-d1.js'
 import {AccessError} from './membership.js'
 import { addressKeys } from '../../../../packages/contracts/address.js'
 // Callers must supply an authorized management scope; all counts use that same scope.
 export async function listUsers(pool, { search = '', page = 1, pageSize = 25, department = null, view = 'detail', recordId = null } = {}) {
+  if(isD1Client(pool))return listD1Users(pool,{search,page,pageSize,department,view,recordId})
   const client = await pool.connect()
   try {
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')

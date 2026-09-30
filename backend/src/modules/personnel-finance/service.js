@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {validateAgentRefund} from './agent-refund.js'
 import {validateCommission} from './booking-commission.js'
 import {financeListSelect,financeListPayloads} from './read-models.js'
@@ -32,7 +33,7 @@ export function validatePayload(kind,payload){
  if(result.date&&result.dueOn)assert(result.dueOn>=result.date,'INVALID_DATE_RANGE')
  return result
 }
-async function transaction(prisma,fn){return prisma.$transaction(async tx=>{await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;return fn(tx)},{maxWait:15000,timeout:30000})}
+async function transaction(prisma,fn){return prisma.$transaction(async tx=>{await acquireWriteLock(tx);return fn(tx)},{maxWait:15000,timeout:30000})}
 async function audit(tx,actorId,row,action,details={}){await tx.auditEvent.create({data:{actorId,targetId:row.id,action:`personnelFinance.${action}`,details:{kind:row.kind,version:row.version,...details}}})}
 async function employee(tx,id){const row=await tx.userProfile.findUnique({where:{id:uuid(id)},select:{id:true,status:true}});if(!row||row.status!=='ACTIVE')fail('EMPLOYEE_UNAVAILABLE',409)}
 async function supplierBalance(tx,row){

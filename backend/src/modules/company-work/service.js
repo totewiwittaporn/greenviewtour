@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {readJsonFields} from '../../platform/database/read-json.js'
 import {scalarArrayWhere} from '../../platform/database/scalar-array.js'
 import {randomUUID} from 'node:crypto'
@@ -14,7 +15,7 @@ const nested=tx=>({...tx,$transaction:fn=>fn(tx)})
 async function actorFor(p,id){const actor=await p.userProfile.findUnique({where:{id},select:accessProfileSelect});if(actor?.status!=='ACTIVE')fail('PERMISSION_DENIED',403);return actor}
 async function active(p,model,id){const row=await p[model].findUnique({where:{id:uuid(id)}});if(!row||row.status!=='ACTIVE')fail('RELATED_RECORD_UNAVAILABLE');return row}
 const audit=(p,actorId,targetId,action,details)=>p.auditEvent.create({data:{actorId,targetId,action:'company.'+action,details:JSON.parse(JSON.stringify(details))}})
-async function transact(p,actorId,fn){return p.$transaction(async tx=>{await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;return fn(tx,await actorFor(tx,actorId))},{timeout:60000,maxWait:15000})}
+async function transact(p,actorId,fn){return p.$transaction(async tx=>{await acquireWriteLock(tx);return fn(tx,await actorFor(tx,actorId))},{timeout:60000,maxWait:15000})}
 const cleanLines=value=>{if(!Array.isArray(value)||!value.length||value.length>50)fail('INVALID_CHECKLIST',400);const lines=value.map(v=>string(v,300));if(new Set(lines).size!==lines.length)fail('DUPLICATE_CHECKLIST_ITEM',400);return lines}
 const optionalId=value=>value?uuid(value):null
 const responsibilityScope=async(db,actorId)=>({OR:[{primaryUserId:actorId},await scalarArrayWhere(db,'WarehouseResponsibility.deputyUserIds',actorId)]})

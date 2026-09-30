@@ -1,3 +1,4 @@
+import {withNativeTriggerCounts} from './helpers/d1-native-batch.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {registerD1Client} from '../src/platform/database/d1-runtime.js'
@@ -46,7 +47,7 @@ function d1Harness({customer=false}={}){
    count:async()=>0,
   },
  }
- registerD1Client(db,database,{files:bucket})
+ registerD1Client(db,withNativeTriggerCounts(database),{files:bucket})
  return {db,batches,bucket}
 }
 
