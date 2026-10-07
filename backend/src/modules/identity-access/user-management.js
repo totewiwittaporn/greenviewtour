@@ -8,6 +8,7 @@ import { profileInclude } from './policy.js'
 import {randomUUID} from 'node:crypto'
 import {d1AtomicBatch,d1Date} from '../../platform/database/d1-atomic.js'
 import {isD1Client} from '../../platform/database/d1-runtime.js'
+import {primaryRoleCode,roleDepartments,roleNames} from '../../../../packages/contracts/access.js'
 export const departments = ['MANAGEMENT', 'BOOKING', 'ACCOUNT', 'GUIDE', 'CAPTAIN', 'DRIVER', 'SALES', 'HOUSEKEEPING']
 const heads = { HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER', HEAD_HOUSEKEEPING: 'HOUSEKEEPING' }
 export function managementScope(actor) {
@@ -26,6 +27,19 @@ export function canEditProfile(actor, target) {
   if (!editable) return false
   if (scope.company) return true
   return target.department === scope.department && !target.roles.some(role => ['ADMIN_MANAGER','MANAGER'].includes(role.roleCode))
+}
+export function assignablePrimaryRoles(actor){
+  if(actor?.status!=='ACTIVE'||!managementScope(actor)?.company||!actor.roles.some(grant=>grant.scope==='COMPANY'&&grant.role.permissions.some(item=>item.permissionCode==='users.roles')))return []
+  const canAssignManager=actor.roles.some(grant=>grant.roleCode==='ADMIN_MANAGER'&&grant.scope==='COMPANY'&&grant.role.permissions.some(item=>item.permissionCode==='managers.manage'))
+  return Object.entries(roleNames).filter(([code])=>code!=='ADMIN_MANAGER'&&(code!=='MANAGER'||canAssignManager)).map(([code,name])=>({code,name,department:roleDepartments[code]}))
+}
+function primaryRoleChange(actor,target,requested){
+  if(requested===undefined)return null
+  if(typeof requested!=='string'||!assignablePrimaryRoles(actor).some(role=>role.code===requested))throw new AccessError('ROLE_ASSIGNMENT_DENIED')
+  const department=roleDepartments[requested]
+  if(!department||!departments.includes(department))throw new AccessError('INVALID_DEPARTMENT',400)
+  const previous=primaryRoleCode(target)
+  return {previous,next:requested,department,changed:previous!==requested}
 }
 export function validateProfilePatch(input, scope) {
   if (!input || Object.keys(input).some(key => !['displayName','nickname','department','updatedAt','address','primaryPhone','emergencyPhone','lineId',...addressKeys].includes(key))) throw new AccessError('INVALID_PROFILE_FIELDS', 400)
@@ -56,26 +70,34 @@ async function editProfileD1(prisma,actorId,targetId,input){
   const actor=await prisma.userProfile.findUnique({where:{id:actorId},include:profileInclude})
   const target=await prisma.userProfile.findUnique({where:{id:targetId},include:profileInclude})
   if(!canEditProfile(actor,target))throw new AccessError('PERMISSION_DENIED')
-  const data=validateProfilePatch(input,managementScope(actor))
+  const requestedPrimary=Object.hasOwn(input,'primaryRoleCode')?input.primaryRoleCode:undefined
+  const profileInput={...input};delete profileInput.primaryRoleCode
+  if(Object.hasOwn(profileInput,'department'))throw new AccessError('PRIMARY_ROLE_REQUIRED',400)
+  const roleChange=primaryRoleChange(actor,target,requestedPrimary)
+  const data=validateProfilePatch(profileInput,managementScope(actor))
+  if(roleChange)data.department=roleChange.department
   data.postalCode=postalCodeFor({...target,...data},thaiAreas)||null
-  const fields=Object.keys(data)
+  const fields=Object.keys(data),auditFields=[...fields,...(roleChange?.changed?['primaryRoleCode']:[])]
   const now=d1Date(new Date()),previous=d1Date(input.updatedAt)
-  const setSql=[...fields.map(field=>`"${field}"=?`),'"updatedAt"=?'].join(',')
   const actorVersion=actor.accessVersion,targetVersion=target.accessVersion
   const targetGuard='"id"=? AND "updatedAt"=? AND "accessVersion"=?'
   const actorGuard='EXISTS (SELECT 1 FROM "UserProfile" WHERE "id"=? AND "accessVersion"=? AND "status"=\'ACTIVE\')'
-  const details=JSON.stringify({fields})
-  const results=await d1AtomicBatch(prisma,[
-    {
-      sql:`INSERT INTO "AuditEvent" ("id","actorId","action","targetId","createdAt","details") SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM "UserProfile" WHERE ${targetGuard}) AND ${actorGuard}`,
-      params:[randomUUID(),actorId,'profile.updated',targetId,now,details,targetId,previous,targetVersion,actorId,actorVersion],
-    },
-    {
-      sql:`UPDATE "UserProfile" SET ${setSql} WHERE ${targetGuard} AND ${actorGuard}`,
-      params:[...fields.map(field=>data[field]),now,targetId,previous,targetVersion,actorId,actorVersion],
-    },
-  ])
-  if((results[1]?.meta?.changes||0)!==1){
+  const guard=`EXISTS (SELECT 1 FROM "UserProfile" WHERE ${targetGuard}) AND ${actorGuard}`
+  const guardParams=[targetId,previous,targetVersion,actorId,actorVersion]
+  const details=JSON.stringify({fields:auditFields,...(roleChange?.changed?{primaryRole:{from:roleChange.previous,to:roleChange.next},department:{from:target.department,to:roleChange.department}}:{})})
+  const statements=[{
+    sql:`INSERT INTO "AuditEvent" ("id","actorId","action","targetId","createdAt","details") SELECT ?,?,?,?,?,? WHERE ${guard}`,
+    params:[randomUUID(),actorId,'profile.updated',targetId,now,details,...guardParams],
+  }]
+  if(roleChange?.changed){
+    if(roleChange.previous)statements.push({sql:`DELETE FROM "UserRole" WHERE "userId"=? AND "roleCode"=? AND ${guard}`,params:[targetId,roleChange.previous,...guardParams]})
+    if(!target.roles.some(role=>role.roleCode===roleChange.next))statements.push({sql:`INSERT INTO "UserRole" ("userId","roleCode","scope") SELECT ?,?,? WHERE ${guard}`,params:[targetId,roleChange.next,roleChange.next==='MANAGER'?'COMPANY':'SELF',...guardParams]})
+  }
+  const updateIndex=statements.length
+  const setSql=[...fields.map(field=>`"${field}"=?`),...(roleChange?.changed?['"accessVersion"="accessVersion"+1']:[]),'"updatedAt"=?'].join(',')
+  statements.push({sql:`UPDATE "UserProfile" SET ${setSql} WHERE ${targetGuard} AND ${actorGuard}`,params:[...fields.map(field=>data[field]),now,targetId,previous,targetVersion,actorId,actorVersion]})
+  const results=await d1AtomicBatch(prisma,statements)
+  if((results[updateIndex]?.meta?.changes||0)!==1){
     const currentActor=await prisma.userProfile.findUnique({where:{id:actorId},include:profileInclude})
     const currentTarget=await prisma.userProfile.findUnique({where:{id:targetId},include:profileInclude})
     if(!canEditProfile(currentActor,currentTarget))throw new AccessError('PERMISSION_DENIED')
@@ -92,15 +114,25 @@ export async function editProfile(prisma, actorId, targetId, input) {
     const actor = await tx.userProfile.findUnique({ where: { id: actorId }, include: profileInclude })
     const target = await tx.userProfile.findUnique({ where: { id: targetId }, include: profileInclude })
     if (!canEditProfile(actor,target)) throw new AccessError('PERMISSION_DENIED')
-    const data = validateProfilePatch(input,managementScope(actor))
+    const requestedPrimary=Object.hasOwn(input,'primaryRoleCode')?input.primaryRoleCode:undefined
+    const profileInput={...input};delete profileInput.primaryRoleCode
+    if(Object.hasOwn(profileInput,'department'))throw new AccessError('PRIMARY_ROLE_REQUIRED',400)
+    const roleChange=primaryRoleChange(actor,target,requestedPrimary)
+    const data = validateProfilePatch(profileInput,managementScope(actor))
+    if(roleChange)data.department=roleChange.department
     data.postalCode=postalCodeFor({...target,...data},thaiAreas)||null
-    const result = await tx.userProfile.updateMany({ where: { id: targetId, updatedAt: new Date(input.updatedAt) }, data })
+    if(roleChange?.changed){
+      if(roleChange.previous)await tx.userRole.deleteMany({where:{userId:targetId,roleCode:roleChange.previous}})
+      if(!target.roles.some(role=>role.roleCode===roleChange.next))await tx.userRole.create({data:{userId:targetId,roleCode:roleChange.next,scope:roleChange.next==='MANAGER'?'COMPANY':'SELF'}})
+      data.accessVersion={increment:1}
+    }
+    const result = await tx.userProfile.updateMany({ where: { id: targetId, updatedAt: new Date(input.updatedAt),...(roleChange?.changed?{accessVersion:target.accessVersion}:{}) }, data })
     if (result.count !== 1) throw new AccessError('PROFILE_CONFLICT',409)
-    await tx.auditEvent.create({ data: { actorId, targetId, action: 'profile.updated', details: { fields: Object.keys(data) } } })
+    const fields=[...Object.keys(data).filter(field=>field!=='accessVersion'),...(roleChange?.changed?['primaryRoleCode']:[])]
+    await tx.auditEvent.create({ data: { actorId, targetId, action: 'profile.updated', details: { fields,...(roleChange?.changed?{primaryRole:{from:roleChange.previous,to:roleChange.next},department:{from:target.department,to:roleChange.department}}:{}) } } })
     return { ok: true }
   })
 }
-
 async function editOwnProfileD1(prisma,actorId,input){
   const actor=await prisma.userProfile.findUnique({where:{id:actorId}})
   if(actor?.status!=='ACTIVE')throw new AccessError('ACCOUNT_UNAVAILABLE')

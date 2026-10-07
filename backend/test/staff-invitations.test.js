@@ -7,7 +7,7 @@ import { listInvitations, canInvite, invitationRoles, validateInvitation, canRes
 import { hashToken, resolveMembership } from '../src/modules/identity-access/membership.js'
 import { editOwnProfile } from '../src/modules/identity-access/user-management.js'
 const profile = (role = 'MANAGER', id = 'actor') => ({ id, status: 'ACTIVE', displayName: 'Name', roles: [{ roleCode: role, scope: role === 'ADMIN_MANAGER' || role === 'MANAGER' ? 'COMPANY' : 'SELF', role: { permissions: grantsFor(role).map(permissionCode => ({ permissionCode })) } }] })
-const input = { email: 'staff@example.invalid', department: 'GUIDE', roleCode: 'GUIDE' }
+const input = { email: 'staff@example.invalid', roleCode: 'GUIDE' }
 function database(actor = profile()) {
   const events = [], records = new Map()
   const tx = { $executeRaw: async () => 1, $queryRaw: async () => [],
@@ -31,7 +31,10 @@ test('only company Managers and Admin Managers can invite; Manager cannot assign
   assert.equal(invitationRoles(profile('ADMIN_MANAGER')).some(r => r.code === 'MANAGER'), true)
   assert.equal(invitationRoles(profile('ADMIN_MANAGER')).some(r => r.code === 'ADMIN_MANAGER'), false)
   assert.throws(() => validateInvitation({ ...input, roleCode: 'MANAGER' }, profile()), /ROLE_ASSIGNMENT_DENIED/)
-  assert.throws(() => validateInvitation({ ...input, roleCode: 'HEAD_DRIVER' }, profile()), /ROLE_DEPARTMENT_MISMATCH/)
+  assert.equal(validateInvitation(input, profile()).department, 'GUIDE')
+  assert.equal(validateInvitation({ ...input, roleCode: 'HEAD_HOUSEKEEPING' }, profile()).department, 'HOUSEKEEPING')
+  assert.throws(() => validateInvitation({ ...input, department: 'GUIDE', roleCode: 'HEAD_DRIVER' }, profile()), /ROLE_DEPARTMENT_MISMATCH/)
+  assert.throws(() => validateInvitation({ ...input, department: 'BOOKING', roleCode: 'GUIDE' }, profile()), /ROLE_DEPARTMENT_MISMATCH/)
   assert.throws(() => validateInvitation({ ...input, password: 'not allowed' }, profile()), /INVALID_INVITATION_FIELDS/)
 })
 test('invitation tokens are hashed, omitted from list data and audit, rotated and revoked', async () => {

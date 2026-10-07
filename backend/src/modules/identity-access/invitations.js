@@ -3,6 +3,7 @@ import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import { randomBytes } from 'node:crypto'
 import { AccessError, hashToken, normalizeEmail } from './membership.js'
 import { profileInclude, roles } from './policy.js'
+import {roleDepartments} from '../../../../packages/contracts/access.js'
 import { departments } from './user-management.js'
 import {readTransaction} from '../../platform/database/read-transaction.js'
 const ttl = 72 * 3600000
@@ -27,10 +28,10 @@ export function validateInvitation(input, actor) {
   if (!invitationRoles(actor).some(role => role.code === input.roleCode)) throw new AccessError('ROLE_ASSIGNMENT_DENIED')
   const email = normalizeEmail(input.email)
   assertDeliverableInvitationEmail(email)
-  if (!departments.includes(input.department)) throw new AccessError('INVALID_DEPARTMENT', 400)
-  const roleDepartment = { MANAGER: 'MANAGEMENT', HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER', HEAD_HOUSEKEEPING: 'HOUSEKEEPING' }[input.roleCode]
-  if (roleDepartment && roleDepartment !== input.department) throw new AccessError('ROLE_DEPARTMENT_MISMATCH', 400)
-  return { email, department: input.department, roleCode: input.roleCode }
+  const department=roleDepartments[input.roleCode]
+  if (!department||!departments.includes(department)) throw new AccessError('INVALID_DEPARTMENT', 400)
+  if (input.department && input.department !== department) throw new AccessError('ROLE_DEPARTMENT_MISMATCH', 400)
+  return { email, department, roleCode: input.roleCode }
 }
 const publicInvite = item => ({ id: item.id, email: item.email, displayName: item.displayName, department: item.department, expiresAt: item.expiresAt, createdAt: item.createdAt,
   status: item.consumedAt ? 'Joined' : item.revokedAt ? 'Revoked' : item.expiresAt <= new Date() ? 'Expired' : item.acceptedAt ? 'Awaiting activation' : 'Pending', roles: item.roles.map(role => role.roleCode) })
