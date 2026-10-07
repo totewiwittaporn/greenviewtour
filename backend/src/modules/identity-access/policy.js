@@ -24,7 +24,7 @@ export const profileInclude = { permissionOverrides: true, roles: { include: { r
 // Fresh authorization projection. Preserve stored role permissions and override
 // dates/scopes; account contacts and profile metadata do not authorize domain work.
 export const accessProfileSelect = {
- id: true, displayName: true, status: true, department: true,
+ id: true, displayName: true, status: true, department: true, accessVersion:true,
  roles: { select: { roleCode: true, scope: true, role: { select: { permissions: { select: { permissionCode: true } } } } } },
  permissionOverrides: { select: { permissionCode: true, effect: true, scopeId: true, startsAt: true, expiresAt: true } },
 }

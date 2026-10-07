@@ -58,6 +58,7 @@ try{for(const [width,height,locale] of [[1376,1032,'th'],[1440,900,'en'],[834,90
  const positions=await boxes();await page.locator('.workspace-help').click();await page.getByRole('dialog').waitFor()
  await page.locator('dialog .dialog-content').evaluate(el=>{const filler=document.createElement('div');filler.style.height='1200px';filler.textContent='Dialog scroll fixture';el.append(filler)})
  const dialog=await page.locator('dialog .dialog-content').boundingBox();await wheel(dialog.x+dialog.width/2,dialog.y+50,450)
+ await page.waitForFunction(()=>document.querySelector('dialog .dialog-content')?.scrollTop>50)
  assert.ok(await page.locator('dialog .dialog-content').evaluate(el=>el.scrollTop>50),'Dialog owns its scroll')
  await wheel(5,height-20,800);const locked=await boxes();assert.deepEqual(locked.main,positions.main);assert.deepEqual(locked.header,positions.header);assert.equal(locked.mainY,positions.mainY);assert.equal(locked.sidebarY,positions.sidebarY);assert.equal(locked.windowY,0)
  await page.keyboard.press('Escape');await page.getByRole('dialog').waitFor({state:'detached'})

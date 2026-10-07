@@ -1,0 +1,23 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "greenviewtour-public",
+  "main": "src/cloudflare/public-worker.js",
+  "compatibility_date": "2026-09-29",
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": {"enabled": true},
+  "vars": {
+    "APP_ENV": "production",
+    "PRODUCTION_ENABLED": "false",
+    "PUBLIC_ORIGIN": "https://greenviewtour.com",
+    "PUBLIC_ALIAS_ORIGIN": "https://www.greenviewtour.com",
+    "BACKOFFICE_ORIGIN": "https://backoffice.greenviewtour.com"
+  },
+  "services": [{"binding": "API", "service": "greenviewtour-api"}],
+  "assets": {
+    "directory": "../frontend/public-web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  }
+}

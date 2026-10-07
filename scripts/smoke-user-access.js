@@ -10,6 +10,7 @@ try {
  const user={id:'00000000-0000-4000-8000-000000000001',displayName:'Manager',email:'manager@example.invalid',status:'ACTIVE',roles:[],management:{company:true}}
  const row={id:'00000000-0000-4000-8000-000000000002',displayName:'Booking and Sales',email:'staff@example.invalid',status:'ACTIVE',roles:[{roleCode:'BOOKING',scope:'SELF'}],canConfigureAccess:true}
  let failLoad=true,conflict=true,request,saves=0
+ await page.route(/\/api\/me\/line(?:\?.*)?$/,route=>route.request().method()==='GET'?route.fulfill({json:{status:'UNLINKED',linkedLineProfile:null}}):route.fallback())
  await page.route('**/api/me',route=>route.fulfill({json:{user}}))
  await page.route('**/api/users?*',route=>route.fulfill({json:{users:[row],page:1,total:1,summary:{total:1,verified:1,signed_in:1},checkedAt:new Date().toISOString()}}))
  await page.route('**/api/users/*/access',async route=>{

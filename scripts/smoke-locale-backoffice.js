@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict'
 import {chromium} from 'playwright'
 import {mkdir} from 'node:fs/promises'
+import {fileURLToPath} from 'node:url'
 const screenshots=new URL('../screenshots.local/',import.meta.url)
 await mkdir(screenshots,{recursive:true})
 import {customerCalendar} from '../backend/src/backoffice/dashboard/overview/service.js'
@@ -17,6 +18,7 @@ try {
  const calendar=customerCalendar(sourceRows,'2026-09-21')
  const managementOverview=await managementSummary({tourBooking:{findMany:async()=>sourceRows.map(row=>({...row,code:'B1'}))}},'2026-09-21',customerCalendar)
  await page.route('**/api/auth/login',route=>{loginCalls++; return route.fulfill({status:401,json:{code:'INVALID_CREDENTIALS'}})})
+ await page.route(/\/api\/me\/line(?:\?.*)?$/,route=>route.request().method()==='GET'?route.fulfill({json:{status:'UNLINKED',linkedLineProfile:null}}):route.fallback())
  await page.route('**/api/me',route=>route.fulfill({status:signedIn?200:401,json:signedIn?{user}:{code:'LOGIN_REQUIRED'}}))
  await page.route('**/api/dashboard',route=>{calls++; return route.fulfill({json:{today:'2026-09-21',timezone:'Asia/Bangkok',generatedAt:'2026-09-21T03:00:00Z',scope:'Company',calendar,managementOverview,widgets:[{id:"maintenance",title:"Maintenance jobs",href:"/company/maintenance",scope:"Company",pending:7,today:2,overdue:3,review:1,detail:"Unfinished records; review counts completed work awaiting acceptance."}]}})})
  async function switchLanguage(locale) {
@@ -80,14 +82,14 @@ try {
   assert.equal(await page.getByRole('menuitemradio',{name:'EN English'}).evaluate(el=>el===document.activeElement),true)
   await page.keyboard.press('Escape')
   assert.equal(await page.locator('.account-menu button').evaluate(el=>el===document.activeElement),true)
-  await page.screenshot({path:new URL(`locale-backoffice-${width}.png`,screenshots).pathname,fullPage:true})
+  await page.screenshot({path:fileURLToPath(new URL(`locale-backoffice-${width}.png`,screenshots)),fullPage:true})
  }
  await page.setViewportSize({width:320,height:400})
  await page.locator('.account-menu .dropdown-anchor > button').click()
  await page.keyboard.press('End')
  const focusedBounds=await page.locator(':focus').boundingBox(), popupBounds=await page.getByRole('menu').boundingBox()
  assert.ok(focusedBounds.y>=popupBounds.y && focusedBounds.y+focusedBounds.height<=popupBounds.y+popupBounds.height,'Keyboard action stays visible in short User Info')
- await page.screenshot({path:new URL('userinfo-backoffice-short.png',screenshots).pathname,fullPage:true})
+ await page.screenshot({path:fileURLToPath(new URL('userinfo-backoffice-short.png',screenshots)),fullPage:true})
  await page.keyboard.press('Escape')
  await page.reload()
  await page.getByRole('heading',{name:'ภาพรวมผู้จัดการทั่วไป / General Manager Dashboard'}).waitFor()

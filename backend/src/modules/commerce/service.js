@@ -1,3 +1,5 @@
+import {safeLineId,safeInstagramUrl,normalizePhone} from '../../../../packages/contracts/contact.js'
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {capacityDemandRows} from '../operations/capacity-read.js'
 import {requestListSelect,customerDirectorySelect,requestListDetails,memberRequestSnapshots} from './read-models.js'
 import {assessBookingCapacity,selections} from '../operations/capacity-core.js'
@@ -5,13 +7,18 @@ import {holdRequestCapacity,releaseRequestCapacity} from '../operations/capacity
 import { formatAddress, safeMapUrl, validateAddress } from '../../../../packages/contracts/address.js'
 import {demoTourEnabled} from './demo-checkout.js'
 import { programBookingPlan } from '../operations/booking-plan.js'
-import { saveBooking, bookingStatus, amendBookingDetails } from '../operations/bookings.js'
+import { saveBooking, bookingStatus, getBookingPriceReview, amendBookingDetails } from '../operations/bookings.js'
 import { bookingQuote } from '../../../../packages/contracts/booking-plan.js'
 import { canReadCustomers, effectiveAccess } from '../../../../packages/contracts/access.js'
 import { validateEvidence } from '../evidence/service.js'
 import { randomUUID } from 'node:crypto'
 import { isoDay, saleDateAllowed, promotionAllowed, promotionUnits, cents, thailandDay } from '../../../../packages/contracts/commerce.js'
 import { authorize, fail, uuid, int, string, hash, keys } from '../operations/common.js'
+import {readTransaction} from '../../platform/database/read-transaction.js'
+import {isD1Client} from '../../platform/database/d1-runtime.js'
+import {d1AtomicBatch,d1Date} from '../../platform/database/d1-atomic.js'
+import {d1FileStoreFor,readD1File} from '../../platform/files/bound-store.js'
+import {fileObjectKey} from '../../platform/files/keys.js'
 
 const publicContentSelect={locale:true,name:true,summary:true,introduction:true,longDescription:true,departureTimes:true,childPolicy:true,cancellationTerms:true,bookingCutoff:true,meals:true,fees:true,inclusions:true,exclusions:true,preparationNotes:true,specialConditions:true,suitableFor:true,meetingPoint:true,weatherNotes:true,seoTitle:true,metaDescription:true,ogTitle:true,ogDescription:true,contentReviewedAt:true}
 const publicMediaSelect={id:true,sortOrder:true,kind:true,url:true,altTh:true,altEn:true,captionTh:true,captionEn:true}
@@ -48,10 +55,10 @@ export async function publicCatalog(db,params,now=new Date()) {
 }
 // Explicit publication boundary: company banking, tax and internal metadata stay private.
 export async function publicCompany(db) {
- const row=await db.companySettings.findFirst({select:{name:true,address:true,phone:true,email:true,houseNumber:true,moo:true,villageName:true,subdistrict:true,district:true,province:true,postalCode:true,mapUrl:true,latitude:true,longitude:true}})
+ const row=await db.companySettings.findFirst({select:{name:true,address:true,phone:true,email:true,lineId:true,instagramUrl:true,houseNumber:true,moo:true,villageName:true,subdistrict:true,district:true,province:true,postalCode:true,mapUrl:true,latitude:true,longitude:true}})
  if(!row)return {company:null}
  const invalid=validateAddress(row),coordinates=row.latitude&&row.longitude&&!invalid.latitude&&!invalid.longitude
- return {company:{name:row.name,address:formatAddress(row),phone:row.phone??null,email:row.email??null,mapUrl:safeMapUrl(row.mapUrl),latitude:coordinates?row.latitude:null,longitude:coordinates?row.longitude:null}}
+ return {company:{name:row.name,address:formatAddress(row),phone:/^\+?\d{7,15}$/.test(normalizePhone(row.phone))?normalizePhone(row.phone):null,email:typeof row.email==='string'&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)?row.email:null,lineId:safeLineId(row.lineId),instagramUrl:safeInstagramUrl(row.instagramUrl),mapUrl:safeMapUrl(row.mapUrl),latitude:coordinates?row.latitude:null,longitude:coordinates?row.longitude:null}}
 }
 export async function publicPopups(db,now=new Date()) {
  const day=new Date(thailandDay(now)+'T00:00:00Z')
@@ -82,7 +89,7 @@ export async function saveCustomerProfile(db,user,input) {
  return {customer:await customerFor(db,user)}
 }
 export async function memberRequests(db,user,params) {
- return typeof db.$transaction==='function'?db.$transaction(tx=>readMemberRequests(tx,user,params),{isolationLevel:'RepeatableRead',timeout:30000}):readMemberRequests(db,user,params)
+ return readTransaction(db,tx=>readMemberRequests(tx,user,params),{isolationLevel:'RepeatableRead',timeout:30000})
 }
 async function readMemberRequests(db,user,params) {
  const customer=await customerFor(db,user),page=int(params.get('page')||1,1,100000),where={customerId:customer.id}
@@ -133,7 +140,7 @@ export async function quoteRequest(tx,input,now=new Date(),excludeRequestId=null
 export async function submitCustomerRequest(db,user,input,now=new Date()) {
  uuid(input.id)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const customer=await customerFor(tx,user),requestHash=hash(input)
   const prior=await tx.customerRequest.findUnique({where:{id:input.id}})
   if(prior){if(prior.customerId!==customer.id||prior.requestHash!==requestHash)fail('COMMAND_CONFLICT',409);return {id:prior.id,status:prior.status}}
@@ -153,7 +160,7 @@ export async function submitCustomerRequest(db,user,input,now=new Date()) {
  })
 }
 export async function listCustomers(db,actorId,params) {
- if(params.get('view')==='list'||params.get('requestId'))return db.$transaction(tx=>readCustomers(tx,actorId,params),{isolationLevel:'RepeatableRead',timeout:15000})
+ if(params.get('view')==='list'||params.get('requestId'))return readTransaction(db,tx=>readCustomers(tx,actorId,params),{isolationLevel:'RepeatableRead',timeout:15000})
  return readCustomers(db,actorId,params)
 }
 async function readCustomers(db,actorId,params) {
@@ -174,7 +181,7 @@ export async function commandCustomerRequest(db,actorId,input) {
  uuid(input.id);uuid(input.requestId);int(input.version)
  if(!['ACCEPT','REJECT','VERIFY_PAYMENT','RETURN_PROOF','PROPOSE_DATE'].includes(input.action))fail('INVALID_ACTION',400)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const {actor}=await authorize(tx,actorId,'customer')
   const requestHash=hash({...input,actorId}),prior=await tx.operationCommand.findUnique({where:{id:input.id}})
   if(prior){if(prior.requestHash!==requestHash)fail('COMMAND_CONFLICT');return prior.result}
@@ -189,6 +196,8 @@ export async function commandCustomerRequest(db,actorId,input) {
    await releaseRequestCapacity(tx,row.id)
    status='REJECTED'
   }else if(input.action==='ACCEPT'){
+   const priceChoice=input.priceConfirmation
+   if(priceChoice?.confirmed!==true||priceChoice.choice!=='KEEP_STORED'||priceChoice.serviceDate!==row.serviceDate.toISOString().slice(0,10)||priceChoice.total!==row.snapshot.packageTotal)fail('PRICE_CONFIRMATION_REQUIRED',400)
    if(!['REQUESTED','WAITING_TEAM'].includes(row.status)||row.bookingId)fail('BOOKING_LOCKED')
    const customer=await tx.customerProfile.findUnique({where:{id:row.customerId}})
    if(customer?.status!=='ACTIVE')fail('CUSTOMER_UNAVAILABLE',409)
@@ -214,7 +223,8 @@ export async function commandCustomerRequest(db,actorId,input) {
    await tx.tourBooking.update({where:{id:bookingId},data:{adultPrice:row.snapshot.adultPrice,childPrice:row.snapshot.childPrice,programSnapshot:{...book.programSnapshot,customerId:row.customerId,customerRequestId:row.id,priceSource:{kind:'DIRECT',promotion:row.snapshot.promotion},commerceTerms:row.snapshot.terms}}})
    const total=bookingQuote({...book,adultPrice:row.snapshot.adultPrice,childPrice:row.snapshot.childPrice}).total
    if(total===null||total!==row.snapshot.packageTotal)fail('PRICE_CHANGED_REVIEW_REQUIRED',409)
-   const confirmed=await bookingStatus(nested,actorId,{id:randomUUID(),bookingId,version:book.version,action:'CONFIRM'})
+   const {review}=await getBookingPriceReview(nested,actorId,bookingId)
+   const confirmed=await bookingStatus(nested,actorId,{id:randomUUID(),bookingId,version:book.version,action:'CONFIRM',priceConfirmation:{confirmed:true,choice:'KEEP_STORED',serviceDate:review.serviceDate,reviewToken:review.reviewToken}})
    if(!confirmed.ok)fail('BOAT_CAPACITY_REVIEW_REQUIRED')
    await releaseRequestCapacity(tx,row.id)
    snapshot={...snapshot,capacitySelections:availability.selections,capacityAvailability:availability,confirmedTotal:total,bookingCode:book.code}
@@ -242,10 +252,50 @@ export async function commandCustomerRequest(db,actorId,input) {
   return result
  })
 }
+async function uploadCustomerProofD1(db,user,input,data,requestHash){
+ const customer=await customerFor(db,user),row=await db.customerRequest.findUnique({where:{id:input.targetId}})
+ if(!row||row.customerId!==customer.id)fail('NOT_FOUND',404)
+ const old=await db.evidenceAttachment.findUnique({where:{id:input.id}})
+ if(old){if(old.requestHash!==requestHash||old.uploadedBy!==user.id||old.sha256!==data.sha256)fail('COMMAND_CONFLICT');return {ok:true,status:'PAYMENT_REVIEW'}}
+ if(!['AWAITING_PAYMENT','PAYMENT_REVIEW'].includes(row.status))fail('BOOKING_LOCKED')
+ const booking=row.bookingId?await db.tourBooking.findUnique({where:{id:row.bookingId},select:{status:true}}):null
+ if(booking?.status!=='CONFIRMED')fail('BOOKING_LOCKED')
+ if(await db.evidenceAttachment.count({where:{targetKind:'CUSTOMER_REQUEST',targetId:row.id}})>=10)fail('TOO_MANY_DOCUMENTS',409)
+ const store=d1FileStoreFor(db);if(!store)throw new Error('R2_BUCKET_REQUIRED')
+ const objectKey=fileObjectKey('evidenceAttachment',input.id)
+ const object=await store.putIfAbsent(objectKey,data.content,{mimeType:data.mimeType,sha256:data.sha256})
+ if(!object.created&&(object.size!==data.size||object.mimeType!==data.mimeType||object.sha256!==data.sha256))fail('COMMAND_CONFLICT')
+ const stamp=d1Date(new Date()),auditId=randomUUID()
+ const customerGuard='EXISTS (SELECT 1 FROM "CustomerProfile" WHERE "id"=? AND "authUserId"=? AND "status"=\'ACTIVE\')'
+ try{
+  const results=await d1AtomicBatch(db,[
+   {
+    sql:`INSERT INTO "EvidenceAttachment" ("id","createdAt","targetKind","targetId","uploadedBy","filename","mimeType","size","sha256","objectKey","note","documentNumber","category","requestHash") SELECT ?,?,'CUSTOMER_REQUEST',?,?,?,?,?,?,?,?,?,'PAYMENT',? WHERE NOT EXISTS (SELECT 1 FROM "EvidenceAttachment" WHERE "id"=?) AND ${customerGuard} AND EXISTS (SELECT 1 FROM "CustomerRequest" r JOIN "TourBooking" b ON b."id"=r."bookingId" WHERE r."id"=? AND r."customerId"=? AND r."status" IN ('AWAITING_PAYMENT','PAYMENT_REVIEW') AND b."status"='CONFIRMED') AND (SELECT COUNT(*) FROM "EvidenceAttachment" WHERE "targetKind"='CUSTOMER_REQUEST' AND "targetId"=?)<10`,
+    params:[input.id,stamp,row.id,user.id,data.filename,data.mimeType,data.size,data.sha256,objectKey,data.note,data.documentNumber,requestHash,input.id,customer.id,user.id,row.id,customer.id,row.id],
+   },
+   {
+    sql:`UPDATE "CustomerRequest" SET "status"='PAYMENT_REVIEW',"version"="version"+1,"updatedAt"=? WHERE "id"=? AND "customerId"=? AND "status" IN ('AWAITING_PAYMENT','PAYMENT_REVIEW') AND ${customerGuard} AND EXISTS (SELECT 1 FROM "EvidenceAttachment" WHERE "id"=? AND "createdAt"=? AND "requestHash"=? AND "uploadedBy"=?)`,
+    params:[stamp,row.id,customer.id,customer.id,user.id,input.id,stamp,requestHash,user.id],
+   },
+   {
+    sql:'INSERT INTO "AuditEvent" ("id","actorId","action","targetId","createdAt","details") VALUES (CASE WHEN EXISTS (SELECT 1 FROM "CustomerRequest" WHERE "id"=? AND "updatedAt"=? AND "status"=\'PAYMENT_REVIEW\') AND EXISTS (SELECT 1 FROM "EvidenceAttachment" WHERE "id"=? AND "createdAt"=?) THEN ? ELSE NULL END,?,?,?,?,?)',
+    params:[row.id,stamp,input.id,stamp,auditId,user.id,'customer-proof.uploaded',row.id,stamp,JSON.stringify({attachmentId:input.id})],
+   },
+  ])
+  if(results.some(result=>(result?.meta?.changes||0)!==1))throw new Error('D1_CUSTOMER_PROOF_ATOMIC_WRITE_FAILED')
+ }catch(error){
+  const current=await db.evidenceAttachment.findUnique({where:{id:input.id}})
+  if(current?.requestHash===requestHash&&current.uploadedBy===user.id&&current.sha256===data.sha256)return {ok:true,status:'PAYMENT_REVIEW'}
+  await customerFor(db,user)
+  throw error
+ }
+ return {ok:true,status:'PAYMENT_REVIEW'}
+}
 export async function uploadCustomerProof(db,user,input){
  const data=validateEvidence({...input,targetKind:'CUSTOMER_REQUEST',category:'PAYMENT'}),requestHash=hash(input)
+ if(isD1Client(db))return uploadCustomerProofD1(db,user,input,data,requestHash)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const customer=await customerFor(tx,user),row=await tx.customerRequest.findUnique({where:{id:input.targetId}})
   if(!row||row.customerId!==customer.id)fail('NOT_FOUND',404)
   const old=await tx.evidenceAttachment.findUnique({where:{id:input.id}})
@@ -256,16 +306,41 @@ export async function uploadCustomerProof(db,user,input){
   if(await tx.evidenceAttachment.count({where:{targetKind:'CUSTOMER_REQUEST',targetId:row.id}})>=10)fail('TOO_MANY_DOCUMENTS',409)
   await tx.evidenceAttachment.create({data:{...data,id:input.id,targetKind:'CUSTOMER_REQUEST',targetId:row.id,uploadedBy:user.id,requestHash}})
   await tx.customerRequest.update({where:{id:row.id},data:{status:'PAYMENT_REVIEW',version:{increment:1}}})
+  await tx.auditEvent.create({data:{actorId:user.id,targetId:row.id,action:'customer-proof.uploaded',details:{attachmentId:input.id}}})
   return {ok:true,status:'PAYMENT_REVIEW'}
  })
 }
 
+async function d1WebsiteImage(db,row){
+ const file=await readD1File(db,row.objectKey,{size:row.size,sha256:row.sha256})
+ return {...row,content:file.body}
+}
 export async function saveWebsiteImage(db,actorId,input){
- await authorize(db,actorId)
+ const {actor}=await authorize(db,actorId)
  const data=validateEvidence({...input,targetKind:'BOOKING',targetId:input.id,category:'OTHER',note:'',documentNumber:''})
  if(!['image/jpeg','image/png'].includes(data.mimeType))fail('INVALID_EVIDENCE_FILE',400)
+ if(isD1Client(db)){
+  const old=await db.websiteImage.findUnique({where:{id:input.id}})
+  if(old){if(old.sha256!==data.sha256||old.uploadedBy!==actorId)fail('COMMAND_CONFLICT');return {url:'/api/public/images/'+input.id}}
+  const store=d1FileStoreFor(db);if(!store)throw new Error('R2_BUCKET_REQUIRED')
+  const objectKey=fileObjectKey('websiteImage',input.id)
+  const object=await store.putIfAbsent(objectKey,data.content,{mimeType:data.mimeType,sha256:data.sha256})
+  if(!object.created&&(object.size!==data.size||object.mimeType!==data.mimeType||object.sha256!==data.sha256))fail('COMMAND_CONFLICT')
+  const [insert]=await d1AtomicBatch(db,[{
+   sql:'INSERT INTO "WebsiteImage" ("id","filename","mimeType","objectKey","size","sha256","uploadedBy") SELECT ?,?,?,?,?,?,? WHERE NOT EXISTS (SELECT 1 FROM "WebsiteImage" WHERE "id"=?) AND EXISTS (SELECT 1 FROM "UserProfile" WHERE "id"=? AND "accessVersion"=? AND "status"=\'ACTIVE\')',
+   params:[input.id,data.filename,data.mimeType,objectKey,data.size,data.sha256,actorId,input.id,actorId,actor.accessVersion],
+  }])
+  if((insert?.meta?.changes||0)!==1){
+   const current=await db.websiteImage.findUnique({where:{id:input.id}})
+   if(current?.sha256===data.sha256&&current.uploadedBy===actorId)return {url:'/api/public/images/'+input.id}
+   // Keep a matching orphan object on a failed database guard. Deleting here could race a concurrent successful insert.
+   await authorize(db,actorId)
+   fail('COMMAND_CONFLICT')
+  }
+  return {url:'/api/public/images/'+input.id}
+ }
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;await authorize(tx,actorId)
+  await acquireWriteLock(tx);await authorize(tx,actorId)
   const old=await tx.websiteImage.findUnique({where:{id:input.id}})
   if(old&&(old.sha256!==data.sha256||old.uploadedBy!==actorId))fail('COMMAND_CONFLICT')
   if(!old)await tx.websiteImage.create({data:{id:input.id,filename:data.filename,mimeType:data.mimeType,content:data.content,size:data.size,sha256:data.sha256,uploadedBy:actorId}})
@@ -279,7 +354,7 @@ export async function websiteImage(db,id){
  const referenced=await db.tourProgram.count({where:{status:'ACTIVE',publicStatus:'PUBLISHED',imageUrls:{contains:path}}})||await db.websitePopup.count({where:{status:'ACTIVE',OR:[{imageUrl:path},{mobileImageUrl:path}]}})
  if(!referenced)fail('NOT_FOUND',404)
  const image=await db.websiteImage.findUnique({where:{id}});if(!image)fail('NOT_FOUND',404)
- return image
+ return isD1Client(db)?d1WebsiteImage(db,image):image
 }
 
 export async function saveCustomer(db,actorId,input){
@@ -288,7 +363,7 @@ export async function saveCustomer(db,actorId,input){
  const data={displayName:string(input.displayName,200),phone:string(input.phone||'',32,false),email:string(input.email||'',254,false),status:input.status}
  if(data.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email))fail('INVALID_EMAIL',400)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;await authorize(tx,actorId,'customer')
+  await acquireWriteLock(tx);await authorize(tx,actorId,'customer')
   const old=await tx.customerProfile.findUnique({where:{id:input.id}})
   if(old?.authUserId&&data.email!==old.email)fail('CUSTOMER_EMAIL_LOCKED',409)
   if(old&&input.version===0&&old.version===1&&!old.authUserId&&Object.entries(data).every(([key,value])=>old[key]===value))return {customer:old}
@@ -311,6 +386,11 @@ export async function customerDocument(db,user,id){
  if(!file||file.targetKind!=='CUSTOMER_REQUEST')fail('NOT_FOUND',404)
  const request=await db.customerRequest.findUnique({where:{id:file.targetId},select:{customerId:true}})
  if(!request||request.customerId!==customer.id)fail('NOT_FOUND',404)
+ if(isD1Client(db)){
+  const stored=await db.evidenceAttachment.findUnique({where:{id},select:{filename:true,mimeType:true,size:true,sha256:true,objectKey:true}})
+  const object=await readD1File(db,stored.objectKey,{size:stored.size,sha256:stored.sha256})
+  return {filename:stored.filename,mimeType:stored.mimeType,size:stored.size,content:object.body}
+ }
  return db.evidenceAttachment.findUnique({where:{id},select:{filename:true,mimeType:true,size:true,content:true}})
 }
 
@@ -329,7 +409,7 @@ export function requestDisplayStatus(row,now=new Date()){
 export async function cancelCustomerRequest(db,user,input){
  uuid(input.requestId);int(input.version)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const customer=await customerFor(tx,user),row=await tx.customerRequest.findUnique({where:{id:input.requestId}})
   if(!row||row.customerId!==customer.id)fail('NOT_FOUND',404)
   if(row.status==='CANCELLED'&&!row.bookingId)return {ok:true}
@@ -344,7 +424,7 @@ export async function cancelCustomerRequest(db,user,input){
 export async function previewWebsiteImage(db,actorId,id){
  await authorize(db,actorId);uuid(id)
  const file=await db.websiteImage.findUnique({where:{id}});if(!file)fail('NOT_FOUND',404)
- return file
+ return isD1Client(db)?d1WebsiteImage(db,file):file
 }
 
 function promotionUsageWhere(promotionId,now){return {promotionId,status:{notIn:['REJECTED','CANCELLED']},AND:[{OR:[{status:{notIn:['REQUESTED','WAITING_TEAM','DATE_PROPOSED']}},{holdUntil:null},{holdUntil:{gt:now}}]},{OR:[{bookingId:null},{booking:{status:{not:'CANCELLED'}}}]}]}}
@@ -356,7 +436,7 @@ export async function customerCapacity(tx,input,snapshot,now=new Date(),excludeR
  return assessBookingCapacity(tx,booking,{now,excludeRequestId})
 }
 export async function publicQuoteAvailability(db,input,now=new Date()){
- return db.$transaction(async tx=>{
+ return readTransaction(db,async tx=>{
   const quote=await quoteRequest(tx,input,now)
   const availability=await customerCapacity(tx,input,quote,now)
   return {...quote,quoteKey:hash(quote),availability}
@@ -364,7 +444,7 @@ export async function publicQuoteAvailability(db,input,now=new Date()){
 }
 export async function staffCustomerCapacity(db,actorId,params){
  await authorize(db,actorId,'customer')
- return db.$transaction(async tx=>{
+ return readTransaction(db,async tx=>{
   await authorize(tx,actorId,'customer')
   const row=await tx.customerRequest.findUnique({where:{id:uuid(params.get('requestId'))}})
   if(!row)fail('NOT_FOUND',404)
@@ -392,7 +472,7 @@ export async function answerCustomerDate(db,user,input,now=new Date()){
  uuid(input.id);uuid(input.requestId);int(input.version)
  if(!['ACCEPT','DECLINE'].includes(input.answer))fail('INVALID_ACTION',400)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const customer=await customerFor(tx,user),row=await tx.customerRequest.findUnique({where:{id:input.requestId}})
   if(!row||row.customerId!==customer.id)fail('NOT_FOUND',404)
   const requestHash=hash({...input,customerId:customer.id}),prior=await tx.operationCommand.findUnique({where:{id:input.id}})

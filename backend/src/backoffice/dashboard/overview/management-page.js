@@ -1,3 +1,4 @@
+import {reportSets} from '../../../platform/database/sql-dialect.js'
 import {Prisma} from '@prisma/client'
 import {dateOnly} from '../../../modules/operations/common.js'
 import {reportingSeason} from './season-summary.js'
@@ -8,7 +9,7 @@ const programId=Prisma.sql`COALESCE(NULLIF(b."programSnapshot"->>'tourId',''),t.
 const programName=Prisma.sql`CASE WHEN ${programId}='standalone' THEN 'Standalone services' ELSE COALESCE(NULLIF(b."programSnapshot"->>'name',''),NULLIF(t.name,''),'Tour program') END`
 const key=value=>new Date(value).toISOString().slice(0,10)
 // Called only after dashboard company + both Booking permissions pass. Aggregate
-// all matching bookings in PostgreSQL; only ten daily preview identities leave DB.
+// all matching bookings in the database; only ten daily preview identities leave DB.
 export async function managementPageSummary(tx,today){
  const end=addDays(today,30),monthStart=dateOnly(today);monthStart.setUTCDate(1);monthStart.setUTCMonth(monthStart.getUTCMonth()-5)
  const fromMonth=key(monthStart),season=reportingSeason(today)
@@ -16,7 +17,7 @@ export async function managementPageSummary(tx,today){
  const previewQuery=Prisma.sql`WITH ranked AS (SELECT b.id,b.code,b.status,${arrival} AS day,${programName} AS program,b.adults+b.children AS pax,ROW_NUMBER() OVER(PARTITION BY ${arrival} ORDER BY b.code,b.id) AS n FROM app_private."TourBooking" b LEFT JOIN app_private."OperationTrip" t ON t.id=b."tripId" WHERE b.status IN ('DRAFT','CONFIRMED','COMPLETED','CANCELLED') AND ${range(today,addDays(today,2))}) SELECT id,code,status,day,program,pax FROM ranked WHERE n<=5 ORDER BY day,code,id`
  const monthsQuery=Prisma.sql`SELECT to_char(${arrival},'YYYY-MM') AS month,COUNT(*) AS bookings,SUM(b.adults+b.children) AS pax FROM app_private."TourBooking" b WHERE b.status IN ('CONFIRMED','COMPLETED') AND ${range(fromMonth,addDays(today,1))} GROUP BY month`
  const agentsQuery=Prisma.sql`SELECT COALESCE(a.id::text,'direct') AS id,COALESCE(a.name,'Direct / no agent') AS name,COUNT(*) AS bookings,SUM(b.adults+b.children) AS pax FROM app_private."TourBooking" b LEFT JOIN app_private."BusinessPartner" a ON a.id=b."agentId" WHERE b.status IN ('CONFIRMED','COMPLETED') AND ${range(season.from,addDays(season.through,1))} GROUP BY a.id,a.name`
- const [{grouped,preview,months,agents}]=await tx.$queryRaw(Prisma.sql`SELECT (SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${groupedQuery}) x) AS grouped,(SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${previewQuery}) x) AS preview,(SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${monthsQuery}) x) AS months,(SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${agentsQuery}) x) AS agents`)
+ const {grouped,preview,months,agents}=await reportSets(tx,Prisma.sql`SELECT (SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${groupedQuery}) x) AS grouped,(SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${previewQuery}) x) AS preview,(SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${monthsQuery}) x) AS months,(SELECT COALESCE(jsonb_agg(x),'[]'::jsonb) FROM (${agentsQuery}) x) AS agents`,{grouped:groupedQuery,preview:previewQuery,months:monthsQuery,agents:agentsQuery})
  const calendar30=Array.from({length:30},(_,i)=>({date:addDays(today,i),bookings:0,pax:0,programs:[]}))
  const byDate=new Map(calendar30.map(day=>[day.date,day]))
  for(const row of grouped){

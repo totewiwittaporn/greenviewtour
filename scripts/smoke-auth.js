@@ -15,6 +15,7 @@ try {
   await page.screenshot({ path: fileURLToPath(new URL('login-desktop.png', output)), fullPage: true })
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await page.getByText('Enter a valid email address.', { exact: true }).waitFor()
+  await page.waitForFunction(input => input === document.activeElement, await page.getByLabel('Email address', { exact: true }).elementHandle())
   assert.equal(await page.getByLabel('Email address', { exact: true }).evaluate(input => input === document.activeElement), true)
   await page.getByLabel('Password', { exact: true }).fill('fixture-password-only')
   await page.getByRole('button', { name: 'Show password', exact: true }).click()
@@ -62,6 +63,16 @@ try {
   await page.getByRole('status').waitFor()
   await page.goto(((process.env.GREENVIEW_TEST_ORIGIN || 'http://localhost:5174') + '/reset-password'))
   await page.getByText('Open the password reset link from your email to continue.').waitFor()
+  let exchanges = 0
+  await page.route('**/api/auth/recovery-session', route => {
+    exchanges++
+    assert.deepEqual(route.request().postDataJSON(), {token:'fixture-one-time-recovery'})
+    return route.fulfill({json:{ok:true}})
+  })
+  await page.goto(`${process.env.GREENVIEW_TEST_ORIGIN || 'http://localhost:5174'}/reset-password#recovery=fixture-one-time-recovery`)
+  await page.getByLabel('New password', { exact: true }).waitFor()
+  assert.equal(await page.evaluate(() => location.hash), '')
+  assert.equal(exchanges, 1)
   await page.route('**/api/auth/recovery-status', route => route.fulfill({ json: { ok: true } }))
   await page.reload()
   await page.getByLabel('New password', { exact: true }).waitFor()
@@ -70,6 +81,16 @@ try {
   await page.route('**/api/auth/reset-password', route => route.fulfill({ json: { ok: true } }))
   await page.getByRole('button', { name: 'Save password', exact: true }).click()
   await page.getByText('Password updated', { exact: true }).waitFor()
+  let verifications = 0
+  await page.route('**/api/auth/verify-email', route => {
+    verifications++
+    assert.deepEqual(route.request().postDataJSON(), {token:'fixture-email-verification'})
+    return route.fulfill({json:{ok:true}})
+  })
+  await page.goto(`${process.env.GREENVIEW_TEST_ORIGIN || 'http://localhost:5174'}/login#verify=fixture-email-verification`)
+  await page.getByRole('status').getByText('Email verified. You can now sign in.', {exact:true}).waitFor()
+  assert.equal(await page.evaluate(() => location.hash), '')
+  assert.equal(verifications, 1)
   for (const route of ['login', 'register']) {
     await page.goto(`${process.env.GREENVIEW_TEST_ORIGIN || 'http://localhost:5174'}/${route}`)
     await page.setViewportSize({ width: 390, height: 844 })

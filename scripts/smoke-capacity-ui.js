@@ -24,7 +24,8 @@ const vanRow={...poolRow,id:id(15),code:'QA-VAN-WINDOW',name:'QA vehicle readine
  van:{actualPassengers:70,weightedUnits:74,overnightFactor:1.2,minimumAvailableVehicles:8,availableVehiclesUsed:7,extraVehicles:1,referenceVehicleCapacity:10,additionalUnitsNeeded:5,provisional:true}}
 async function fixture(route){
  const request=route.request(),url=new URL(request.url()),path=url.pathname,method=request.method(),body=method==='POST'?request.postDataJSON():null
- if(path==='/api/me')return route.fulfill({json:{user}})
+ if(path==='/api/me/line'&&method==='GET')return route.fulfill({json:{status:'UNLINKED',linkedLineProfile:null}})
+   if(path==='/api/me')return route.fulfill({json:{user}})
  if(path==='/api/auth/recovery-status')return route.fulfill({status:403,json:{code:'RECOVERY_REQUIRED'}})
  if(path==='/api/member/profile')return route.fulfill({json:{customer,recovery:false}})
  if(path==='/api/public/tours')return route.fulfill({json:{rows:[tour],page:1,total:1}})
@@ -53,7 +54,7 @@ async function fixture(route){
 async function makePage(origin){const page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>errors.push(e.message));page.on('console',message=>{if(message.type()==='error'&&!/net::ERR_FAILED|status of 403/.test(message.text()))consoleErrors.push(message.text())});await page.route(/^https:/,route=>route.abort());await page.route('**/api/**',fixture);await page.goto(origin);await page.locator('h1').first().waitFor();await page.evaluate(()=>window.dispatchEvent(new CustomEvent('greenview:locale',{detail:'en'})));await page.waitForFunction(()=>document.documentElement.lang==='en');return page}
 async function capture(page,name){await page.evaluate(()=>Promise.all(document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).map(a=>a.finished.catch(()=>{}))));assert.equal(await page.locator('vite-error-overlay').count(),0);assert.ok((await page.locator('body').innerText()).length>100);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,name+' overflow');await page.screenshot({path:output+'/'+name+'.png',fullPage:true})}
 try{
- for(const [app,port] of [['backoffice',5284],['public-web',5283],['member',5285]]){const root=fileURLToPath(new URL('../frontend/'+app+'/',import.meta.url)),vite=await createViteServer({root,configFile:root+'vite.config.js',server:{port,strictPort:true,watch:{ignored:['**/backend/**']}}});await vite.listen();servers.push(vite)}
+ for(const [app,port] of [['backoffice',5284],['public-web',5283],['member',5285]]){const root=fileURLToPath(new URL('../frontend/'+app+'/',import.meta.url)),vite=await createViteServer({root,mode:app==='member'?'member-regression':'development',configFile:root+'vite.config.js',server:{port,strictPort:true,watch:{ignored:['**/backend/**']}}});await vite.listen();servers.push(vite)}
  const staff=await makePage('http://localhost:5284/operations/capacity?date='+date)
  await staff.getByRole('heading',{name:'QA morning readiness · Outbound'}).waitFor();await capture(staff,'capacity-readiness-1440')
  await staff.getByRole('button',{name:'Edit readiness window QA-WINDOW'}).click();await staff.getByRole('menuitem',{name:'Edit readiness window'}).click()
@@ -76,7 +77,7 @@ try{
  await staff.setViewportSize({width:390,height:844});await capture(staff,'capacity-staff-390');assert.equal(await staff.locator('.topbar .reference-brand img').evaluate(img=>img.complete&&img.naturalWidth>0),true)
  const publicPage=await makePage('http://localhost:5283/tours?tour=surin')
  await publicPage.getByLabel('Service date',{exact:true}).fill(date);await publicPage.getByLabel('Adult',{exact:true}).fill('2')
- await publicPage.getByText('Whole group cannot currently be accommodated',{exact:false}).waitFor();const waitingLink=publicPage.getByRole('link',{name:'Ask the team to review',exact:true});assert.match(await waitingLink.getAttribute('href'),/adults=2/);await capture(publicPage,'capacity-public-1440');await publicPage.setViewportSize({width:390,height:844});await capture(publicPage,'capacity-public-390');checks.push('public remaining seats and whole-group fit are distinct')
+ await publicPage.getByText('Whole group cannot currently be accommodated',{exact:false}).waitFor();await publicPage.getByRole('button',{name:'Contact our team',exact:true}).click();const inquiry=await publicPage.getByRole('dialog').getByRole('textbox',{name:'Inquiry message'}).inputValue();assert.match(inquiry,/Programme: QA Surin Day Trip/);assert.match(inquiry,/Adults: 2/);assert.match(inquiry,new RegExp(date));assert.equal(await publicPage.locator('a[href*="5175"],a[href*="member.greenviewtour"]').count(),0);await publicPage.keyboard.press('Escape');await publicPage.getByRole('dialog').waitFor({state:'hidden'});await capture(publicPage,'capacity-public-1440');await publicPage.setViewportSize({width:390,height:844});await capture(publicPage,'capacity-public-390');checks.push('public remaining seats and whole-group fit are distinct')
  const member=await makePage('http://localhost:5285/tours?tour=surin&date='+date+'&adults=2')
  await member.getByText('Whole group cannot currently be accommodated',{exact:false}).waitFor()
  const requestForm=member.locator('form').filter({has:member.getByRole('button',{name:'Ask the team to review',exact:true})})

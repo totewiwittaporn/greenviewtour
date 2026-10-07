@@ -7,7 +7,7 @@ test('public company selects contact data only and constructs a bounded response
  const row={name:'Company',houseNumber:'12',province:'Phang Nga',address:'Legacy',phone:'0123',email:'hello@example.com',mapUrl:'https://maps.app.goo.gl/example',latitude:'8.5',longitude:'98.2',taxId:'private',bankAccountNumber:'private',id:'private',legalName:'private'}
  const result=await publicCompany({companySettings:{findFirst:async({select})=>{selected=Object.keys(select);return row}}})
  for(const key of ['taxId','bankAccountNumber','bankName','bankAccountName','paymentInstructions','id','legalName','version'])assert.ok(!selected.includes(key))
- assert.deepEqual(result,{company:{name:'Company',address:'12, Phang Nga',phone:'0123',email:'hello@example.com',mapUrl:'https://maps.app.goo.gl/example',latitude:'8.5',longitude:'98.2'}})
+ assert.deepEqual(result,{company:{name:'Company',address:'12, Phang Nga',phone:null,email:'hello@example.com',lineId:null,instagramUrl:null,mapUrl:'https://maps.app.goo.gl/example',latitude:'8.5',longitude:'98.2'}})
 })
 test('public company handles unconfigured company, legacy address and invalid map values',async()=>{
  assert.deepEqual(await publicCompany({companySettings:{findFirst:async()=>null}}),{company:null})

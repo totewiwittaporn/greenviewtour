@@ -2,27 +2,17 @@ import {useEffect, useId} from 'react'
 import {useDisclosure} from '../useDisclosure.js'
 import {useLocale} from '../useLocale.js'
 import {LanguageSelector} from '../Locale.jsx'
-import {normalizePublicPath} from '../publicRoutes.js'
+import {normalizePublicPath, publicInfo} from '../publicRoutes.js'
 const local=['localhost','127.0.0.1'].includes(location.hostname)
-const customerLogin=local?'http://localhost:5175/login':'https://member.greenviewtour.com/login'
-const staffLogin=local?'http://localhost:5174/login':import.meta.env.VITE_STAFF_LOGIN_URL
-const links=[['/','หน้าแรก'],['/about','รู้จักเรา'],['/surin-islands','รู้จักเกาะสุรินทร์'],['/tours','โปรแกรมทัวร์']]
+const staffLogin=local?'http://localhost:5174/login':(import.meta.env.VITE_STAFF_LOGIN_URL||'https://backoffice.greenviewtour.com/login')
+const links=[['/','หน้าแรก'],['/tours','โปรแกรมทัวร์'],['/information','ข้อมูลการท่องเที่ยว']]
 function Brand(){
   const {t}=useLocale()
-  return <a className="public-brand" href="/" aria-label={t('Greenview Tour หน้าแรก')}><img src="/images/brand/greenview-logo.png" alt="" width="1508" height="994"/></a>
+  return <a className="public-brand" href="/" aria-label={t('Greenview Tour หน้าแรก')}><img src="/images/brand/greenview-logo.webp" alt="" width="352" height="235"/></a>
 }
 function isCurrent(href){
   const target=new URL(href,location.origin)
-  return target.pathname===normalizePublicPath(location.pathname) && target.hash===location.hash
-}
-function CustomerAccess(){
-  const {t}=useLocale()
-  const {open,setOpen,container,trigger}=useDisclosure()
-  const id=useId()
-  return <div className="public-account" ref={container}>
-    <button ref={trigger} className="public-account-toggle" type="button" aria-label={t('เข้าสู่ระบบ / สมัครสมาชิก')} aria-expanded={open} aria-controls={id} onClick={()=>setOpen(!open)}><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="12" cy="7" r="3.5"/><path d="M5 21v-3a7 7 0 0 1 14 0v3Z"/></svg></button>
-    <div id={id} className={open?'public-account-links is-open':'public-account-links'}><a className="customer-login" href={customerLogin}>{t('เข้าสู่ระบบ')}</a><a className="customer-register" href={`${customerLogin}?mode=register`}>{t('สมัครสมาชิก')}</a></div>
-  </div>
+  return (target.pathname===normalizePublicPath(location.pathname) && target.hash===location.hash) || (href==='/information'&&Boolean(publicInfo(location.pathname)))
 }
 export function SiteHeader(){
   const {t}=useLocale()
@@ -39,7 +29,7 @@ export function SiteHeader(){
     <button ref={trigger} type="button" className="public-menu-toggle" aria-expanded={open} aria-controls={id} aria-label={t('เมนูหลัก')} onClick={()=>setOpen(!open)}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d={open?'M6 6l12 12M18 6L6 18':'M4 6h16M4 12h16M4 18h16'}/></svg></button>
     <div className={open?'public-header-content is-open':'public-header-content'}>
       <nav id={id} className="public-main-nav" aria-label={t('เมนูหลัก')} onClick={event=>{if(event.target.closest('a'))setOpen(false)}}>{links.map(([href,text])=><a key={href} href={href} aria-current={isCurrent(href)?(href.includes('#')?'location':'page'):undefined}>{t(text)}</a>)}</nav>
-      <div className="public-topbar-actions"><LanguageSelector/><CustomerAccess/></div>
+      <div className="public-topbar-actions"><LanguageSelector/></div>
     </div>
   </header>
 }

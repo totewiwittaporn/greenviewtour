@@ -1,0 +1,39 @@
+Greenview Tour — Cloudflare Email Sending integration, 3 October 2026
+
+Confirmed external setup
+- Owner purchased Workers Paid and changed domain nameservers to giancarlo.ns.cloudflare.com and lisa.ns.cloudflare.com.
+- Email Sending activated after owner confirmation. Dashboard: Enabled / DNS Configured.
+- DNS observed: cf-bounce MX/SPF and cf-bounce._domainkey configured; DMARC p=reject. Apex website remains on original172.96.186.243; no application deployment.
+- Owner authorized Wrangler OAuth account/user read, email_sending write and background access. No Worker/database write scopes requested. Credentials remain managed by Wrangler, never copied into code or chat.
+- Owner requested one test to totee.wiwittaporn@gmail.com. Sent exactly one via Wrangler from Greenview Tour <system@greenviewtour.com>, subject Greenview Tour — ทดสอบอีเมลระบบ. CLI returned queued. Subsequently dashboard Total sent1/Delivered1 and the matching message was visibly open in recipient Gmail inbox. Receipt proven for this single message, not thirty/day or application activation.
+- Dashboard daily quota remains -- / --. CLI settings lookup cannot resolve zone with current narrow scopes; no additional access granted to work around it. Actual daily quota remains unverified.
+
+Code changes
+- backend/src/platform/auth/cloudflare/mail.js: validated configured sender, bilingual verification/reset email with token in fragment, structured EMAIL binding, safe failure, no blind retry.
+- runtime.js: BetterAuth verification and reset callbacks use shared adapter. Local still writes LocalMail and never calls remote binding.
+- provider.js: collect messages per transaction attempt and send after successful commit only. Failed/rolled-back attempts never send; commit retries do not duplicate provider calls. Committed real user/invitation records preserved when sending fails.
+- Public recover hides provider delivery failure consistently so existing/unknown accounts have same response; non-email auth operations remain available without mail configuration.
+- backend/test/cloudflare-mail.test.js:19 tests incl30 fake submissions, failed commit, replay, messageId and privacy/safe errors. Fake submissions do not prove live quota.
+- backend/wrangler.production.jsonc.example: AUTH_EMAIL_FROM=system@greenviewtour.com and EMAIL binding restricted to that sender, remote=false. Template remains unbound and hosted guards remain closed.
+
+Verification
+- Final npm run check:quiet PASS:537 backend/60 frontend tests, lint, workflow audit,3builds, Worker dry-run.
+- Initial aggregate reached535backend/60frontend/3builds then failed LOCAL_STATE_BUSY because launcher was active. Verified and stopped only node scripts/dev.js PID55880; later complete aggregate passed after final mail privacy fix.
+- Final detailed log: /var/folders/f2/fqb1xwfs7wngynpm32y47m6m0000gn/T/greenview-check-2026-10-03T06-47-44-272Z.log
+- Targeted tests /private/tmp/greenview-mail-targeted.log
+- Actual copied Auth and browser aggregate final results recorded below at handoff.
+
+Remaining before staff production release
+- Production HTTP/origin/cookie/rate policies and actual D1/R2/application deployment not yet enabled.
+- Existing create-invitation flow still creates a copyable invitation link; this patch connects verification after registration and password reset, not automatic initial invitation email delivery.
+- No real activation/reset token email sent while Production application URLs are not available; no false links sent to staff.
+- Need measured >=30 invitation/onboarding scenario and20 concurrent staff sessions, verified provider quota and real application invitation/verification/recovery acceptance.
+- Deferred mail is memory-only after commit, not durable outbox. Process loss between commit and provider submission requires explicit login/recovery retry. Recovery response means request handled, not delivery proven. No automatic retry of ambiguous transport results.
+- No staff users deleted/restored, no remote DB changes, no payment/member activation, no LINE send, no website deployment. No commit/push.
+
+Official contract: https://developers.cloudflare.com/email-service/api/send-emails/workers-api/
+
+Final handoff verification
+- Actual copied Auth API PASS: .local/auth-api-tests-Yz7HxM (activeDataChanged=false).
+- Full fixture browser aggregate completed exit0: /private/tmp/greenview-mail-browser.log. No live accounts or real writes.
+- Git diff --check PASS. Existing work preserved, no commit/push.

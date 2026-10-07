@@ -611,7 +611,7 @@ model TourBooking {
  version Int @default(1)
  code String @unique @db.VarChar(40)
  name String @db.VarChar(200)
- tripId String @db.Uuid
+ tripId String? @db.Uuid
  adults Int
  children Int
  status String @default("DRAFT") @db.VarChar(30)
@@ -621,7 +621,7 @@ model TourBooking {
  requestHash String @db.Char(64)
  createdAt DateTime @default(now()) @db.Timestamptz(6)
  updatedAt DateTime @updatedAt @db.Timestamptz(6)
- trip OperationTrip @relation(fields:[tripId],references:[id],onDelete:Restrict)
+ trip OperationTrip? @relation(fields:[tripId],references:[id],onDelete:Restrict)
  lines BookingComponent[]
  @@index([tripId,status])
  @@schema("app_private")

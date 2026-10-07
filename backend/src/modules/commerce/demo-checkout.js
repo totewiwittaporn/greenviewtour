@@ -1,6 +1,7 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {requireOpenServiceDays} from '../operations/service-day.js'
 // Local-only, exact retained-fixture allowlist. Never creates a charge or sends LINE.
-import {readFileSync} from 'node:fs'
+import fixture from '../../../../docs/validation/commerce-demo-manifest.json' with {type:'json'}
 import {randomUUID} from 'node:crypto'
 import {createDemoPayment,applyDemoPaymentEvent,demoPaymentNotification} from '../../platform/payments/preparation.js'
 import {pushText} from '../../platform/line/messaging.js'
@@ -8,9 +9,7 @@ import {programBookingPlan,storedJourney} from '../operations/booking-plan.js'
 import {customerFor,customerCapacity} from './service.js'
 import {releaseRequestCapacity} from '../operations/capacity-service.js'
 import {uuid,fail,hash} from '../operations/common.js'
-let fixture=null
-try{fixture=JSON.parse(readFileSync(new URL('../../../../docs/validation/commerce-demo-manifest.json',import.meta.url),'utf8'))}catch{/* Missing fixture disables simulation. */}
-export function demoTourEnabled(id){return process.env.NODE_ENV!=='production'&&fixture?.retained===true&&fixture.tour===id}
+export function demoTourEnabled(id,environment=process.env){return environment.APP_ENV==='local'&&environment.NODE_ENV!=='production'&&fixture?.retained===true&&fixture.tour===id}
 export function assertDemoRequest(row,customerId){
  if(!row||row.customerId!==customerId)fail('NOT_FOUND',404)
  if(!demoTourEnabled(row.tourId))fail('DEMO_ONLY',403)
@@ -19,7 +18,7 @@ export async function demoCheckout(db,user,input,now=new Date()){
  uuid(input.requestId)
  if(!['PREPARE','SUCCEED'].includes(input.action))fail('INVALID_ACTION',400)
  return db.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   const customer=await customerFor(tx,user),row=await tx.customerRequest.findUnique({where:{id:input.requestId}})
   assertDemoRequest(row,customer.id)
   if(row.snapshot.demoCheckout?.payment.status==='SUCCEEDED')return {ok:true,bookingId:row.bookingId,status:'SIMULATED_SUCCESS'}

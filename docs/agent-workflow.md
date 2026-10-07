@@ -28,10 +28,8 @@ For audit-only work, report findings with file/line evidence and impact, or no f
 - The final diff contains only intended changes; existing local work, domain rules and persistent demos are preserved. New files are included in review even before staging.
 - The handoff identifies changed files, commands and results, failures or skipped coverage, Git status, and remaining risks. A blocked required check means verification is incomplete, not done.
 
-## Preview handoff
+## Local handoff
 
-Use [deployment guidance](deployment.md) only when preparing a hosted Preview or environment change. Inspect the exact target, branch triggers and credentials boundary before any authorized external mutation. A local Vite production-mode build or `npm run preview` is not a Production deployment or proof of hosted Preview readiness.
+Use [Local/Production workflow](local-production-workflow.md). Report current code, commands/results, copied-data versus active-data checks, preserved work and any remaining finding. Use Local only; do not create a hosted Preview, bind Cloudflare resources, add provider credentials or deploy.
 
-Report separately: implementation complete; local validation passed/blocked; live Preview validation passed/not run/blocked; ready for which next step. For live Preview acceptance, record the tested revision/environment, affected real-account flows, migration state if relevant, and unresolved external-provider requirements. Inspect a script's effects before running DB, seed, email, payment or LINE checks. Preserve persistent DEMO data; only explicitly isolated disposable fixtures may be rolled back or cleaned up.
-
-This workflow authorizes no Production action and does not imply Preview deployment approval. Existing user authorization governs the next step; ask only for a genuinely missing decision or permission.
+Read [deployment boundary](deployment.md) only for a separately approved Production plan. Local acceptance is not approval to publish, delete the source, seed real customer data or send provider messages. Preserve persistent DEMO records and all uncommitted work.

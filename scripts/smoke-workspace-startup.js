@@ -3,6 +3,7 @@ import {chromium} from 'playwright'
 const browser=await chromium.launch({headless:true})
 try{
  const page=await browser.newPage();let release
+ await page.route(/\/api\/me\/line(?:\?.*)?$/,route=>route.request().method()==='GET'?route.fulfill({json:{status:'UNLINKED',linkedLineProfile:null}}):route.fallback())
  await page.route('**/api/me',async route=>{await new Promise(resolve=>{release=resolve});await route.fulfill({json:{user:{id:'fixture',displayName:'Tee',status:'ACTIVE',roles:[{code:'ADMIN_MANAGER',scope:'COMPANY'}],management:{company:true},operations:{booking:true,islandBooking:true},companyAccess:{}}}})})
  await page.route('**/api/dashboard',route=>route.fulfill({json:{widgets:[],generatedAt:new Date().toISOString(),timezone:'Asia/Bangkok'}}))
  for(let i=0;i<2;i++){

@@ -1,4 +1,5 @@
 import {capacityRelations,capacityDemandRows} from './capacity-read.js'
+import {scalarArrayWhere} from '../../platform/database/scalar-array.js'
 import {dateOnly, fail, int, keys, uuid} from './common.js'
 import {localStamp} from '../../../../packages/contracts/operations.js'
 import {planBoatGroups} from './boat-capacity-plan.js'
@@ -45,7 +46,8 @@ export function usableCapacity(offer, crew = null) {
   return Number.isInteger(capacity) && capacity > 0 ? capacity : 0
 }
 export async function poolsForLeg(tx, leg) {
-  return tx.capacityPool.findMany({where:{serviceDate:dateOnly(leg.serviceDate),direction:leg.direction,status:'ACTIVE',resourceIds:{has:leg.resourceId}},include:capacityInclude,orderBy:[{startsAt:'asc'},{id:'asc'}]})
+  const resourceWhere=await scalarArrayWhere(tx,'CapacityPool.resourceIds',leg.resourceId)
+  return tx.capacityPool.findMany({where:{serviceDate:dateOnly(leg.serviceDate),direction:leg.direction,status:'ACTIVE',...resourceWhere},include:capacityInclude,orderBy:[{startsAt:'asc'},{id:'asc'}]})
 }
 function selectedPool(booking, leg) {
   return booking.programSnapshot?.capacitySelections?.find(row => legKey(row) === legKey(leg))?.poolId
@@ -59,7 +61,8 @@ export async function poolContext(tx,pool,{excludeBookingId=null,excludeRequestI
   const day = dateOnly(dayString(pool.serviceDate)), field = pool.direction === 'OUTBOUND' ? 'outboundDate' : 'returnDate'
   const bookings = await capacityDemandRows(tx,{status:{in:['CONFIRMED','COMPLETED']},[field]:day,...(pool.direction === 'RETURN' ? {returnStatus:'OUR'} : {}),lines:{some:{selected:true,resourceId:{in:pool.resourceIds}}}})
   const holds = await tx.capacityHold.findMany({where:{poolId:pool.id,expiresAt:{gt:now},request:{bookingId:null,status:{in:['REQUESTED','DATE_PROPOSED']}}},select:{requestId:true,passengers:true,exclusive:true}})
-  const otherPools = await tx.capacityPool.findMany({where:{serviceDate:day,direction:pool.direction,status:'ACTIVE',resourceIds:{hasSome:pool.resourceIds}},select:{id:true,resourceIds:true}})
+  const overlapWhere=await scalarArrayWhere(tx,'CapacityPool.resourceIds',pool.resourceIds,{mode:'hasSome'})
+  const otherPools = await tx.capacityPool.findMany({where:{serviceDate:day,direction:pool.direction,status:'ACTIVE',...overlapWhere},select:{id:true,resourceIds:true}})
   const slots = await tx.serviceSlot.findMany({where:{status:'ACTIVE',vehicleId:{in:pool.offers.map(o=>o.vehicleId)},startsAt:{lt:pool.endsAt},endsAt:{gt:pool.startsAt}},select:{vehicleId:true,resourceId:true,startsAt:true,endsAt:true,run:{select:{kind:true,direction:true,capacity:true,staff:{select:{userId:true}}}}}})
   const competing = await tx.capacityOffer.findMany({where:{poolId:{not:pool.id},status:'READY',vehicleId:{in:pool.offers.map(o=>o.vehicleId)},pool:{status:'ACTIVE',startsAt:{lt:pool.endsAt},endsAt:{gt:pool.startsAt}}},select:{vehicleId:true}})
   const boats = [], unavailable = []

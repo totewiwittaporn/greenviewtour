@@ -46,7 +46,7 @@ test('program plan snapshots negotiated annual agent price, allowed terms, compo
  assert.equal(p.lines[0].quantity,3);assert.equal(p.lines[0].snapshot.removalCredit,'100')
  assert.equal(p.trip.startsAt.toISOString(),'2026-11-09T17:00:00.000Z')
  assert.equal(p.trip.endsAt.toISOString(),'2026-11-10T16:59:00.000Z')
- assert.equal(f.query().where.OR[1].agreement.startsOn.lte.toISOString(),'2026-11-10T00:00:00.000Z')
+ assert.equal(f.query().where.OR[1].agreement.startsOn.lte.toISOString().slice(0,10),new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok'}).format(new Date()))
 })
 test('missing negotiated rates stay unknown, ambiguous contracts fail and direct rate remains available',async()=>{
  const f=planFixture()
@@ -111,12 +111,13 @@ test('included removal cannot alter computed quantity or deduct an unknown selli
  await assert.rejects(()=>saveBooking(f.prisma,id(20),{...f.input,lines:[{...f.input.lines[0],selected:false},{componentId:id(30),resourceId:id(31),selected:true,quantity:3,usagePoint:'BOAT'}]}),{code:'REMOVAL_CREDIT_REQUIRED'})
 })
 test('modern Booking confirmation does not require meal slots or supply warehouse choices',async()=>{
- const {saveBooking,bookingStatus}=await import('../src/modules/operations/bookings.js')
+ const {saveBooking,bookingStatus,getBookingPriceReview}=await import('../src/modules/operations/bookings.js')
  const f=saveFixture()
  const {row}=await saveBooking(f.prisma,id(20),f.input)
  row.lines.push({id:id(41),resourceId:id(42),quantity:3,issuedQty:0,selected:true,included:true,unitPrice:'0',sourceId:null,resource:{id:id(42),kind:'CONSUMABLE',category:'DRINK'}})
  f.tx.operationResource.findUnique=async({where})=>where.id===id(42)?{id:id(42),status:'ACTIVE',kind:'CONSUMABLE',category:'DRINK'}:{...f.program.components[0].resource,status:'ACTIVE'}
- const result=await bookingStatus(f.prisma,id(20),{id:id(43),bookingId:row.id,version:1,action:'CONFIRM'})
+ const {review}=await getBookingPriceReview(f.prisma,id(20),row.id)
+ const result=await bookingStatus(f.prisma,id(20),{id:id(43),bookingId:row.id,version:1,action:'CONFIRM',priceConfirmation:{confirmed:true,choice:'KEEP_STORED',reviewToken:review.reviewToken,serviceDate:review.serviceDate}})
  assert.equal(result.status,'CONFIRMED')
 })
 
@@ -179,4 +180,24 @@ test('saveBooking persists commission rules and keeps them after catalog edits a
  assert.deepEqual(edited.commissionSnapshot,original)
  const fresh=(await saveBooking(f.prisma,id(21),{...input,id:id(12),version:0})).row
  assert.equal(fresh.commissionSnapshot.status,'NO_COMMISSION');assert.equal(fresh.commissionSnapshot.amount,'0.00')
+})
+
+
+test('changing travel date keeps agreed agent fares and source without querying current rates',async()=>{
+ const f=planFixture()
+ const priceSource={kind:'AGENT',rateId:id(5),rateVersion:3,agreementId:id(6),agreementCode:'AG-2026'}
+ const existing={agentId:f.agent.id,outboundDate:new Date('2026-11-10'),adultPrice:'1200.10',childPrice:'900.20',paymentTerms:'COUNTER',lines:[],programSnapshot:{bookingOwnedTrip:true,tourId:f.program.id,journeyMode:'FIXED',durationDays:1,priceSource}}
+ f.tx.agentTourPrice.findMany=async()=>{throw Error('Existing fare must not be replaced')}
+ const before=structuredClone(existing)
+ const plan=await programBookingPlan(f.tx,{...f.input,agentId:f.agent.id,serviceDate:'2027-02-01'},existing)
+ assert.equal(plan.adultPrice,'1200.10');assert.equal(plan.childPrice,'900.20')
+ assert.deepEqual(plan.priceSource,priceSource);assert.equal(plan.journey.outboundDate,'2027-02-01')
+ assert.equal(plan.preserve,false);assert.deepEqual(existing,before)
+})
+test('changing travel date keeps direct fares including explicit zero and unknown child price',async()=>{
+ const f=planFixture()
+ const existing={agentId:null,outboundDate:new Date('2026-11-10'),adultPrice:'0',childPrice:null,paymentTerms:'COUNTER',lines:[],programSnapshot:{bookingOwnedTrip:true,tourId:f.program.id,journeyMode:'FIXED',durationDays:1,priceSource:{kind:'DIRECT',programVersion:1}}}
+ const plan=await programBookingPlan(f.tx,{...f.input,serviceDate:'2027-02-01'},existing)
+ assert.equal(plan.adultPrice,'0');assert.equal(plan.childPrice,null)
+ assert.equal(plan.priceSource.programVersion,1)
 })

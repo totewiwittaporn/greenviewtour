@@ -1,5 +1,8 @@
+import {isD1OwnerPage} from './owner-read.js'
 import {cashSummary} from './cash-summary.js'
 import {apiStatus} from '../../../platform/monitoring/api-status.js'
+import {scalarArrayWhere} from '../../../platform/database/scalar-array.js'
+import {jsonRangeWhere} from '../../../platform/database/json-range.js'
 import {managerWidgetCounts} from './manager-widgets.js'
 import { workSummary } from './work-summary.js'
 import { bookingSummary } from './booking-summary.js'
@@ -11,6 +14,7 @@ import { managementScope } from '../../../modules/identity-access/user-managemen
 import { fail, dateOnly } from '../../../modules/operations/common.js'
 import { pendingPassengers } from '../../../modules/operations/dispatch.js'
 import { thailandDay } from '../../../modules/operations/check-in.js'
+import {readTransaction} from '../../../platform/database/read-transaction.js'
 
 const dayKey = value => value ? new Date(value).toISOString().slice(0, 10) : null
 const arrivalWhere = filter => ({ OR: [{ outboundDate: filter }, { outboundDate: null, returnStatus: 'OUR', returnDate: filter }] })
@@ -41,14 +45,17 @@ export function dashboardScope(actor) {
  return { company: Boolean(isManager(actor) && management?.company), department }
 }
 
+const ownerOverview=now=>({today:thailandDay(now),timezone:'Asia/Bangkok',generatedAt:now.toISOString(),scope:'Company',systemOverview:apiStatus(now),widgets:[],calendar:null,managementOverview:null,workOverview:null})
+
 // Counts are computed over complete authorized sets, never a paginated list response.
 export async function dashboardOverview(prisma, actorId, now = new Date(), {surface='legacy'} = {}) {
- return prisma.$transaction(async tx => {
+ if(surface==='page'&&await isD1OwnerPage(prisma,actorId))return ownerOverview(now)
+ return readTransaction(prisma,async tx => {
   const actor = await tx.userProfile.findUnique({ where: { id: actorId }, select: accessProfileSelect })
   const scope = dashboardScope(actor), allowed = code => effectiveAccess(actor, code, { now }).allowed
   const today = thailandDay(now), end = addDays(today, 14), date = dateOnly(today)
   const pageMode=surface==='page', pageManager=pageMode&&scope.company
-  if(pageMode&&actor.roles.some(role=>role.roleCode==='ADMIN_MANAGER'&&role.scope==='COMPANY'))return {today,timezone:'Asia/Bangkok',generatedAt:now.toISOString(),scope:'Company',systemOverview:apiStatus(now),widgets:[],calendar:null,managementOverview:null,workOverview:null}
+  if(pageMode&&actor.roles.some(role=>role.roleCode==='ADMIN_MANAGER'&&role.scope==='COMPANY'))return ownerOverview(now)
   const gmWidgetIds=new Set(['guide','driver','guide-crew','driver-crew','guide-allocation','driver-allocation'])
   const bookingRole=actor.roles.some(g=>['SELF','COMPANY'].includes(g.scope)&&['BOOKING','HEAD_BOOKING'].includes(g.roleCode||g.code))
   if(!scope.company&&bookingRole&&allowed('operations.booking')&&allowed('operations.islandBooking'))return {today,through:addDays(today,29),timezone:'Asia/Bangkok',generatedAt:now.toISOString(),bookingOverview:await bookingSummary(tx,actor,today,customerCalendar,{lean:pageMode})}
@@ -108,12 +115,19 @@ export async function dashboardOverview(prisma, actorId, now = new Date(), {surf
     widgets.push({ id: route + '-allocation', title, href: '/operations/' + route, pending: pending.size, today: dueToday.size, overdue: null, review: null, scope: 'Company', detail: 'Unique bookings with passengers still unallocated in the next 14 days, excluding recorded no-shows.' })
    })())
   }
-  const duties = !pageManager&&allowed('inventory.request') && effectiveAccess(actor, 'operations.stock', { now }).source !== 'User restriction' ? await tx.warehouseResponsibility.findMany({ where: { OR: [{ primaryUserId: actorId }, { deputyUserIds: { has: actorId } }] }, select: { storeId: true } }) : []
+  let duties=[]
+  if(!pageManager&&allowed('inventory.request')&&effectiveAccess(actor,'operations.stock',{now}).source!=='User restriction'){
+   const deputyWhere=await scalarArrayWhere(tx,'WarehouseResponsibility.deputyUserIds',actorId)
+   duties=await tx.warehouseResponsibility.findMany({where:{OR:[{primaryUserId:actorId},deputyWhere]},select:{storeId:true}})
+  }
   for (const [route, definition] of Object.entries(companyRoutes)) {
    if (!(definition.anyPermissions || [definition.permission]).some(allowed)) continue
    const { kind, title, finance } = definition
    if (finance) {
-    tasks.push(countWidget({ id: route, title, href: '/company/' + route, model: 'financePersonnelRecord', base: { kind }, pending: { status: { in: ['DRAFT', 'SUBMITTED', 'REJECTED', ...(definition.permission === 'personnel.view' ? [] : ['APPROVED']), ...(['WORK_ADVANCE', 'SALARY_ADVANCE'].includes(kind) ? ['PAID', 'CLEARANCE_SUBMITTED'] : [])] } }, overdue: ['WORK_ADVANCE', 'SALARY_ADVANCE'].includes(kind) ? { status: { in: ['PAID', 'CLEARANCE_SUBMITTED'] }, payload: { path: ['dueOn'], lt: today } } : null, detail: 'Records awaiting submission, review or the next workflow step.', visibility: 'Authorized ' + (definition.permission === 'payroll.view' ? 'payroll' : definition.permission === 'personnel.view' ? 'personnel' : 'accounts') + ' records' }))
+    const overdue=['WORK_ADVANCE','SALARY_ADVANCE'].includes(kind)
+     ?{status:{in:['PAID','CLEARANCE_SUBMITTED']},...await jsonRangeWhere(tx,'FinancePersonnelRecord.payload.dueOn',{lt:today})}
+     :null
+    tasks.push(countWidget({ id: route, title, href: '/company/' + route, model: 'financePersonnelRecord', base: { kind }, pending: { status: { in: ['DRAFT', 'SUBMITTED', 'REJECTED', ...(definition.permission === 'personnel.view' ? [] : ['APPROVED']), ...(['WORK_ADVANCE', 'SALARY_ADVANCE'].includes(kind) ? ['PAID', 'CLEARANCE_SUBMITTED'] : [])] } }, overdue, detail: 'Records awaiting submission, review or the next workflow step.', visibility: 'Authorized ' + (definition.permission === 'payroll.view' ? 'payroll' : definition.permission === 'personnel.view' ? 'personnel' : 'accounts') + ' records' }))
    } else if (kind === 'RECEIVABLES') {
     tasks.push(countWidget({ id: route, title, href: '/company/' + route, model: 'agentBill', pending: { status: 'OPEN' }, overdue: { dueOn: { lt: date } }, todayWhere: { dueOn: date }, detail: 'Open agent bills, including partially paid bills.', visibility: 'Authorized accounts records' }))
    } else if (['JOB', 'STOCK_REQUEST', 'COUNT', 'MAINTENANCE'].includes(kind)) {

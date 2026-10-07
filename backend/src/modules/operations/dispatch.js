@@ -1,3 +1,4 @@
+import {userVisibilityWhere} from '../identity-access/user-visibility.js'
 import {runSelectorSelect} from './dispatch-read.js'
 import {loadRunDocuments} from './dispatch-document-read.js'
 import { bookingPrintDetails } from '../../../../packages/contracts/job-print.js'
@@ -9,6 +10,7 @@ import { operationAccess } from '../../../../packages/contracts/operation-access
 import { parseStamp, localStamp } from '../../../../packages/contracts/operations.js'
 import { active, audit, authorize, dateOnly, fail, hash, int, keys, string, uuid, write } from './common.js'
 import { profileInclude } from '../identity-access/policy.js'
+import {scalarArrayWhere} from '../../platform/database/scalar-array.js'
 
 export const dispatchCategories = ['TRANSFER', 'TOUR_BOAT', 'LONGTAIL_BOAT']
 const boatRoles = ['GUIDE', 'HEAD_GUIDE', 'ASSISTANT_TOUR_GUIDE', 'CAPTAIN', 'HEAD_CAPTAIN', 'ASSISTANT_CAPTAIN']
@@ -144,7 +146,7 @@ export function pendingPassengers(row, direction) {
 
 export async function dispatchOptions(prisma, actorId, params) {
   const runKind = kind(params.get('kind') || 'BOAT')
-  await authorize(prisma, actorId, duty(runKind, true))
+  const {actor}=await authorize(prisma, actorId, duty(runKind, true))
   const entity = params.get('entity'), { page: requested, q } = paging(params)
   const direction = params.get('direction') || 'OUTBOUND'
   if (!['OUTBOUND', 'RETURN'].includes(direction)) fail('INVALID_FILTER', 400)
@@ -159,7 +161,7 @@ export async function dispatchOptions(prisma, actorId, params) {
     model = 'fleetVehicle'; where = { status: 'ACTIVE', kind: runKind === 'BOAT' ? {in:['SPEEDBOAT','LONGTAIL_BOAT']} : {notIn:['SPEEDBOAT','LONGTAIL_BOAT']} }
     select = { id: true, code: true, name: true, kind: true, capacity: true, totalCapacity: true, expectedCrew: true }
   } else if (entity === 'staff') {
-    model = 'userProfile'; where = { status: 'ACTIVE', roles: { some: { roleCode: { in: allowedRoles }, scope: { in: ['SELF', 'COMPANY'] } } } }
+    model = 'userProfile'; where = { status: 'ACTIVE', AND:[userVisibilityWhere(actor)], roles: { some: { roleCode: { in: allowedRoles }, scope: { in: ['SELF', 'COMPANY'] } } } }
     select = { id: true, displayName: true, roles: { select: { roleCode: true, scope: true } } }
   } else {
     model = 'bookingComponent'
@@ -328,7 +330,7 @@ export async function bookingOptions(prisma, actorId, params) {
   const where = { status: 'ACTIVE' }
   let model, select = { id: true, code: true, name: true }
   if (entity === 'agents') {
-    model = 'businessPartner'; where.roles = { has: 'SALES_AGENT' }
+    model = 'businessPartner'
     select = { ...select, phone: true, allowedPaymentTerms: true, defaultPaymentTerms: true }
   } else if (entity === 'tours') {
     model = 'tourProgram'
@@ -342,8 +344,9 @@ export async function bookingOptions(prisma, actorId, params) {
   }
   if (q) where.OR = [{ code: { contains: q, mode: 'insensitive' } }, { name: { contains: q, mode: 'insensitive' } }]
   return prisma.$transaction(async tx => {
-    const total = await tx[model].count({ where }), page = Math.min(requested, Math.max(1, Math.ceil(total / 25)))
-    const rows = await tx[model].findMany({ where, select, skip: (page - 1) * 25, take: 25, orderBy: [{ name: 'asc' }, { id: 'asc' }] })
+    const scopedWhere=entity==='agents'?{...where,...await scalarArrayWhere(tx,'BusinessPartner.roles','SALES_AGENT')}:where
+    const total = await tx[model].count({ where:scopedWhere }), page = Math.min(requested, Math.max(1, Math.ceil(total / 25)))
+    const rows = await tx[model].findMany({ where:scopedWhere, select, skip: (page - 1) * 25, take: 25, orderBy: [{ name: 'asc' }, { id: 'asc' }] })
     return pageResult(rows, total, page)
   }, { isolationLevel: 'RepeatableRead', timeout: 15000 })
 }

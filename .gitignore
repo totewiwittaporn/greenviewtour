@@ -33,3 +33,19 @@ coverage/
 *.private.*
 credentials.private.json
 playwright/.auth/
+
+# Cloudflare local state / generated runtime clients
+.wrangler/
+backend/src/generated/
+backend/prisma-d1/*.db
+backend/prisma-d1/*.db-*
+
+# Local-only database/files, runtime checks, and private exports
+.local/
+*.dump
+*.bundle
+.dev.vars
+.dev.vars.*
+
+# Private owner import drafts
+docs/*owner-import-draft*.json

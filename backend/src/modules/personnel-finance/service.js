@@ -1,3 +1,5 @@
+import {userVisibilityWhere} from '../identity-access/user-visibility.js'
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {validateAgentRefund} from './agent-refund.js'
 import {validateCommission} from './booking-commission.js'
 import {financeListSelect,financeListPayloads} from './read-models.js'
@@ -6,6 +8,7 @@ import { effectiveAccess } from '../../../../packages/contracts/access.js'
 import { personnelFinanceKinds, financialTotal, cents, recordActions } from '../../../../packages/contracts/personnel-finance.js'
 import { accessProfileSelect } from '../identity-access/policy.js'
 import { fail,uuid,keys,string,dateOnly,hash,int } from '../operations/common.js'
+import {readTransaction} from '../../platform/database/read-transaction.js'
 
 export async function personnelFinancePermission(tx,actorId,kind){
  const definition=personnelFinanceKinds[kind];if(!definition)fail('INVALID_KIND',400)
@@ -31,7 +34,7 @@ export function validatePayload(kind,payload){
  if(result.date&&result.dueOn)assert(result.dueOn>=result.date,'INVALID_DATE_RANGE')
  return result
 }
-async function transaction(prisma,fn){return prisma.$transaction(async tx=>{await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;return fn(tx)},{maxWait:15000,timeout:30000})}
+async function transaction(prisma,fn){return prisma.$transaction(async tx=>{await acquireWriteLock(tx);return fn(tx)},{maxWait:15000,timeout:30000})}
 async function audit(tx,actorId,row,action,details={}){await tx.auditEvent.create({data:{actorId,targetId:row.id,action:`personnelFinance.${action}`,details:{kind:row.kind,version:row.version,...details}}})}
 async function employee(tx,id){const row=await tx.userProfile.findUnique({where:{id:uuid(id)},select:{id:true,status:true}});if(!row||row.status!=='ACTIVE')fail('EMPLOYEE_UNAVAILABLE',409)}
 async function supplierBalance(tx,row){
@@ -41,7 +44,7 @@ async function supplierBalance(tx,row){
  if(reserved.reduce((sum,r)=>sum+cents(r.payload.amount),0)+cents(row.payload.amount)>cents(String(order.receivedTotal)))fail('SUPPLIER_BALANCE_EXCEEDED')
 }
 export async function listPersonnelFinance(prisma,actorId,params=new URLSearchParams()){
- if((params.get('view')==='list'||params.get('recordId'))&&!params.get('lookup'))return prisma.$transaction(tx=>readPersonnelFinance(tx,actorId,params),{isolationLevel:'RepeatableRead',timeout:15000})
+ if((params.get('view')==='list'||params.get('recordId'))&&!params.get('lookup'))return readTransaction(prisma,tx=>readPersonnelFinance(tx,actorId,params),{isolationLevel:'RepeatableRead',timeout:15000})
  return readPersonnelFinance(prisma,actorId,params)
 }
 async function readPersonnelFinance(prisma,actorId,params){
@@ -54,6 +57,7 @@ async function readPersonnelFinance(prisma,actorId,params){
   if(lookup==='bookings'){if(kind!=='BOOKING_COMMISSION')fail('INVALID_LOOKUP',400);const where={status:'COMPLETED',...(q?{OR:[{code:{contains:q,mode:'insensitive'}},{name:{contains:q,mode:'insensitive'}}]}:{})};const total=await prisma.tourBooking.count({where});const rows=await prisma.tourBooking.findMany({where,select:{id:true,code:true,name:true},orderBy:{code:'asc'},take:25,skip:(page-1)*25});return {rows:rows.map(row=>({id:row.id,name:row.code+' · '+row.name})),total,page,pages:Math.max(1,Math.ceil(total/25))}}
   const model=lookup==='employees'?'userProfile':lookup==='runs'?'dispatchRun':'purchaseOrder',field=lookup==='employees'?'displayName':'name'
   const where={status:lookup==='employees'?'ACTIVE':lookup==='runs'?'OPEN':{in:['PART_RECEIVED','RECEIVED']},...(q?{[field]:{contains:q,mode:'insensitive'}}:{})}
+  if(lookup==='employees'){const actor=await prisma.userProfile.findUnique({where:{id:actorId},select:accessProfileSelect});where.AND=[userVisibilityWhere(actor)]}
   const total=await prisma[model].count({where});const rows=await prisma[model].findMany({where,select:{id:true,[field]:true},orderBy:{[field]:'asc'},take:25,skip:(page-1)*25})
   return {rows:rows.map(row=>({id:row.id,name:row[field]})),total,page,pages:Math.max(1,Math.ceil(total/25))}
  }
@@ -143,7 +147,9 @@ export async function exportPayroll(prisma,actorId,params){
  await personnelFinancePermission(prisma,actorId,'PAYROLL')
  const q=(params.get('q')||'').trim().slice(0,100),status=params.get('status')||''
  if(status&&!['DRAFT','SUBMITTED','APPROVED','REJECTED','PAID','CANCELLED'].includes(status))fail('INVALID_STATUS',400)
+ const hiddenOwners=await prisma.userProfile.findMany({where:{id:{not:actorId},roles:{some:{roleCode:'ADMIN_MANAGER'}}},select:{id:true}})
  const where={kind:'PAYROLL',...(q?{title:{contains:q,mode:'insensitive'}}:{}),...(status?{status}:{})}
+ if(hiddenOwners.length)where.employeeId={notIn:hiddenOwners.map(owner=>owner.id)}
  const records=await prisma.financePersonnelRecord.findMany({where,orderBy:[{createdAt:'asc'},{id:'asc'}],take:5001})
  if(records.length>5000)fail('EXPORT_TOO_LARGE',400)
  const employees=await prisma.userProfile.findMany({where:{id:{in:[...new Set(records.map(r=>r.employeeId))]}},select:{id:true,displayName:true}})

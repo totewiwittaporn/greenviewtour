@@ -1,32 +1,41 @@
 # Local workspace
 
+> Current environment/workflow acceptance: [items 7–8 — Local cleanup and final verification](local-workflow-acceptance-2026-09-30.md). No Cloudflare provisioning or Production deployment is enabled.
+
 ## Start and stop
 
-From the repository root run `npm ci` once after pulling, then `npm run dev`. It launches Backend (5001 on macOS; 5000 elsewhere), Public Web (5173), Backoffice (5174), and Member (5175). On Windows double-click `Start-Greenview-Local.cmd` to also open both sites. Keep that terminal open; Ctrl+C stops the services together. The launcher refuses occupied ports rather than killing unrelated work.
+Use the owner's Mac, the root lockfile, and the installed Node 22 toolchain. Run `npm ci` after an intentional dependency update, then `npm run dev` from the repository root. The launcher starts the Local Cloudflare Worker (8787), Public (5173), Backoffice (5174), and Member (5175). Ctrl+C stops the services together. Occupied ports are rejected; unrelated processes are never killed.
 
-- Public: http://localhost:5173
-- Users: http://localhost:5174/settings/users
-- Member: http://localhost:5175
-- Backend liveness: http://localhost:5001/health/live on macOS; port 5000 elsewhere
+All services bind to loopback. The active database and R2 files are in `.local/cloudflare`. There is no hosted Preview. The launcher does not use the legacy PostgreSQL/Supabase server or its `.env` credentials. Do not enable LAN hosting, tunnels, remote bindings or Production for testing.
 
-Use backend/.env with the previously verified Preview credentials and PGSSLROOTCERT. The launcher generates a temporary LOCAL_API_TOKEN; the Vite Backoffice proxy adds it server-side. It is never returned to browser JS, persisted in Git or put in a URL. Public Web proxies only public commerce routes; Member proxies public/member routes. Neither proxy grants access to staff endpoints. All services bind 127.0.0.1; this mode is deliberately local; authenticated account flows are enabled. Do not use LAN hosting, tunnels or production deployment for it. Existing dev:public can still run the public app alone; Users needs the complete launcher.
+| Command | Local purpose |
+| --- | --- |
+| `npm run dev` / `npm run local:dev` | Start Worker and all three websites |
+| `npm run local:worker` | Start only the Worker |
+| `npm run local:setup` | Generate the D1 client/types and apply reviewed Local migrations |
+| `npm run db:migrate` | Apply reviewed Local D1 migrations only |
+| `npm run db:check` | Read running Worker/D1/R2 health on 127.0.0.1:8787 |
+| `npm run local:mail` | Read the Local verification/reset mailbox; list output excludes tokens |
+| `npm run local:mail -- --open <id>` | Open that explicitly selected Local message on the Mac |
 
-## Data and access
+Staff sign in at `http://localhost:5174/login`; customers use `http://localhost:5175/login`; Public is `http://localhost:5173`. Separate server-side proxy tokens and HttpOnly staff/member cookies do not grant each other's permissions. Fresh status and role checks remain in the domain services.
 
-See [authentication](authentication.md) for identity models, first-owner bootstrap and Supabase email/redirect setup. The local launch token gates the proxy; it does not authenticate staff. Login creates an HttpOnly session cookie. Every directory request checks current account status, session validity and `users.read:COMPANY` against the database. User mutations use the separate authorized profile, invitation and access-management actions.
+## Auth and data
 
-For an authorized migration, verify the configured database is the intended Preview target before using `npm run db:migrate` with a reviewed schema change. `npm ci` generates Prisma Client automatically. Stop the running local launcher before `npm ci` on Windows so Vite/esbuild files are not locked.
+Read [Local Auth/API cutover](local-auth-api-acceptance-2026-09-30.md) for the current implementation and acceptance limits. Keep `.local/auth.secret` private with the Local state; runtime proxy tokens/configuration must never enter Git, browser environment variables or URLs. Do not substitute provider/source keys.
 
-## Visual reference
+Local mail is stored in D1; no real email is sent. Verification/reset links are consumed through their matching Local website. Existing Local managers issue staff invitations through Settings > Users. Public staff sign-up and the legacy source-owner bootstrap are disabled. The old `owner:invite` and backend `db:identity-check` commands now stop without reading credentials or contacting a provider.
 
-The owner requested https://greenviewtour.com/ as Public reference and related Backoffice appearance. Actual logo and photography are loaded from that website; fonts use Google Fonts with fallbacks. Images require internet access and are not bundled offline. Public links were taken from the live website. Generic theme demo staff/testimonials are excluded.
+Business data and Auth imports are separate reviewed operations against a verified offline export. Stop the launcher before import or copy-based integration suites. Never reset the state, overwrite a populated Auth table, invent missing account links, or import old provider sessions. Auth baseline verification compares the original hashes; it is not a health check to run after legitimate password changes.
 
 ## Verification
 
-`npm run check` runs lint, backend/frontend unit tests and all three frontend builds. CI additionally runs the isolated `node scripts/smoke-browser-fixtures.js`. `node scripts/smoke-local.js` tests a running workspace using Playwright; on Windows uses Edge. `node scripts/smoke-auth.js` checks anonymous route protection and auth UI states with intercepted provider results. `npm run db:identity-check --workspace @greenviewtour/api` checks real Prisma reads and a rolled-back invitation transaction. Email confirmation, first-owner sign-in and reset-email delivery must also be tested with the owner. The identity check rolls back its own transaction; other scripts may persist fixtures. Inspect each script before using it against Preview. Persistent DEMO records are retained under [member-commerce policy](member-commerce-plan.md).
+`npm run check:quiet` runs lint, backend/frontend tests, three frontend builds and a Local Worker bundle dry-run; it does not deploy. `node scripts/smoke-browser-fixtures.js` exercises isolated UI fixtures, not live accounts. `npm run local:check` verifies fresh workerd/D1/R2 infrastructure. `npm run local:check:business` and `npm run local:auth:check` operate on isolated copies while the active launcher is stopped. Keep API, fixture and real-browser results separate.
 
-## macOS
+The Member authentication artwork is bundled locally. Public reference photographs used by the local Home are also present in the repository. Fonts and optional map embeds can still request their public providers; these were blocked during the strict Local-only browser audit. No old Production authentication image is needed.
 
-The shared launcher uses API port 5001 on macOS to avoid AirPlay Receiver on port 5000; other platforms retain 5000. It passes LOCAL_API_PORT to the API and Vite proxy together. Host validation accepts only loopback hosts on the selected port. Public, Backoffice, and Member remain 5173/5174/5175.
+Production remains an unbound, fail-closed target requiring separate approval and release work. Historical Preview/PostgreSQL documents are records, not executable setup instructions.
 
-Download the database root certificate from the official Supabase dashboard and set PGSSLROOTCERT to its absolute local path in backend/.env. The file can live in backend/certs.local/ (ignored). Keep TLS verification enabled. Certificate installation does not require changing the database password or project settings.
+## Staff LINE linking
+
+The staff-only connection card is on Backoffice → Edit profile. See [Staff LINE linking](staff-line-link-2026-09-30.md) for the verified Local flow and the separate live activation gate. `npm run local:line:check` and `npm run local:line:browser` use private copied state and a simulated LINE provider; normal Local never sends real LINE messages or creates live bindings. Stop the ordinary launcher before these suites.

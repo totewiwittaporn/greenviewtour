@@ -1,0 +1,31 @@
+Greenview Tour — conditional Production release readiness, 3 October 2026
+Decision: HOLD. Owner authorized deployment only when invitation throughput and concurrent staff use are evidenced. Neither acceptance condition is yet proven. No production resources, data, secrets, users or deployment changed by this audit.
+
+Owner requirements
+- Staff users are real permanent accounts. Preserve IDs, profiles, roles, passwords and LINE bindings. Rollback must not restore an old user database or erase newly registered employees; prefer code rollback compatible with current data and forward schema repairs.
+- More than 20 staff invitations/day with real email verification.
+- Multiple staff using real workflows simultaneously.
+- After safe release, configure LINE OA. Member/payment remain paused; automatic LINE stays disabled until separately verified.
+
+Observed blockers in current code
+1 backend/src/platform/auth/cloudflare/runtime.js:44–45: non-Local email throws PRODUCTION_EMAIL_NOT_CONFIGURED. Local messages are saved in localMail, not sent. Invitation creation supplies a copyable link; account activation requires real verification email. No actual provider/account quota or verified sending domain identified.
+2 backend/src/cloudflare/worker.ts and api.ts explicitly reject hosted production execution. Production example unbound; hosting, DNS, origins/cookies, bindings and private settings still need implementation/validation.
+3 api.ts:34 uses address=local-browser. All clients share auth120/10min and mutation600/min; login additionally15/15min per email. These are Local rules, not proof of real multiuser capacity. Production limits must use trusted client/session identity and maintain abuse protection, including shared-office networks.
+4 invitations.js:134–140 uses a per-process Set with maximum10 concurrent acceptances, not a daily invitation quota. Distributed duplicate acceptance requires proof; do not remove protection merely to raise capacity.
+5 D1 write planner uses database-wide revision checks and bounded retries. Existing conflict/last-seat tests establish integrity under tested races, not sustained multiuser performance or provider plan capacity.
+
+Evidence available
+Prior Local acceptance:527 backend and60 frontend tests,26 fixture-browser suites, actual Local Auth/business/browser checks. Re-read readiness code with independent Milk audit; no new load or delivery test claimed.
+Cloudflare D1 official limits: https://developers.cloudflare.com/d1/platform/limits/
+Cloudflare explicitly queues queries per database and can reject overloaded queues. Actual throughput depends on workload; user count alone is not a service guarantee.
+
+Required next work before deploy
+- Identify intended Cloudflare account/plan, production domains and initial-data scope; existing Local real staff identities must be preserved, demo records must not be blindly exposed publicly.
+- Obtain chosen email provider and verified sender/domain plus account-specific available quotas; no secrets in chat. Implement real verification/recovery transport with safe retries and failure handling.
+- Implement hosted request/origin/cookie routing and production-safe throttles. Do not just remove Local guards.
+- Run30 invitation creations/day scenario and20 concurrent mixed sessions in isolated copies, including invitation acceptance, shared office network, permissions, duplicate submissions, booking capacity and durable writes. Measure latency/error/conflict rates; define expected peak before sign-off. Never load-test against real staff records.
+- Prepare release snapshot, identity-preserving migration verification, health/smoke checks and rollback of code without deleting real users. Confirm hosting quotas against measured workload.
+- Only after acceptance conditions pass, provision/deploy authorized restricted real-staff release. No repeat permission needed for already authorized scope; missing provider/domain information is configuration, not another approval request.
+
+Pending owner input
+Async question asks production domains, sender and selected email provider/private config location. Awaiting answer. No credential extraction attempted.

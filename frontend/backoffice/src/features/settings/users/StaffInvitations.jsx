@@ -2,7 +2,6 @@ import {translateLabel as bilingualLabel} from '../../../core/i18n/runtime.js'
 import { formatDate as displayDate } from '../../../core/i18n/runtime.js'
 import {roleNames} from '../../../../../../packages/contracts/access.js'
 import { translate as t, useLocale } from '../../../core/i18n/locale.jsx'
-import {TextAreaField} from '../../../core/ui/TextAreaField.jsx'
 import {RefreshButton} from '../../../core/ui/RefreshButton.jsx'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../../../core/auth/api.js'
@@ -26,19 +25,13 @@ const message = error => ({
   PERMISSION_DENIED: 'Your permission to manage invitations has changed. Refresh the page.',
   INVITATION_ALREADY_USED: 'This employee has already joined. Refresh the user directory.',
 }[error.message] || 'Unable to complete the request. Refresh invitations to check its status before trying again.')
-function InvitationLink({ result }) {
- useLocale();
-  const [copied, setCopied] = useState(''), field = useRef(null)
-  const link = `${window.location.origin}/accept-invitation#invitation=${result.invitationCode}`
-  async function copy() {
-    try { await navigator.clipboard.writeText(link); setCopied('Invitation link copied.') }
-    catch { field.current?.focus(); field.current?.select(); setCopied('Copy is unavailable. The link is selected; copy it manually.') }
-  }
-  return <><p>{t("Invitation ready for")}{' '}<strong>{result.invitation.email}</strong>.</p><p>{t("The employee opens this link, chooses their own password and confirms their email.")}</p><TextAreaField label={bilingualLabel("Invitation link")} ref={field} className="core-textarea invite-link resize-none" readOnly value={link} /><p className="field-help">{t("Expires")}{' '}{date(result.invitation.expiresAt)}{' '}{t("· Bangkok time. Keep this link private. It is shown only now.")}</p><p className="field-help">{t("This Local link opens on this computer. A hosted workspace is needed for access from another device.")}</p><div className="dialog-actions"><Button className="button-primary" onClick={copy}>{t("Copy invitation link")}</Button></div>{copied && <p role="status">{copied}</p>}</>
+function InvitationLink({result}) {
+ useLocale()
+ return <><p><strong>{result.invitation.email}</strong></p><p role={result.delivery==='FAILED'?'alert':'status'}>{t(result.delivery==='LOCAL_MAIL'?'Invitation saved in the Local mailbox. No real email was sent.':result.delivery==='FAILED'?'The invitation is saved, but email submission failed. Check email configuration, then use Resend invitation email.':'Invitation email submitted. The employee verifies email, enters personal information, sets a password and connects LINE.')}</p><p>{t('Expires')}{' '}{date(result.invitation.expiresAt)}</p></>
 }
 function InviteForm({ catalog, onClose, onCreated }) {
  useLocale();
-  const [values, setValues] = useState({ displayName: '', email: '', roleCode: '', department: '' }), [errors, setErrors] = useState({})
+  const [values, setValues] = useState({ email: '', roleCode: '', department: '' }), [errors, setErrors] = useState({})
   const [busy, setBusy] = useState(false), [failure, setFailure] = useState(''), [result, setResult] = useState(null), [discard, setDiscard] = useState(false)
   const form = useRef(null), lock = useRef(false)
   const dirty = Object.values(values).some(Boolean)
@@ -48,7 +41,6 @@ function InviteForm({ catalog, onClose, onCreated }) {
     event.preventDefault()
     if (event.nativeEvent.isComposing || lock.current) return
     const next = {}
-    if (!values.displayName.trim()) next.displayName = 'Enter the employee’s name.'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) next.email = 'Enter a valid employee email.'
     if (!values.roleCode) next.roleCode = 'Choose a role.'
     if (!values.department) next.department = 'Choose a department.'
@@ -63,14 +55,13 @@ function InviteForm({ catalog, onClose, onCreated }) {
   }
   return <Dialog title={discard ? bilingualLabel('Discard invitation?') : result ? bilingualLabel('Invitation ready') : bilingualLabel('Add employee')} onClose={close} busy={busy}>
     {discard ? <><p>{t("This invitation has not been created.")}</p><div className="dialog-actions"><Button autoFocus onClick={() => setDiscard(false)}>{t("Keep editing")}</Button><Button onClick={onClose}>{t("Discard changes")}</Button></div></> : result ? <InvitationLink result={result} /> : <form ref={form} noValidate onSubmit={submit} aria-busy={busy}>
-      <p>{t("Create a private invitation. The employee sets their own password after opening the link.")}</p>
-      <FormField label={bilingualLabel("Full name")} value={values.displayName} onChange={change('displayName')} error={errors.displayName} maxLength={100} autoComplete="off" disabled={busy} />
+      <p>{t("Send an invitation email. Employees enter their own legal name and contact details.")}</p>
       <FormField label={bilingualLabel("Email address")} hint={t("Use an address that can receive the confirmation email.")} type="email" value={values.email} onChange={change('email')} error={errors.email} maxLength={254} autoComplete="off" disabled={busy} />
       <SelectField label={bilingualLabel("Role")} value={values.roleCode} onChange={change('roleCode')} error={errors.roleCode} disabled={busy}><option value="">{t("Choose a role")}</option>{catalog.roles.map(role => <option key={role.code} value={role.code}>{t(role.name)}</option>)}</SelectField>
       <SelectField label={bilingualLabel("Department")} value={values.department} onChange={change('department')} error={errors.department} disabled={busy}><option value="">{t("Choose a department")}</option>{catalog.departments.map(department => <option key={department} value={department}>{t(department)}</option>)}</SelectField>
-      <p className="field-help">{t("The invitation expires in 72 hours. No email is sent when you create this link.")}</p>
+      <p className="field-help">{t("The invitation expires in 72 hours.")}</p>
       {failure && <p className="inline-error" role="alert">{t(failure)}</p>}
-      <div className="dialog-actions"><Button type="submit" className="button-primary" busy={busy} disabled={busy}>{t("Create invitation link")}</Button></div>
+      <div className="dialog-actions"><Button type="submit" className="button-primary" busy={busy} disabled={busy}>{t("Send invitation email")}</Button></div>
     </form>}
   </Dialog>
 }
@@ -85,7 +76,7 @@ function InvitationAction({ selection, onClose, onChanged }) {
     catch (error) { setFailure(message(error)) }
     finally { lock.current = false; setBusy(false) }
   }
-  return <Dialog title={result ? bilingualLabel('New invitation link') : renew ? bilingualLabel('Create new invitation link') : bilingualLabel('Revoke invitation')} onClose={onClose} busy={busy}>{result ? <InvitationLink result={result} /> : <><p>{renew ? t('Create a new link') : t('Revoke the invitation')}{' '}{t("for")}{' '}<strong>{selection.item.email}</strong>?</p><p>{renew ? t('The previous link will stop working. The new link expires in 72 hours.') : t('This employee will no longer be able to join using this invitation.')}</p>{failure && <p className="inline-error" role="alert">{t(failure)}</p>}<div className="dialog-actions"><Button autoFocus onClick={onClose} disabled={busy}>{t("Back")}</Button><Button onClick={apply} className="button-primary" disabled={busy} busy={busy}>{renew ? t('Create new link') : t('Revoke invitation')}</Button></div></>}</Dialog>
+  return <Dialog title={result ? bilingualLabel('Invitation email') : renew ? bilingualLabel('Resend invitation email') : bilingualLabel('Revoke invitation')} onClose={onClose} busy={busy}>{result ? <InvitationLink result={result} /> : <><p>{renew ? t('Resend invitation email') : t('Revoke the invitation')}{' '}{t("for")}{' '}<strong>{selection.item.email}</strong>?</p><p>{renew ? t('The previous link will stop working. The new link expires in 72 hours.') : t('This employee will no longer be able to join using this invitation.')}</p>{failure && <p className="inline-error" role="alert">{t(failure)}</p>}<div className="dialog-actions"><Button autoFocus onClick={onClose} disabled={busy}>{t("Back")}</Button><Button onClick={apply} className="button-primary" disabled={busy} busy={busy}>{renew ? t('Resend invitation email') : t('Revoke invitation')}</Button></div></>}</Dialog>
 }
 export function StaffInvitations({ open, onClose }) {
  useLocale();
@@ -114,8 +105,8 @@ export function StaffInvitations({ open, onClose }) {
     ]} />
     <section className="panel table-panel invite-panel"><div className="panel-heading"><div><h2>{bilingualLabel("Employee invitations")}</h2><p>{t("Manage employee access · Times shown in Bangkok time")}</p></div></div><div className="filterbar"><SearchField value={search} onChange={setSearch} onCompositionChange={setComposing} label={bilingualLabel("Search invitations by name or email")} placeholder={t("Search by name or email…")} /><RefreshButton busy={state.loading} disabled={state.loading} onClick={refresh} label={bilingualLabel("Refresh invitations")}/></div>
     <DataTable label={bilingualLabel("Employee invitations")} columns={['Employee', 'Role / Department', 'Status', 'Expires', 'Actions']} busy={state.loading} error={state.error} onRetry={refresh} loadingLabel="Loading invitations…" isEmpty={!items.length} empty={<><h3>{query ? bilingualLabel('No matching invitations') : bilingualLabel('No invitations yet')}</h3><p>{query ? t('Try another name or email, or clear the search.') : t('Choose Add employee to invite your first team member.')}</p>{query && <Button onClick={() => setSearch('')}>{t("Clear search")}</Button>}</>}>
-      {items.map(item => <tr key={item.id}><td><strong>{item.displayName}</strong><small className="role-label">{item.email}</small></td><td>{item.roles.map(role => t(roleNames[role] || role)).join(' · ')}<small className="role-label">{t(item.department)}</small></td><td><span className={`badge ${item.status === 'Joined' ? 'verified' : ''}`}>{t(item.status)}</span></td><td>{date(item.expiresAt)}</td><td>{item.status === 'Joined' ? <span className="muted">{t("Joined")}</span> : <Dropdown rowActions label={bilingualLabel("Invitation actions for {value0}", {value0: item.email})} items={[
-        { label: 'Create new link', icon: 'link', onSelect: () => setSelection({ item, action: 'renew' }) },
+      {items.map(item => <tr key={item.id}><td><strong>{item.displayName === item.email.slice(0,100) ? item.email : item.displayName}</strong><small className="role-label">{item.email}</small></td><td>{item.roles.map(role => t(roleNames[role] || role)).join(' · ')}<small className="role-label">{t(item.department)}</small></td><td><span className={`badge ${item.status === 'Joined' ? 'verified' : ''}`}>{t(item.status)}</span></td><td>{date(item.expiresAt)}</td><td>{item.status === 'Joined' ? <span className="muted">{t("Joined")}</span> : <Dropdown rowActions label={bilingualLabel("Invitation actions for {value0}", {value0: item.email})} items={[
+        { label: 'Resend invitation email', icon: 'link', onSelect: () => setSelection({ item, action: 'renew' }) },
         ...(!['Revoked','Expired'].includes(item.status) ? [{ label: 'Revoke invitation', icon: 'revoke', danger: true, onSelect: () => setSelection({ item, action: 'revoke' }) }] : []),
       ]}/>}</td></tr>)}
     </DataTable>

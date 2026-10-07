@@ -1,0 +1,16 @@
+// Durable staff onboarding; credentials remain in Better Auth tables.
+model EmployeeOnboarding {
+ invitationId String @id
+ userId String? @unique
+ emailVerifiedAt DateTime?
+ profileCompletedAt DateTime?
+ passwordSetAt DateTime?
+ completedAt DateTime?
+ emailSentAt DateTime?
+ firstName String?
+ lastName String?
+ address String?
+ addressDetails Json?
+ primaryPhone String?
+ updatedAt DateTime @updatedAt
+}

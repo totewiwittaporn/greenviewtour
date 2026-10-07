@@ -16,7 +16,7 @@ export async function pushText({ payload, retryKey, token, mode = 'simulation', 
   try {
     const response = await transport('https://api.line.me/v2/bot/message/push', {
       method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Line-Retry-Key': retryKey },
-      body: JSON.stringify(payload), signal: AbortSignal.timeout(15000), redirect: 'error',
+      body: JSON.stringify(payload), signal: AbortSignal.timeout(15000), redirect: 'manual',
     })
     const accepted = response.ok || (response.status === 409 && Boolean(response.headers.get('x-line-accepted-request-id')))
     // Acceptance does not prove receipt or reading by a person.

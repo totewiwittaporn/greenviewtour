@@ -3,6 +3,7 @@ import {financialTotal,cents} from '../../../../../packages/contracts/personnel-
 import {bookingQuote} from '../../../../../packages/contracts/booking-plan.js'
 import {billingCycleClose,billingDueDate} from '../../../../../packages/contracts/agent-billing.js'
 import {dateOnly} from '../../../modules/operations/common.js'
+import {jsonRangeWhere} from '../../../platform/database/json-range.js'
 const day=value=>value?new Date(value).toISOString().slice(0,10):null
 export function summarizeCash({today,receipts=[],payments=[],expenses=[],bills=[],bookings=[],offsets=[],memberPayments=[]}){
  const through=new Date(+dateOnly(today)+29*86400000).toISOString().slice(0,10),from=today.slice(0,8)+'01'
@@ -38,12 +39,14 @@ export async function cashSummary(tx,actor,today){
  if(!effectiveAccess(actor,'finance.receive').allowed||!effectiveAccess(actor,'expenses.view').allowed)return null
  const kinds=['AGENT_REFUND','BOOKING_COMMISSION','ALLOWANCE','REIMBURSEMENT','WORK_ADVANCE','SUPPLIER_PAYMENT',...(effectiveAccess(actor,'payroll.view').allowed?['PAYROLL','SALARY_ADVANCE']:[])]
  const from=dateOnly(today.slice(0,8)+'01'),through=dateOnly(today),fromDay=today.slice(0,8)+'01'
+ const paidOnWhere=await jsonRangeWhere(tx,'FinancePersonnelRecord.payment.paidOn',{gte:fromDay})
+ const memberReceivedWhere=await jsonRangeWhere(tx,'CustomerRequest.snapshot.payment.receivedOn',{gte:fromDay})
  const [payments,expenses,bills,bookings,memberPayments]=await Promise.all([
   tx.agentPayment.findMany({where:{receivedOn:{gte:from,lte:through}},select:{amount:true,receivedOn:true}}),
-  tx.financePersonnelRecord.findMany({where:{kind:{in:kinds},OR:[{status:{in:['SUBMITTED','APPROVED']}},{status:{in:['PAID','CLEARANCE_SUBMITTED','CLEARED']},payment:{path:['paidOn'],gte:fromDay}}]},select:{id:true,kind:true,title:true,status:true,payload:true,payment:true}}),
+  tx.financePersonnelRecord.findMany({where:{kind:{in:kinds},OR:[{status:{in:['SUBMITTED','APPROVED']}},{status:{in:['PAID','CLEARANCE_SUBMITTED','CLEARED']},...paidOnWhere}]},select:{id:true,kind:true,title:true,status:true,payload:true,payment:true}}),
   tx.agentBill.findMany({where:{status:'OPEN'},select:{id:true,title:true,total:true,paid:true,dueOn:true,originalDueOn:true,promisedOn:true}}),
   tx.tourBooking.findMany({where:{status:{in:['CONFIRMED','COMPLETED']},paymentTerms:{not:'PAID'},billLine:null,attendance:{none:{financeStatus:{notIn:['NONE','RETAIN_CHARGES']}}}},select:{id:true,code:true,status:true,paymentTerms:true,outboundDate:true,returnDate:true,adults:true,children:true,adultPrice:true,childPrice:true,lines:{select:{selected:true,included:true,quantity:true,unitPrice:true,snapshot:true}},agent:{select:{billingMode:true,billingCycleCount:true,billingCycleUnit:true,billingCycleAnchor:true,creditCount:true,creditUnit:true,creditAnchor:true}}}}),
-  tx.customerRequest.findMany({where:{status:'PAID',snapshot:{path:['payment','receivedOn'],gte:fromDay}},select:{snapshot:true}})
+  tx.customerRequest.findMany({where:{status:'PAID',...memberReceivedWhere},select:{snapshot:true}})
  ])
  const bookingIds=bookings.map(row=>row.id)
  const receipts=await tx.bookingReceipt.findMany({where:{OR:[{receivedOn:{gte:from,lte:through}},{margin:{gt:0}},...(bookingIds.length?[{bookingId:{in:bookingIds}}]:[])]},select:{id:true,bookingId:true,net:true,margin:true,refunded:true,receivedOn:true,reference:true}})

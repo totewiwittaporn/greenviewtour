@@ -13,12 +13,27 @@ export async function api(path, body, options = {}) {
   }
   const data = await response.json().catch(() => { if (response.ok) throw new Error('SERVICE_UNAVAILABLE'); return { code: 'SERVICE_UNAVAILABLE' } })
   if (!response.ok) {
-    if (response.status === 401 && !path.startsWith('/api/auth/') && path !== '/api/me') window.location.assign('/login')
+    if(data.code==='LINE_ONBOARDING_REQUIRED')window.location.assign('/')
+    if (response.status === 401 && !path.startsWith('/api/auth/') && !path.startsWith('/api/onboarding') && path !== '/api/me') window.location.assign('/login')
     const error = new Error(data.code || 'SERVICE_UNAVAILABLE'); error.status = response.status; error.detail = typeof data.message === 'string' && data.message !== data.code ? data.message : null; error.fields = data.errors;  error.retryAfterSeconds = Number(response.headers.get('Retry-After') || data.retryAfterSeconds) || null; throw error
   }
   return data
 }
 export const authMessage = error => ({
+  INVALID_EMPLOYEE_INFORMATION: "Check your employee information and try again.",
+  INVALID_PASSWORD: "Use 12\u2013128 characters.",
+  PASSWORD_MISMATCH: "Passwords must match.",
+  ONBOARDING_STEP_CONFLICT: "Your setup step has changed. Refresh to continue.",
+  ONBOARDING_REQUIRED: "Open your invitation email to complete account setup.",
+  INVITATION_EMAIL_REQUIRED: "Ask your Manager to resend your invitation by email.",
+  LINE_LOGIN_NOT_CONFIGURED: "LINE Login is not configured. Your progress is saved; contact your Manager.",
+  LINE_LOCAL_ONLY: "LINE Login is not enabled in this Local environment. Your progress is saved.",
+  LINE_LOGIN_EXPIRED: "This LINE sign-in attempt has expired or was used. Start LINE Login again.",
+  LINE_LOGIN_INVALID: "LINE identity could not be verified. Start LINE Login again.",
+  LINE_LOGIN_UNAVAILABLE: "LINE is temporarily unavailable. Your progress is saved; try again.",
+  LINE_FRIEND_REQUIRED: "Add Greenview Staff OA as a friend, then start LINE Login again.",
+  LINE_LINK_CONFLICT: "This LINE account is already linked to another employee. Use your own LINE account.",
+
   INVALID_CREDENTIALS: 'Unable to sign in. Check your email and password, and confirm your email if you have just registered.',
   INVITATION_INVALID: 'This invitation link is invalid, expired or revoked. Ask your Manager for a new link.',
   INVITATION_UNAVAILABLE: 'This invitation is no longer authorized. Ask your Manager for a new link.',

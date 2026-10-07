@@ -7,7 +7,7 @@ try {
  const context = await browser.newContext({viewport:{width:1280,height:900}})
  const page = await context.newPage(), errors = []
  page.on('pageerror', error => errors.push(error.message))
- let authenticated = false, quoteCalls = 0, profileReads = 0, failSave = false, profileWrites = 0, recovery = false
+ let authenticated = false, quoteCalls = 0, profileReads = 0, failSave = false, profileWrites = 0, recovery = false, verifications = 0
  const customer = {id:'customer',displayName:'นักเดินทางเดิม',email:'traveller@example.com',phone:'0812345678',lineId:'traveller.line',version:1}
  const tour = {id:'tour',slug:'surin',name:'ชื่อทัวร์จากฐานข้อมูล',description:'เก็บข้อความต้นฉบับ',durationDays:2,adultPrice:'1500',childPrice:'1000',promotions:[{id:'promo',name:'โปรโมชั่นต้นฉบับ',remaining:10,quotaUnit:'SEAT',adultPrice:'1400',childPrice:'900',serviceStartsOn:'2026-09-21',serviceEndsOn:'2026-10-04'}],components:[]}
  await context.route(/^https:/, route => route.abort())
@@ -22,6 +22,11 @@ try {
    }
    return route.fulfill(authenticated ? {json:{customer,recovery}} : {status:401,json:{code:'LOGIN_REQUIRED'}})
   }
+  if (path === '/api/member/verify-email') {
+   verifications++
+   assert.deepEqual(route.request().postDataJSON(),{token:'fixture-email-verification'})
+   return route.fulfill({json:{ok:true}})
+  }
   if (path === '/api/member/login') {authenticated = true; return route.fulfill({json:{customer}})}
   if (path === '/api/member/requests') return route.fulfill({json:{rows:[],page:1,total:0}})
   if (path === '/api/public/tours') return route.fulfill({json:{rows:[tour],page:1,total:1}})
@@ -33,6 +38,14 @@ try {
   await page.getByRole('button',{name,exact:true}).click()
   assert.equal(await page.locator('.member-account-panel').count(),0)
  }
+ await page.goto(origin + '/login#verify=fixture-email-verification')
+ await page.getByRole('status').getByText('ยืนยันอีเมลแล้ว กรุณาเข้าสู่ระบบ',{exact:true}).waitFor()
+ assert.equal(new URL(page.url()).hash,'')
+ assert.equal(verifications,1)
+ assert.equal(await page.getByRole('alert').count(),0)
+ await selectLanguage('English')
+ await page.getByRole('status').getByText('Email verified. You can now sign in.',{exact:true}).waitFor()
+ await selectLanguage('Thai / ภาษาไทย')
  await page.goto(origin + '/login?mode=register')
  await page.getByRole('heading',{name:'สมัครสมาชิก / Create account',exact:true}).waitFor()
  await page.getByLabel('ยืนยันรหัสผ่าน / Confirm password',{exact:true}).waitFor()
@@ -250,6 +263,7 @@ try {
  authenticated = false
  const login = await context.newPage()
  await login.goto(origin + '/login?next=' + encodeURIComponent('/tours?tour=surin'))
+ await login.locator('header').waitFor()
  await login.evaluate(() => {window.authHeader = document.querySelector('header')})
  await login.getByLabel('อีเมล / Email',{exact:true}).fill('traveller@example.com')
  await login.getByLabel('รหัสผ่าน / Password',{exact:true}).fill('valid-password')
@@ -258,6 +272,24 @@ try {
  assert.match(login.url(),/\/tours\?tour=surin$/)
  assert.equal(await login.evaluate(() => window.authHeader === document.querySelector('header')),true)
  await login.close()
+ // Normal login clears a verification notice and opens My trips, not /login.
+ authenticated = false
+ const defaultLogin = await context.newPage()
+ defaultLogin.on('pageerror',error=>errors.push(error.message))
+ await defaultLogin.goto(origin + '/login')
+ await defaultLogin.getByRole('heading',{name:'เข้าสู่ระบบสมาชิก / Member sign in',exact:true}).waitFor()
+ await defaultLogin.goto(origin + '/login#verify=fixture-email-verification')
+ await defaultLogin.getByRole('status').filter({hasText:'ยืนยันอีเมลแล้ว กรุณาเข้าสู่ระบบ'}).waitFor()
+ await defaultLogin.getByLabel('อีเมล / Email',{exact:true}).fill('traveller@example.com')
+ await defaultLogin.getByLabel('รหัสผ่าน / Password',{exact:true}).fill('valid-password')
+ await defaultLogin.getByRole('button',{name:'เข้าสู่ระบบ',exact:true}).click()
+ await defaultLogin.waitForURL(url=>url.pathname==='/')
+ await defaultLogin.getByRole('heading',{name:'ทริปของฉัน / My trips',exact:true}).waitFor()
+ assert.match(await defaultLogin.title(),/ทริปของฉัน/)
+ assert.equal(await defaultLogin.getByText('ยืนยันอีเมลแล้ว กรุณาเข้าสู่ระบบ',{exact:true}).count(),0)
+ await defaultLogin.reload()
+ await defaultLogin.getByRole('heading',{name:'ทริปของฉัน / My trips',exact:true}).waitFor()
+ await defaultLogin.close()
  recovery = true
  await shell.reload()
  await shell.locator('.member-account-trigger').click()

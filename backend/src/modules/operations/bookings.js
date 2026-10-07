@@ -1,3 +1,5 @@
+import {confirmationRate,captureRateRevision} from '../service-catalog/agent-price-history.js'
+import {bookingPriceReview,planBookingPriceConfirmation} from './booking-confirmation-price.js'
 import {assessBookingCapacity,selections} from './capacity-core.js'
 import { bookingCommissionSnapshot } from './booking-commission.js'
 import { requireBookingEdit } from './booking-ownership.js'
@@ -29,13 +31,13 @@ export async function authorizePaidChange(tx,actorId,before,after){
 }
 function intakePlanView(plan){
  const safeResource=r=>r?Object.fromEntries(['id','name','code','category','kind','baseUnit','size','mealPeriod','accommodationType','occupancy','origin','destination'].map(k=>[k,r[k]])):null
- return {...plan,program:plan.program?{id:plan.program.id,name:plan.program.name,journeyMode:plan.program.journeyMode,durationDays:plan.program.durationDays,childPolicy:plan.program.childPolicy}:undefined,trip:{id:plan.trip.id,tourId:plan.trip.tourId,name:plan.trip.name,startsAt:plan.trip.startsAt,endsAt:plan.trip.endsAt},lines:plan.lines.map(l=>({...l,resource:safeResource(l.resource),snapshot:l.snapshot?Object.fromEntries(Object.entries(l.snapshot).filter(([k])=>k!=='costPrice')):undefined}))}
+ return {...plan,program:plan.program?{id:plan.program.id,name:plan.program.name,journeyMode:plan.program.journeyMode,durationDays:plan.program.durationDays,childPolicy:plan.program.childPolicy}:undefined,trip:plan.trip?{id:plan.trip.id,tourId:plan.trip.tourId,name:plan.trip.name,startsAt:plan.trip.startsAt,endsAt:plan.trip.endsAt}:null,lines:plan.lines.map(l=>({...l,resource:safeResource(l.resource),snapshot:l.snapshot?Object.fromEntries(Object.entries(l.snapshot).filter(([k])=>k!=='costPrice')):undefined}))}
 }
 export async function getBlueprint(prisma,actorId,params){
  const access=await intakeAccess(prisma,actorId)
  const adults=int(params.get('adults'),0,9999),children=int(params.get('children'),0,9999)
  if(adults+children<1)fail('INVALID_PASSENGER_COUNT',400)
- if(params.get('tourId')){const existing=params.get('bookingId')?await prisma.tourBooking.findUnique({where:{id:uuid(params.get('bookingId'))},include:full}):null;if(existing&&!access.booking&&existing.createdById!==actorId)fail('PERMISSION_DENIED',403);const plan=await programBookingPlan(prisma,{...Object.fromEntries(params),adults,children},existing);await requireOpenServiceDays(prisma,[plan.journey?.outboundDate,plan.journey?.returnDate,params.get('serviceDate')])
+ if(params.get('tourId')){const existing=params.get('bookingId')?await prisma.tourBooking.findUnique({where:{id:uuid(params.get('bookingId'))},include:full}):null;if(existing&&!access.booking&&existing.createdById!==actorId)fail('PERMISSION_DENIED',403);const plan=await programBookingPlan(prisma,{...Object.fromEntries(params),adults,children},existing,{allowUndated:true});await requireOpenServiceDays(prisma,[plan.journey?.outboundDate,plan.journey?.returnDate,params.get('serviceDate')])
   if(!access.booking&&plan.program.journeyMode!=='RETURN_ONLY')fail('PERMISSION_DENIED',403);return intakePlanView(plan)}
  if(!access.booking)fail('PERMISSION_DENIED',403)
  return blueprint(prisma,params.get('tripId'),adults,children)
@@ -54,14 +56,27 @@ export async function saveBooking(prisma,actorId,input){
   if(adults+children<1)fail('INVALID_PASSENGER_COUNT',400)
   const modern=Boolean(input.tourId)
   if(!access.booking&&(!modern||existing&&existing.createdById!==actorId))fail('PERMISSION_DENIED',403)
-  const plan=modern?await programBookingPlan(tx,{...input,adults,children},existing):await blueprint(tx,input.tripId,adults,children)
+  const bookedAt=existing?.createdAt||new Date()
+  const plan=modern?await programBookingPlan(tx,{...input,adults,children},existing,{bookedAt,allowUndated:true}):await blueprint(tx,input.tripId,adults,children)
   if(!access.booking&&plan.program?.journeyMode!=='RETURN_ONLY')fail('PERMISSION_DENIED',403)
-  const sequence=existing?null:await tx.bookingSequence.upsert({where:{year:Number((input.serviceDate||localStamp(plan.trip.startsAt)).slice(0,4))},create:{year:Number((input.serviceDate||localStamp(plan.trip.startsAt)).slice(0,4)),value:1},update:{value:{increment:1}}})
+  if(modern&&plan.priceSource?.revisionId){
+   const rate=await tx.agentTourPrice.findUnique({where:{id:plan.priceSource.rateId},include:{agreement:true}})
+   if(rate?.version===plan.priceSource.rateVersion)await captureRateRevision(tx,rate,actorId)
+  }
+  let retiredTrip=null
+  if(modern&&!plan.trip){
+   if(input.capacitySelections?.length||input.lines?.some(line=>line.slotId||line.sourceId))fail('UNDATED_ASSIGNMENT_NOT_ALLOWED',400)
+   if(existing?.tripId){
+    if(!existing.programSnapshot?.bookingOwnedTrip||existing.trip?.code!==`T-${existing.id}`||await tx.tourBooking.count({where:{tripId:existing.tripId}})!==1||existing.lines.some(line=>line.issuedQty||line.dispatchAssignments?.some(a=>a.status!=='CANCELLED'))||await tx.guideAssignment.count({where:{bookingId:existing.id,status:{not:'CANCELLED'}}}))fail('BOOKING_HAS_ISSUES')
+    retiredTrip={id:existing.tripId,startsAt:existing.trip.startsAt,endsAt:existing.trip.endsAt}
+   }
+  }
+  const sequence=existing?null:await tx.bookingSequence.upsert({where:{year:Number((input.serviceDate||localStamp(plan.trip?.startsAt||bookedAt)).slice(0,4))},create:{year:Number((input.serviceDate||localStamp(plan.trip?.startsAt||bookedAt)).slice(0,4)),value:1},update:{value:{increment:1}}})
   const code=existing?.code||`BK-${sequence.year}-${String(sequence.value).padStart(6,'0')}`,name=string(input.name)
-  if(modern){
+  if(modern&&plan.trip){
    // Each new Booking owns its dated envelope; dispatch still owns fleet capacity.
    const tripData={code:`T-${input.id}`,name,tourId:input.tourId,startsAt:plan.trip.startsAt,endsAt:plan.trip.endsAt,capacity:adults+children,status:'OPEN'}
-   if(existing&&existing.programSnapshot?.bookingOwnedTrip){plan.trip.id=existing.tripId;await tx.operationTrip.update({where:{id:existing.tripId},data:tripData})}
+   if(existing?.tripId&&existing.programSnapshot?.bookingOwnedTrip){plan.trip.id=existing.tripId;await tx.operationTrip.update({where:{id:existing.tripId},data:tripData})}
    else await tx.operationTrip.create({data:{id:plan.trip.id,...tripData}})
   }
   const preserve=existing&&!modern&&existing.tripId===input.tripId
@@ -137,17 +152,29 @@ export async function saveBooking(prisma,actorId,input){
   }
   if(!modern)Object.assign(details,{outboundDate:new Date(localStamp(plan.trip.startsAt).slice(0,10)+'T00:00:00Z'),returnDate:new Date(localStamp(plan.trip.endsAt).slice(0,10)+'T00:00:00Z'),returnStatus:'OUR'})
   const commissionSnapshot=bookingCommissionSnapshot({program:plan.program||plan.trip.tour,agent:commissionAgent,adults,children,existing,ownerId:existing?.assigneeId??existing?.createdById??actorId})
-  const data={...details,commissionSnapshot,createdById:existing?existing.createdById:actorId,code,name,tripId:plan.trip.id,adults,children,adultPrice:modern?plan.adultPrice:plan.trip.tour?money(input.adultPrice):'0',childPrice:modern?plan.childPrice:plan.trip.tour?money(input.childPrice):'0',requestHash,programSnapshot:preserve?existing.programSnapshot:{tourId:plan.trip.tourId,name:plan.trip.tour?.name||'Standalone service',route:plan.trip.tour?.route||null,cancellationTerms:plan.trip.tour?.cancellationTerms||null,startsAt:plan.trip.startsAt.toISOString(),endsAt:plan.trip.endsAt.toISOString(),savedAt:new Date().toISOString(),...(modern?{bookingOwnedTrip:true,journeyMode:plan.program.journeyMode,durationDays:plan.program.durationDays,priceSource:plan.priceSource,allowedPaymentTerms:plan.allowedPaymentTerms,childPolicy:plan.program.childPolicy,bookingCutoff:plan.program.bookingCutoff,confirmationMode:plan.program.confirmationMode}: {})}}
-  data.programSnapshot={...data.programSnapshot,capacitySelections:selections(input.capacitySelections??existing?.programSnapshot?.capacitySelections??[]),capacityReview:null}
+  const data={...details,...(!existing?{createdAt:bookedAt}:{}),commissionSnapshot,createdById:existing?existing.createdById:actorId,code,name,tripId:plan.trip?.id??null,adults,children,adultPrice:modern?plan.adultPrice:plan.trip.tour?money(input.adultPrice):'0',childPrice:modern?plan.childPrice:plan.trip.tour?money(input.childPrice):'0',requestHash,programSnapshot:preserve?existing.programSnapshot:{tourId:plan.program?.id||plan.trip?.tourId,name:plan.program?.name||plan.trip?.tour?.name||'Standalone service',route:plan.program?.route||plan.trip?.tour?.route||null,cancellationTerms:plan.program?.cancellationTerms||plan.trip?.tour?.cancellationTerms||null,startsAt:plan.trip?.startsAt.toISOString()??null,endsAt:plan.trip?.endsAt.toISOString()??null,savedAt:new Date().toISOString(),...(modern?{bookingOwnedTrip:true,dateStatus:plan.undated?'UNSCHEDULED':'SCHEDULED',priceConfirmations:existing?.programSnapshot?.priceConfirmations||[],journeyMode:plan.program.journeyMode,durationDays:plan.program.durationDays,priceSource:plan.priceSource,allowedPaymentTerms:plan.allowedPaymentTerms,childPolicy:plan.program.childPolicy,bookingCutoff:plan.program.bookingCutoff,confirmationMode:plan.program.confirmationMode}: {})}}
+  data.programSnapshot={...data.programSnapshot,capacitySelections:modern&&!plan.trip?[]:selections(input.capacitySelections??existing?.programSnapshot?.capacitySelections??[]),capacityReview:null}
   if(existing?.programSnapshot?.priceException){if(!modern&&preserve)Object.assign(data,existing.programSnapshot.priceException.standard);data.programSnapshot={...data.programSnapshot,priceException:null};await audit(tx,actorId,existing.id,'booking.price.invalidated',{previous:existing.programSnapshot.priceException,reason:'Booking draft edited; request a new price review.'})}
   if(existing)await tx.bookingComponent.deleteMany({where:{bookingId:existing.id}})
   const row=existing?await tx.tourBooking.update({where:{id:existing.id},data:{...data,version:{increment:1},lines:{create:lines}},include:full}):await tx.tourBooking.create({data:{id:input.id,...data,lines:{create:lines}},include:full})
-  await audit(tx,actorId,row.id,'booking.saved',{version:row.version,lineCount:lines.length});return {row}
+  if(retiredTrip)await tx.operationTrip.delete({where:{id:retiredTrip.id}})
+  await audit(tx,actorId,row.id,'booking.saved',{version:row.version,lineCount:lines.length,...(retiredTrip?{retiredDraftTrip:retiredTrip}:{})});return {row}
  },'islandBooking')
 }
+export async function getBookingPriceReview(prisma,actorId,bookingId){
+ return prisma.$transaction(async tx=>{
+  await intakeAccess(tx,actorId)
+  const booking=await tx.tourBooking.findUnique({where:{id:uuid(bookingId)},include:full})
+  if(!booking)fail('NOT_FOUND',404)
+  await requireBookingEdit(tx,actorId,booking)
+  if(booking.status!=='DRAFT')fail('BOOKING_LOCKED')
+  return {bookingCode:booking.code,review:bookingPriceReview(booking,await confirmationRate(tx,booking))}
+ },{isolationLevel:'RepeatableRead'})
+}
 export async function bookingStatus(prisma,actorId,input){
- keys(input,['id','bookingId','version','action']);uuid(input.id);uuid(input.bookingId);int(input.version)
+ keys(input,['id','bookingId','version','action','priceConfirmation']);uuid(input.id);uuid(input.bookingId);int(input.version)
  if(!['CONFIRM','CANCEL','COMPLETE'].includes(input.action))fail('INVALID_ACTION',400)
+ if(input.action!=='CONFIRM'&&input.priceConfirmation!==undefined)fail('INVALID_INPUT',400)
  return write(prisma,actorId,async tx=>{
   const booking=await tx.tourBooking.findUnique({where:{id:input.bookingId},include:full})
   if(!booking)fail('NOT_FOUND',404)
@@ -162,20 +189,28 @@ export async function bookingStatus(prisma,actorId,input){
   let status
   if(input.action==='CONFIRM'){
    if(booking.status!=='DRAFT')fail('BOOKING_LOCKED')
+   if(!booking.tripId||!(booking.outboundDate||booking.returnDate))fail('SERVICE_DATE_REQUIRED',400)
    requirePriceApproval(booking)
+   const resolution=await confirmationRate(tx,booking)
+   const pricePlan=planBookingPriceConfirmation(booking,resolution,{commandId:input.id,version:input.version,confirmation:input.priceConfirmation},actorId)
+   const pricedBooking={...booking,...pricePlan.patch}
    if(booking.programSnapshot?.bookingOwnedTrip&&booking.allergyStatus==='UNKNOWN')fail('ALLERGY_STATUS_REQUIRED',400)
-   if(bookingQuote(booking).total===null)fail('PRICE_REQUIRED')
+   if(bookingQuote(pricedBooking).total===null)fail('PRICE_REQUIRED')
    if(booking.paymentTerms==='UNSET')fail('PAYMENT_TERMS_REQUIRED',400)
-   if(booking.adults&&!booking.adultPrice||booking.children&&!booking.childPrice||booking.lines.some(l=>l.selected&&l.unitPrice===null))fail('PRICE_REQUIRED')
+   if(booking.adults&&pricedBooking.adultPrice==null||booking.children&&pricedBooking.childPrice==null||booking.lines.some(l=>l.selected&&l.unitPrice===null))fail('PRICE_REQUIRED')
    const capacity=await assessBookingCapacity(tx,booking,{excludeRequestId:booking.programSnapshot?.customerRequestId||null})
-   const programSnapshot={...booking.programSnapshot,capacitySelections:capacity.selections,capacityReview:capacity.canConfirm?null:{status:'WAITING_TEAM',checkedAt:new Date().toISOString(),legs:capacity.legs}}
+   const priceDecision={...pricePlan.decision,outcome:capacity.canConfirm?'CONFIRMED':'WAITING_TEAM'}
+   const confirmedSnapshot={...pricePlan.patch.programSnapshot,priceConfirmations:[...(booking.programSnapshot?.priceConfirmations||[]),priceDecision]}
+   const programSnapshot={...(capacity.canConfirm?confirmedSnapshot:{...booking.programSnapshot,priceConfirmations:confirmedSnapshot.priceConfirmations}),capacitySelections:capacity.selections,capacityReview:capacity.canConfirm?null:{status:'WAITING_TEAM',checkedAt:new Date().toISOString(),legs:capacity.legs}}
+   if(resolution.record)await captureRateRevision(tx,resolution.record,actorId)
+   await audit(tx,actorId,booking.id,'booking.price.confirmed',priceDecision)
    if(!capacity.canConfirm){
     const result={ok:false,status:'DRAFT',version:booking.version+1,capacityStatus:'WAITING_TEAM',availability:capacity}
     await tx.tourBooking.update({where:{id:booking.id},data:{programSnapshot,version:{increment:1}}})
     await audit(tx,actorId,booking.id,'booking.waiting-capacity',{version:result.version})
     await tx.operationCommand.create({data:{id:input.id,requestHash,result}});return result
    }
-   await tx.tourBooking.update({where:{id:booking.id},data:{programSnapshot}})
+   await tx.tourBooking.update({where:{id:booking.id},data:{adultPrice:pricePlan.patch.adultPrice,childPrice:pricePlan.patch.childPrice,programSnapshot}})
    status='CONFIRMED'
   }else if(input.action==='CANCEL'){
    if(!['DRAFT','CONFIRMED'].includes(booking.status)||booking.lines.some(l=>l.issuedQty)||await tx.dispatchAssignment.count({where:{bookingLine:{bookingId:booking.id},actualAdults:{not:null}}}))fail('BOOKING_HAS_ISSUES')

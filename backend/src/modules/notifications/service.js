@@ -19,6 +19,8 @@ export const notificationFamilies=[
  {prefix:'operations.dispatch.',permission:null,href:null,label:'Job Order updated',important:true},
 ]
 export async function notificationFor(tx,actor,event){
+ // Export/system audit events have no entity to open; never pass null to a unique lookup.
+ if(!event.targetId)return null
  const family=notificationFamilies.find(f=>event.action.startsWith(f.prefix));if(!family)return null
  if(family.permission&&!effectiveAccess(actor,family.permission).allowed)return null
  let href=family.href

@@ -9,7 +9,7 @@ export default defineConfig({
     watch: process.platform === 'darwin' ? { usePolling: true, interval: 500 } : undefined,
     proxy: {
       '/api': {
-        target: `http://127.0.0.1:${process.env.LOCAL_API_PORT || 5000}`, changeOrigin: true,
+        target: `http://127.0.0.1:${process.env.LOCAL_API_PORT || 8787}`, changeOrigin: true,
         configure(proxy) {
           proxy.on('proxyReq', (outgoing, incoming) => {
             // Only this local origin can use the development proxy. No credential reaches the browser.

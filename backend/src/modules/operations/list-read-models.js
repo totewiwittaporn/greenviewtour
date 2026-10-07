@@ -13,6 +13,6 @@ export function operationReadSelect(entity,view){
  return catalogReadSelect(entity,view)
 }
 export async function attachBookingListFlags(tx,rows){
- const values=await readJsonFields(tx,'TourBooking','programSnapshot',rows.map(row=>row.id),['journeyMode','capacityReview.status','priceException.status','priceException.requestedById'])
- return rows.map(row=>{const value=values.get(row.id)||{};return {...row,programSnapshot:{journeyMode:value.journeyMode,capacityReview:value['capacityReview.status']?{status:value['capacityReview.status']}:null,priceException:value['priceException.status']?{status:value['priceException.status'],requestedById:value['priceException.requestedById']}:null}}})
+ const values=await readJsonFields(tx,'TourBooking','programSnapshot',rows.map(row=>row.id),['name','tourId','dateStatus','journeyMode','capacityReview.status','priceException.status','priceException.requestedById'])
+ return rows.map(row=>{const value=values.get(row.id)||{};return {...row,programSnapshot:{name:value.name,tourId:value.tourId,dateStatus:value.dateStatus,journeyMode:value.journeyMode,capacityReview:value['capacityReview.status']?{status:value['capacityReview.status']}:null,priceException:value['priceException.status']?{status:value['priceException.status'],requestedById:value['priceException.requestedById']}:null}}})
 }

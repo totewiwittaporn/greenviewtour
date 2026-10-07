@@ -1,0 +1,44 @@
+// Staff-only LINE mapping. No customer roles, credentials or business records are changed.
+model StaffLineBinding {
+ id String @id
+ channelKey String
+ userId String
+ lineUserId String?
+ displayName String?
+ status String
+ version Int @default(1)
+ linkedAt DateTime?
+ unlinkedAt DateTime?
+ sourceEventAt DateTime?
+ updatedAt DateTime @updatedAt
+ @@unique([channelKey,userId])
+ @@unique([channelKey,lineUserId])
+}
+model StaffLineRequest {
+ id String @id
+ channelKey String
+ sourceEventId String
+ lineUserId String
+ displayName String?
+ tokenHash String
+ sealedTicket String?
+ userId String?
+ webSessionId String?
+ nonceHash String? @unique
+ status String
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([channelKey,sourceEventId])
+ @@index([channelKey,userId,status])
+ @@index([expiresAt])
+}
+model StaffLineEvent {
+ id String @id
+ channelKey String
+ payloadHash String
+ status String
+ outcome String?
+ updatedAt DateTime @updatedAt
+ createdAt DateTime @default(now())
+}

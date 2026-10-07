@@ -1,0 +1,17 @@
+.staff-line-card p,.staff-line-connect p{overflow-wrap:anywhere;line-height:1.65}
+.staff-line-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.staff-line-state{display:inline-block;padding:6px 12px;border:1px solid currentColor;border-radius:999px;font-weight:600}
+.staff-line-hint{padding:12px 16px;background:var(--surface-soft,#f5f7fa);border-radius:10px}
+.staff-line-connect{max-width:700px;margin:32px auto;padding:0 16px}
+.staff-line-connect>.panel{padding:28px}
+.staff-line-connect h1{font-size:26px;line-height:1.35;overflow-wrap:anywhere}
+.staff-line-connect form{display:grid;gap:16px;margin:20px 0}
+.staff-line-summary{padding:12px 16px;border:1px solid var(--border,#e3e7eb);border-radius:10px}
+.staff-line-consent{display:flex;align-items:flex-start;gap:12px;line-height:1.6}
+.staff-line-consent input{flex:0 0 20px;width:20px;height:20px;margin-top:3px}
+@media(max-width:600px){.staff-line-connect{margin:16px auto}.staff-line-connect>.panel{padding:18px}.staff-line-connect h1{font-size:23px}.staff-line-actions>.button{min-height:44px}.staff-line-connect form input{font-size:16px}}
+.profile-sections .staff-line-card{padding:24px}
+.profile-sections .staff-line-card>.panel-heading{padding:0;margin:0 0 16px}
+.staff-line-connect button[type="submit"]{min-height:44px;font-size:14px}
+.staff-line-connect a.button{min-height:44px;display:inline-flex;align-items:center;padding:10px 14px}
+@media(max-width:600px){.profile-sections .staff-line-card{padding:18px}}

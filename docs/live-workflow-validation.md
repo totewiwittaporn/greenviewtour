@@ -1,5 +1,7 @@
 # Live workflow corrections · 13 September 2026
 
+> Environment update (30 September 2026): referenced Preview/provider seed and delivery scripts below are historical and now fail closed. Preserve the domain requirements, but use [Local/Production workflow](local-production-workflow.md) for current execution and testing. No live provider delivery is authorized.
+
 Test target: the owner's authenticated Chrome at localhost:5174, using only demonstration records. No real booking, payment, email or invitation was submitted.
 
 ## Files changed and purpose

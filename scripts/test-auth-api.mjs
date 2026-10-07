@@ -1,0 +1,173 @@
+// Real HTTP auth tests on an isolated copy of Local D1/R2.
+import assert from 'node:assert/strict'
+import {readFile,writeFile,mkdtemp,cp} from 'node:fs/promises'
+import {openSync,closeSync} from 'node:fs'
+import {randomBytes} from 'node:crypto'
+import {execFile,spawn} from 'node:child_process'
+import {promisify} from 'node:util'
+import path from 'node:path'
+import {createServer} from 'node:net'
+import {root,statePath,configPath,localEnvironment,localPlan,validateLocalConfig} from './local-cloudflare-policy.js'
+import {localPreflight,acquireStateLock} from './local-cloudflare-safety.js'
+const execute=promisify(execFile),environment=localEnvironment(),checks=[]
+let release,child,exited,directory,origin
+const token=randomBytes(32).toString('hex'),audit=randomBytes(32).toString('hex')
+async function stop(){if(!child?.pid)return;try{process.kill(-child.pid,'SIGTERM')}catch{ /* optional readiness or already-exited process */ }const timer=setTimeout(()=>{try{process.kill(-child.pid,'SIGKILL')}catch{ /* optional readiness or already-exited process */ }},5000);timer.unref();await exited;clearTimeout(timer);child=null}
+try{
+ await localPreflight();release=await acquireStateLock('auth-api-regression')
+ directory=await mkdtemp(path.join(root,'.local/auth-api-tests-'))
+ const state=path.join(directory,'state');await cp(statePath,state,{recursive:true,errorOnExist:true,force:false})
+ for(const args of localPlan('migrate',state))await execute(process.execPath,args,{cwd:root,env:environment,timeout:45000,maxBuffer:4194304})
+ const config=validateLocalConfig(JSON.parse(await readFile(configPath,'utf8')))
+ config.main=path.join(root,'backend/src/cloudflare/auth-check.ts');config.$schema=path.join(root,'node_modules/wrangler/config-schema.json')
+ config.d1_databases[0].migrations_dir=path.join(root,'backend/prisma-d1/migrations')
+ Object.assign(config.vars,{AUTH_SECRET:randomBytes(48).toString('hex'),LOCAL_API_TOKEN:token,VERIFY_TOKEN:audit})
+ const file=path.join(directory,'worker.jsonc');await writeFile(file,JSON.stringify(config),{mode:0o600})
+ const port=await new Promise((resolve,reject)=>{const server=createServer();server.once('error',reject);server.listen(0,'127.0.0.1',()=>{const value=server.address().port;server.close(()=>resolve(value))})})
+ origin=`http://127.0.0.1:${port}`
+ async function start(){
+  const fd=openSync(path.join(directory,'worker.log'),'a',0o600)
+  child=spawn(process.execPath,[path.join(root,'node_modules/wrangler/bin/wrangler.js'),'dev','--local','--ip','127.0.0.1','--port',String(port),'--persist-to',state,'--config',file,'--env-file',path.join(root,'backend/cloudflare.env'),'--log-level','error'],{cwd:root,env:environment,stdio:['ignore',fd,fd],detached:true});closeSync(fd)
+  exited=new Promise(resolve=>{child.once('exit',resolve);child.once('error',resolve)})
+  let ready=false
+  for(const deadline=Date.now()+30000;Date.now()<deadline;){if(child.exitCode!==null)throw new Error('WORKER_START_FAILED');try{ready=(await fetch(origin+'/health/live',{signal:AbortSignal.timeout(1000)})).ok}catch{ /* optional readiness or already-exited process */ }if(ready)break;await new Promise(resolve=>setTimeout(resolve,200))}
+  assert.ok(ready,'WORKER_START_TIMEOUT')
+ }
+ async function call(route,{data,scope='workspace',cookie='',expected=200,headers={}}={}){
+  const response=await fetch(origin+route,{method:data===undefined?'GET':'POST',headers:{'x-greenview-local-token':token,...(data!==undefined?{'content-type':'application/json',origin:scope==='customer'?'http://localhost:5175':'http://localhost:5174'}:{}),...(cookie?{cookie}:{}),...headers},body:data===undefined?undefined:JSON.stringify(data),signal:AbortSignal.timeout(30000)})
+  const body=await response.json();assert.equal(response.status,expected,route+': '+response.status+' '+(body.code||''))
+  return {body,cookie:response.headers.get('set-cookie')?.split(';')[0]||cookie,headers:response.headers}
+ }
+ async function operator(name,data){const response=await fetch(origin+'/__audit/'+name,{method:'POST',headers:{'x-greenview-audit':audit,'content-type':'application/json'},body:JSON.stringify(data),signal:AbortSignal.timeout(30000)});assert.equal(response.status,200,'FIXTURE_'+name);return response.json()}
+ await start()
+ const email='local-admin-'+Date.now()+'@example.test',password='Local-Auth-Fixture-12345'
+ const ownerFixture=await operator('seed',{email,password})
+ let login=await call('/api/auth/login',{data:{email,password}})
+ assert.ok(login.cookie.startsWith('gv_session='));assert.match(login.headers.get('set-cookie'),/HttpOnly; SameSite=Strict/)
+ assert.equal((await call('/api/me',{cookie:login.cookie})).body.user.email,email)
+ checks.push('Better Auth password login + opaque HttpOnly persistent workspace cookie')
+ await call('/api/dashboard',{cookie:login.cookie});await call('/api/settings/tours',{cookie:login.cookie})
+ await call('/api/public/tours?view=cards',{headers:{origin:'http://localhost:5173'}})
+ checks.push('real API exposes Dashboard, catalog and Public reads with existing domain authorization')
+ await stop();await start()
+ await call('/api/me',{cookie:login.cookie})
+ checks.push('session survives actual Worker process restart')
+ await call('/api/member/profile',{cookie:login.cookie,scope:'customer',expected:401})
+ await call('/api/me',{cookie:login.cookie,headers:{origin:'https://attacker.invalid'},expected:403})
+ await call('/api/auth/register',{data:{email:'no-invite@example.test',password},expected:410})
+ await call('/api/me',{headers:{'x-greenview-local-token':'wrong'},expected:401})
+ checks.push('member/workspace isolation, untrusted-origin denial, no public staff signup, proxy token alone insufficient')
+ const legacy='legacy-'+Date.now()+'@example.test';await operator('seed',{email:legacy,password,legacy:true})
+ await call('/api/auth/login',{data:{email:legacy,password}})
+ checks.push('migrated bcrypt-compatible password signs in without changing its password')
+ await call('/api/auth/recover',{data:{email}})
+ const {mail}=await operator('mail',{email,kind:'reset'});assert.ok(mail.link.startsWith('http://localhost:5174/reset-password#recovery='))
+ const recoveryToken=new URLSearchParams(new URL(mail.link).hash.slice(1)).get('recovery')
+ const recovery=await call('/api/auth/recovery-session',{data:{token:recoveryToken}})
+ await call('/api/dashboard',{cookie:recovery.cookie,expected:401})
+ await call('/api/auth/reset-password',{cookie:login.cookie,data:{password:password+'new'},expected:403})
+ await call('/api/auth/reset-password',{cookie:recovery.cookie,data:{password:password+'new'}})
+ await call('/api/me',{cookie:login.cookie,expected:401})
+ await call('/api/auth/recovery-session',{data:{token:recoveryToken},expected:400})
+ await call('/api/auth/login',{data:{email,password},expected:400})
+ login=await call('/api/auth/login',{data:{email,password:password+'new'}})
+ checks.push('local reset mail, restricted one-use recovery, password change revokes previous sessions')
+ await call('/api/auth/logout',{cookie:login.cookie,data:{}})
+ await call('/api/me',{cookie:login.cookie,expected:401})
+ checks.push('logout revokes database session and prevents cookie replay')
+ const customerEmail='customer-'+Date.now()+'@example.test'
+ await call('/api/member/register',{scope:'customer',data:{email:customerEmail,password,role:'ADMIN_MANAGER'}})
+ await call('/api/member/login',{scope:'customer',data:{email:customerEmail,password},expected:403})
+ const customerMail=await operator('mail',{email:customerEmail,kind:'verify'})
+ assert.ok(customerMail.mail.link.startsWith('http://localhost:5175/login#verify='))
+ const verifyToken=new URLSearchParams(new URL(customerMail.mail.link).hash.slice(1)).get('verify')
+ await call('/api/member/verify-email',{scope:'customer',data:{token:verifyToken}})
+ let customerLogin=await call('/api/member/login',{scope:'customer',data:{email:customerEmail,password}})
+ assert.ok(customerLogin.cookie.startsWith('gv_member_session='))
+ await call('/api/member/profile',{scope:'customer',cookie:customerLogin.cookie})
+ await call('/api/member/requests?view=list',{scope:'customer',cookie:customerLogin.cookie})
+ const customerState=await operator('state',{email:customerEmail});assert.equal(customerState.profile,null)
+ await call('/api/auth/login',{data:{email:customerEmail,password},expected:403})
+ checks.push('customer sign-up/verification/login/profile/trips work; supplied roles cannot create a staff profile')
+ await call('/api/member/recover',{scope:'customer',data:{email:customerEmail}})
+ const customerReset=await operator('mail',{email:customerEmail,kind:'reset'})
+ assert.ok(customerReset.mail.link.startsWith('http://localhost:5175/login#recovery='))
+ const customerRecoveryToken=new URLSearchParams(new URL(customerReset.mail.link).hash.slice(1)).get('recovery')
+ const customerRecovery=await call('/api/member/recovery-session',{scope:'customer',data:{token:customerRecoveryToken}})
+ await call('/api/member/requests',{scope:'customer',cookie:customerRecovery.cookie,expected:401})
+ await call('/api/member/reset-password',{scope:'customer',cookie:customerRecovery.cookie,data:{password:password+'new'}})
+ await call('/api/member/profile',{scope:'customer',cookie:customerLogin.cookie,expected:401})
+ customerLogin=await call('/api/member/login',{scope:'customer',data:{email:customerEmail,password:password+'new'}})
+ checks.push('customer reset grants cannot access bookings; reset invalidates old customer sessions')
+ login=await call('/api/auth/login',{data:{email,password:password+'new'}})
+ let staffEmail='invited-'+Date.now()+'@example.test'
+ const invite=await call('/api/invitations',{cookie:login.cookie,data:{email:staffEmail,department:'BOOKING',roleCode:'BOOKING'},expected:201})
+ assert.equal(invite.body.invitationCode,undefined)
+ assert.equal(invite.body.delivery,'LOCAL_MAIL')
+ const staffMail=await operator('mail',{email:staffEmail,kind:'invite'})
+ const invitationCode=new URLSearchParams(new URL(staffMail.mail.link).hash.slice(1)).get('invitation')
+ let staffLogin=await call('/api/onboarding/exchange',{data:{invitationCode}})
+ await call('/api/onboarding/exchange',{data:{invitationCode},expected:400})
+ await call('/api/dashboard',{cookie:staffLogin.cookie,expected:401})
+ await call('/api/onboarding/password',{cookie:staffLogin.cookie,data:{password,confirmPassword:password},expected:409})
+ await call('/api/onboarding/profile',{cookie:staffLogin.cookie,data:{firstName:'Invited',lastName:'Staff',province:'Phuket',district:'Mueang Phuket',subdistrict:'Rawai',postalCode:'83130',houseNumber:'12',moo:'',villageName:'',mapUrl:'',latitude:'',longitude:'',primaryPhone:'0812345678'}})
+ await call('/api/onboarding/password',{cookie:staffLogin.cookie,data:{password,confirmPassword:'different'},expected:400})
+ await call('/api/onboarding/password',{cookie:staffLogin.cookie,data:{password,confirmPassword:password}})
+ const pending=await operator('state',{email:staffEmail});assert.equal(pending.profile,null)
+ staffLogin=await call('/api/auth/login',{data:{email:staffEmail,password}})
+ assert.equal(staffLogin.body.redirect,'/onboarding')
+ assert.equal((await call('/api/onboarding',{cookie:staffLogin.cookie})).body.state,'PASSWORD_SET')
+ await call('/api/onboarding/line/start',{cookie:staffLogin.cookie,data:{},expected:503})
+ checks.push('D1 email-only invite, one-use exchange, durable profile/password resume and restricted APIs; real LINE disabled locally')
+ staffEmail='active-staff-'+Date.now()+'@example.test'
+ await operator('seed',{email:staffEmail,password,role:'MANAGER'})
+ staffLogin=await call('/api/auth/login',{data:{email:staffEmail,password}})
+ await call('/api/me',{cookie:staffLogin.cookie})
+ const staffState=await operator('state',{email:staffEmail})
+ assert.deepEqual(staffState.profile.roles,[{roleCode:'MANAGER',scope:'COMPANY'}])
+ await call('/api/dashboard',{cookie:staffLogin.cookie})
+ await call('/api/users',{cookie:staffLogin.cookie})
+ await call('/api/auth/accept-invitation',{data:{invitationCode,password},expected:400})
+ checks.push('existing active Manager retains dashboard/directory access; consumed email credential cannot replay')
+ const managerEmail='privacy-manager-'+Date.now()+'@example.test'
+ const managerFixture=await operator('seed',{email:managerEmail,password,role:'MANAGER'})
+ const managerLogin=await call('/api/auth/login',{data:{email:managerEmail,password}})
+ const managerMe=await call('/api/me',{cookie:managerLogin.cookie})
+ assert.equal(managerMe.body.user.id,managerFixture.id);assert.equal(managerMe.body.user.email,managerEmail)
+ const ownerSearch=await call('/api/users?search='+encodeURIComponent(email),{cookie:managerLogin.cookie})
+ assert.equal(ownerSearch.body.total,0);assert.equal(ownerSearch.body.users.length,0)
+ await call('/api/users?recordId='+ownerFixture.id,{cookie:managerLogin.cookie,expected:404})
+ await call('/api/users?recordId=ffffffff-ffff-4fff-8fff-ffffffffffff',{cookie:managerLogin.cookie,expected:404})
+ const selfDirectory=await call('/api/users?recordId='+managerFixture.id,{cookie:managerLogin.cookie})
+ assert.equal(selfDirectory.body.users[0].id,managerFixture.id)
+ const staffSearch=await call('/api/users?search='+encodeURIComponent(staffEmail),{cookie:managerLogin.cookie})
+ assert.equal(staffSearch.body.total,1);assert.equal(staffSearch.body.users[0].id,staffState.user.id)
+ const managerDirectory=await call('/api/users?view=list&pageSize=50',{cookie:managerLogin.cookie})
+ assert.ok(managerDirectory.body.users.every(user=>!user.roles.some(role=>role.roleCode==='ADMIN_MANAGER')))
+ assert.equal(managerDirectory.body.total,managerDirectory.body.summary.total)
+ const ownerSelf=await call('/api/users?recordId='+ownerFixture.id,{cookie:login.cookie})
+ assert.equal(ownerSelf.body.users[0].id,ownerFixture.id)
+ for(const suffix of ['profile','access','reset-password'])await call('/api/users/'+ownerFixture.id+'/'+suffix,{cookie:managerLogin.cookie,data:{},expected:403})
+ await call('/api/users/'+ownerFixture.id+'/access',{cookie:managerLogin.cookie,expected:403})
+ checks.push('actual Worker Manager session cannot discover owner via search/detail/counts or mutate owner profile/access/reset; self and ordinary staff remain visible')
+ const otherInvite=await call('/api/invitations',{cookie:login.cookie,data:{email:'revoked-'+Date.now()+'@example.test',department:'BOOKING',roleCode:'BOOKING'},expected:201})
+ await call('/api/invitations/'+otherInvite.body.invitation.id+'/revoke',{cookie:login.cookie,data:{}})
+ await call('/api/auth/accept-invitation',{data:{invitationCode:otherInvite.body.invitationCode,password},expected:400})
+ await operator('suspend',{email:staffEmail})
+ await call('/api/me',{cookie:staffLogin.cookie,expected:401})
+ await call('/api/auth/login',{data:{email:staffEmail,password},expected:403})
+ checks.push('revoked invitation and suspended account fail closed; old session is removed durably')
+ const unknown='missing-'+Date.now()+'@example.test'
+ const unknownReset=await call('/api/auth/recover',{data:{email:unknown}})
+ assert.equal(unknownReset.body.message,'RECOVERY_REQUESTED')
+ assert.equal((await operator('mail',{email:unknown,kind:'reset'})).mail,null)
+ await call('/api/auth/login',{data:{email,password:'x'.repeat(9000)},expected:413})
+ await call('/api/auth/login',{data:{email:[],password},expected:400})
+ for(let i=0;i<15;i++)await call('/api/auth/login',{data:{email:unknown,password},expected:400})
+ const throttled=await call('/api/auth/login',{data:{email:unknown,password},expected:429})
+ assert.ok(Number(throttled.headers.get('retry-after'))>0)
+ checks.push('recovery does not reveal account existence; bounded inputs and persistent login throttling reject abuse')
+ const report={status:'PASS',checks,environment:'local',activeDataChanged:false,evidence:directory}
+ await writeFile(path.join(directory,'result.json'),JSON.stringify(report,null,2),{mode:0o600});console.log('AUTH_API_PASS',JSON.stringify(report))
+}catch(error){console.error('AUTH_API_FAILED',error.message,'EVIDENCE='+directory);process.exitCode=1}
+finally{await stop();await release?.()}

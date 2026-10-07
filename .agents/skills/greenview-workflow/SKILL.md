@@ -1,11 +1,11 @@
 ---
 name: greenview-workflow
-description: Implement, fix, audit, or prepare a Preview handoff in Greenview Tour using the Mint/Milk workflow. Excludes unrelated projects and simple documentation edits.
+description: Implement, fix, audit, or prepare a Local handoff in Greenview Tour using the Mint/Milk workflow. Excludes unrelated projects and simple documentation edits.
 ---
 
 # Greenview workflow
 
-Read the applicable stage of [the delivery workflow](../../../docs/agent-workflow.md): implementation, audit-only, or Preview handoff. Load [domain routes](../../../docs/agent-context.md) only for affected business or architecture decisions; follow only matching links and sections.
+Read the applicable stage of [the delivery workflow](../../../docs/agent-workflow.md): implementation, audit-only, or Local handoff. Load [domain routes](../../../docs/agent-context.md) only for affected business or architecture decisions; follow only matching links and sections.
 
 For a task brief or a Mint/Milk handoff, use the relevant template in [task prompts](../../../docs/agent-prompts.md). Do not load templates for ordinary implementation.
 

@@ -7,11 +7,12 @@ import { listInvitations, canInvite, invitationRoles, validateInvitation, canRes
 import { hashToken, resolveMembership } from '../src/modules/identity-access/membership.js'
 import { editOwnProfile } from '../src/modules/identity-access/user-management.js'
 const profile = (role = 'MANAGER', id = 'actor') => ({ id, status: 'ACTIVE', displayName: 'Name', roles: [{ roleCode: role, scope: role === 'ADMIN_MANAGER' || role === 'MANAGER' ? 'COMPANY' : 'SELF', role: { permissions: grantsFor(role).map(permissionCode => ({ permissionCode })) } }] })
-const input = { displayName: 'New Guide', email: 'staff@example.invalid', department: 'GUIDE', roleCode: 'GUIDE' }
+const input = { email: 'staff@example.invalid', department: 'GUIDE', roleCode: 'GUIDE' }
 function database(actor = profile()) {
   const events = [], records = new Map()
   const tx = { $executeRaw: async () => 1, $queryRaw: async () => [],
     userProfile: { findUnique: async ({ where }) => where.id === actor.id ? actor : null },
+    employeeOnboarding: {findMany:async()=>[]},
     invitation: {
       findUnique: async ({ where }) => [...records.values()].find(row => Object.entries(where).every(([k,v]) => row[k] === v)) || null,
       create: async ({ data }) => { const row = { id: 'invite', consumedAt: null, revokedAt: null, acceptedAt: null, createdAt: new Date(), ...data, roles: [data.roles.create] }; records.set(row.id, row); return row },
@@ -60,9 +61,10 @@ test('expired, consumed and no-longer-authorized invitations fail before passwor
   await assert.rejects(() => acceptInvitation(prisma, provider, invitationCode, 'private-password'), /INVITATION_UNAVAILABLE/)
   assert.equal(calls, 0)
 })
-test('password registration uses invited email and never logs credentials or grants membership before verification', async () => {
+test('owner bootstrap password registration uses invited email and never logs credentials or grants membership before verification', async () => {
   const { prisma, events, records } = database()
   const { invitationCode } = await createInvitation(prisma, 'actor', input)
+  records.get('invite').createdById = null
   let received
   const provider = { register: async (email, password) => { received = { email, password }; return {} } }
   const result = await acceptInvitation(prisma, provider, invitationCode, 'private-password')
@@ -73,9 +75,10 @@ test('password registration uses invited email and never logs credentials or gra
   await assert.rejects(() => acceptInvitation(prisma, provider, invitationCode, 'another-password'), /INVITATION_ALREADY_SUBMITTED/)
   await assert.rejects(() => resolveMembership(prisma, { id: 'new', email: input.email }), /EMAIL_CONFIRMATION_REQUIRED/)
 })
-test('revocation during provider registration prevents invitation acceptance', async () => {
+test('revocation during owner provider registration prevents invitation acceptance', async () => {
   const { prisma, records } = database()
   const { invitationCode } = await createInvitation(prisma, 'actor', input)
+  records.get('invite').createdById = null
   const provider = { register: async () => { records.get('invite').revokedAt = new Date(); return {} } }
   await assert.rejects(() => acceptInvitation(prisma, provider, invitationCode, 'private-password'), /INVITATION_INVALID/)
   assert.equal(records.get('invite').acceptedAt, null)
@@ -109,7 +112,7 @@ test('local-only invitations fail before provider registration without consuming
   assert.throws(() => validateInvitation({ ...input, email: 'manager@system.local' }, profile()), { code: 'INVITATION_EMAIL_UNDELIVERABLE' })
   const { prisma, records } = database()
   const result = await createInvitation(prisma, 'actor', input)
-  records.get('invite').email = 'manager@system.local'
+  records.get('invite').email = 'manager@system.local'; records.get('invite').createdById = null
   let calls = 0
   await assert.rejects(() => acceptInvitation(prisma, { register: async () => { calls++ } }, result.invitationCode, 'fixture-password-123'), { code: 'INVITATION_EMAIL_UNDELIVERABLE' })
   assert.equal(calls, 0); assert.equal(records.get('invite').acceptedAt, null)
@@ -138,4 +141,10 @@ test('invitation directory pages beyond 100, clamps emptied pages and scopes all
   await assert.rejects(() => listInvitations(prisma, actor.id, new URLSearchParams('pageSize=5000')), /INVALID_FILTER/)
   actor.status = 'SUSPENDED'
   await assert.rejects(() => listInvitations(prisma, actor.id), /PERMISSION_DENIED/)
+})
+
+test('staff cannot submit passwords through the retired invite registration path',async()=>{
+ const {prisma}=database();const invite=await createInvitation(prisma,'actor',input)
+ await assert.rejects(()=>acceptInvitation(prisma,{register:()=>assert.fail('provider must not run')},invite.invitationCode,'private-password'),{code:'ONBOARDING_REQUIRED'})
+ assert.throws(()=>validateInvitation({...input,displayName:'Admin supplied name'},profile()),{code:'INVALID_INVITATION_FIELDS'})
 })

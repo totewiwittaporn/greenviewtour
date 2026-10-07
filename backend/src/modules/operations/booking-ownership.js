@@ -1,3 +1,4 @@
+import {userVisibilityWhere} from '../identity-access/user-visibility.js'
 import { canEditBooking, canManageBookingTeam, effectiveAccess } from '../../../../packages/contracts/access.js'
 import { profileInclude } from '../identity-access/policy.js'
 import { authorize, audit, fail, hash, int, keys, string, uuid, write } from './common.js'
@@ -9,13 +10,14 @@ export async function requireBookingEdit(tx, actorId, booking) {
 async function requireTeam(tx, actorId) {
  const { actor } = await authorize(tx, actorId, 'booking')
  if (!canManageBookingTeam(actor)) fail('PERMISSION_DENIED', 403)
+ return actor
 }
 const candidateWhere = { status: 'ACTIVE', roles: { some: { roleCode: { in: ['BOOKING', 'HEAD_BOOKING'] }, scope: { in: ['SELF', 'COMPANY'] } } } }
 export async function bookingAssignees(prisma, actorId, params) {
- await requireTeam(prisma, actorId)
+ const actor=await requireTeam(prisma, actorId)
  const page = int(params.get('page') || 1)
  const q = string(params.get('q') || '', 100, false)
- const where = { ...candidateWhere, ...(q ? { displayName: { contains: q, mode: 'insensitive' } } : {}) }
+ const where = { ...candidateWhere, AND:[userVisibilityWhere(actor)], ...(q ? { displayName: { contains: q, mode: 'insensitive' } } : {}) }
  const total = await prisma.userProfile.count({ where })
  const rows = await prisma.userProfile.findMany({ where, select: { id: true, displayName: true }, orderBy: [{ displayName: 'asc' }, { id: 'asc' }], take: 25, skip: (page - 1) * 25 })
  return { rows, total, page, pages: Math.max(1, Math.ceil(total / 25)) }

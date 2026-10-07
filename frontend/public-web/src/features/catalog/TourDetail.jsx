@@ -6,7 +6,6 @@ import TourAvailability from './TourAvailability.jsx'
 import {badgeText,componentBasisText,componentSelectionText,faqs,highlights,itinerary,journeyText,packageComponents,tourContent,tourCover,tourMedia,typeText} from './tourPresentation.js'
 import './TourDetail.css'
 
-const memberOrigin=()=>['localhost','127.0.0.1'].includes(location.hostname)?'http://localhost:5175':'https://member.greenviewtour.com'
 const lines=value=>(value||'').split('\n').map(item=>item.trim()).filter(Boolean)
 
 function RelatedCard({tour,locale,t,money}){
@@ -75,7 +74,7 @@ export default function TourDetail({slug,search=''}){
           {content.suitableFor&&<><dt>{t('เหมาะสำหรับ')}</dt><dd>{content.suitableFor}</dd></>}
           {tour.ownership==='PARTNER'&&tour.operator?.name&&<><dt>{t('ผู้จัดโปรแกรม')}</dt><dd>{tour.operator.name}</dd></>}
         </dl>
-        <aside className="tour-booking-panel"><p>{t('เริ่มต้นเพียง')}</p><div className="tour-start-price"><strong>{money(tour.adultPrice)}</strong><span>/ {t('ผู้ใหญ่')}</span></div>{tour.childPrice!=null&&<small>{t('เด็ก')} {money(tour.childPrice)}</small>}<TourAvailability tour={tour} memberOrigin={memberOrigin()} initialDate={initialDate} initialAdults={initialAdults}/></aside>
+        <aside className="tour-booking-panel"><p>{t('เริ่มต้นเพียง')}</p><div className="tour-start-price"><strong>{money(tour.adultPrice)}</strong><span>/ {t('ผู้ใหญ่')}</span></div>{tour.childPrice!=null&&<small>{t('เด็ก')} {money(tour.childPrice)}</small>}<TourAvailability tour={tour} initialDate={initialDate} initialAdults={initialAdults}/></aside>
       </div>
     </section>
     <section className="tour-detail-main">

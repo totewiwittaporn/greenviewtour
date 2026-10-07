@@ -10,6 +10,7 @@ try {
  page.on('pageerror',e=>errors.push(e.message))
  const user={id:'00000000-0000-0000-0000-000000000001',displayName:'Fixture Manager',email:'fixture@example.invalid',status:'ACTIVE',department:'MANAGEMENT',roles:[{code:'MANAGER',name:'Manager',scope:'COMPANY'}],management:{company:true}}
  const row={...user,displayName:'Fixture Guide',department:'GUIDE',roles:[{roleCode:'GUIDE',scope:'SELF'}],updatedAt:new Date().toISOString(),canEdit:true,email_confirmed_at:new Date().toISOString(),created_at:new Date().toISOString(),last_sign_in_at:null}
+ await page.route(/\/api\/me\/line(?:\?.*)?$/,route=>route.request().method()==='GET'?route.fulfill({json:{status:'UNLINKED',linkedLineProfile:null}}):route.fallback())
  await page.route('**/api/me',r=>r.fulfill({json:{user}}))
  await page.route('**/api/users?*',r=>r.fulfill({json:{users:[row],total:1,page:1,pageSize:25,summary:{total:1,verified:1,signed_in:0},database:'UP',checkedAt:new Date().toISOString(),canChangeDepartment:true}}))
  let patch,conflict=false

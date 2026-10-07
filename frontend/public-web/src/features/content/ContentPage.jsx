@@ -28,7 +28,7 @@ export default function ContentPage({pathname, hash = ''}) {
     <div className="editorial-container editorial-layout">
       <aside className="editorial-sidebar"><nav aria-labelledby="editorial-contents"><h2 id="editorial-contents">{copy('contents')}</h2>{page.sections.map(section => <a key={section.id} href={`#${section.id}`}>{section.title[language]}</a>)}{page.contact && <a href="#company">{publicInfoRoutes['/contact-us'].title[language]}</a>}</nav></aside>
       <article className="editorial-body" aria-label={meta.title[language]}>
-        <p className="editorial-reviewed">{copy('updated')}</p>
+        <p className="editorial-reviewed">{page.reviewed?.[language]||copy('updated')}</p>
         {page.sections.map(section => page.faq
           ? <details className="editorial-faq" id={section.id} key={section.id}><summary>{section.title[language]}</summary><div>{paragraphs(section)}</div></details>
           : <section id={section.id} key={section.id}><h2>{section.title[language]}</h2>{paragraphs(section)}</section>)}

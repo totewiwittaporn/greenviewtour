@@ -1,5 +1,6 @@
 // App-owned interface copy only; catalogue and customer content remain unchanged.
 export const messages = {
+  "ยืนยันอีเมลแล้ว กรุณาเข้าสู่ระบบ": "Email verified. You can now sign in.",
   "แบ่งหน้า": "Pagination",
   "แก้ไขข้อมูลส่วนตัว": "Edit profile",
   "ติดต่อสอบถาม": "Contact us",

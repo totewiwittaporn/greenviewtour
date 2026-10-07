@@ -1,4 +1,7 @@
+import {userVisibilityWhere} from '../identity-access/user-visibility.js'
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {readJsonFields} from '../../platform/database/read-json.js'
+import {scalarArrayWhere} from '../../platform/database/scalar-array.js'
 import {randomUUID} from 'node:crypto'
 import {effectiveAccess,isManager} from '../../../../packages/contracts/access.js'
 import {workDefinitions,calendarDate,scheduleDates,purchaseTotal,satang,baht} from '../../../../packages/contracts/company-work.js'
@@ -13,9 +16,10 @@ const nested=tx=>({...tx,$transaction:fn=>fn(tx)})
 async function actorFor(p,id){const actor=await p.userProfile.findUnique({where:{id},select:accessProfileSelect});if(actor?.status!=='ACTIVE')fail('PERMISSION_DENIED',403);return actor}
 async function active(p,model,id){const row=await p[model].findUnique({where:{id:uuid(id)}});if(!row||row.status!=='ACTIVE')fail('RELATED_RECORD_UNAVAILABLE');return row}
 const audit=(p,actorId,targetId,action,details)=>p.auditEvent.create({data:{actorId,targetId,action:'company.'+action,details:JSON.parse(JSON.stringify(details))}})
-async function transact(p,actorId,fn){return p.$transaction(async tx=>{await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`;return fn(tx,await actorFor(tx,actorId))},{timeout:60000,maxWait:15000})}
+async function transact(p,actorId,fn){return p.$transaction(async tx=>{await acquireWriteLock(tx);return fn(tx,await actorFor(tx,actorId))},{timeout:60000,maxWait:15000})}
 const cleanLines=value=>{if(!Array.isArray(value)||!value.length||value.length>50)fail('INVALID_CHECKLIST',400);const lines=value.map(v=>string(v,300));if(new Set(lines).size!==lines.length)fail('DUPLICATE_CHECKLIST_ITEM',400);return lines}
 const optionalId=value=>value?uuid(value):null
+const responsibilityScope=async(db,actorId)=>({OR:[{primaryUserId:actorId},await scalarArrayWhere(db,'WarehouseResponsibility.deputyUserIds',actorId)]})
 function date(value){try{return calendarDate(value)}catch{fail('INVALID_DATE',400)}}
 function address(value){if(!value)return null;try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)throw Error();return string(value,2048)}catch{fail('INVALID_EVIDENCE_URL',400)}}
 async function storeAccess(tx,actor,storeId){
@@ -237,11 +241,11 @@ export async function listCompanyWork(prisma,actorId,params){
   if(kind==='SCHEDULE')base.OR=[...(permitted(actor,'housekeeping.view')?[{payload:{path:['jobKind'],equals:'CLEANING'}}]:[]),...(permitted(actor,'inventory.approve')?[{payload:{path:['jobKind'],equals:'COUNT'}}]:[])]
   if(kind==='JOB')base.OR=[{assigneeId:actorId},...(permitted(actor,'housekeeping.manage')||permitted(actor,'housekeeping.approve')?[{payload:{path:['jobKind'],equals:'CLEANING'}}]:[]),...(permitted(actor,'inventory.approve')?[{payload:{path:['jobKind'],equals:'COUNT'}}]:[])]
   if(ownedWork&&!permitted(actor,'inventory.approve')&&!permitted(actor,'operations.stock')){
-   const duties=effectiveAccess(actor,'operations.stock').source==='User restriction'?[]:await tx.warehouseResponsibility.findMany({where:{OR:[{primaryUserId:actorId},{deputyUserIds:{has:actorId}}]},select:{storeId:true}})
+   const duties=effectiveAccess(actor,'operations.stock').source==='User restriction'?[]:await tx.warehouseResponsibility.findMany({where:await responsibilityScope(tx,actorId),select:{storeId:true}})
    base.OR=[{createdById:actorId},{assigneeId:actorId},{storeId:{in:duties.map(d=>d.storeId)}}]
   }
   let where={...base,...(status&&kind!=='RESPONSIBILITY'?{status}:{}),...(q&&kind!=='RESPONSIBILITY'?{name:{contains:q,mode:'insensitive'}}:{})}
-  if(kind==='RESPONSIBILITY'&&!permitted(actor,'inventory.assign'))where={...where,OR:[{primaryUserId:actorId},{deputyUserIds:{has:actorId}}]}
+  if(kind==='RESPONSIBILITY'&&!permitted(actor,'inventory.assign'))where={...where,...await responsibilityScope(tx,actorId)}
   const recordId=params.get('recordId'),lean=params.get('view')==='list'&&!recordId
   if(recordId)where[kind==='RESPONSIBILITY'?'storeId':'id']=uuid(recordId)
   const total=await tx[model].count({where}),page=Math.min(requested,Math.max(1,Math.ceil(total/25)))
@@ -289,7 +293,7 @@ async function lookup(p,actor,params){
  const entity=params.get('lookup'),q=(params.get('q')||'').trim(),page=int(params.get('page')||1,1,100000)
  if(q.length>100)fail('INVALID_FILTER',400)
  let model,where={},select={id:true,name:true}
- if(entity==='users'){model='userProfile';where={status:'ACTIVE'};select={id:true,displayName:true}}
+ if(entity==='users'){model='userProfile';where={status:'ACTIVE',AND:[userVisibilityWhere(actor)]};select={id:true,displayName:true}}
  else if(entity==='stores'){model='stockLocation';where={status:'ACTIVE'}}
  else if(entity==='resources'){model='operationResource';where={status:'ACTIVE',kind:{not:'SERVICE'}};select={id:true,name:true,baseUnit:true}}
  else if(entity==='partners'){model='businessPartner';where={status:'ACTIVE'}}
@@ -299,7 +303,7 @@ async function lookup(p,actor,params){
   if(entity==='requests'&&!permitted(actor,'purchasing.edit')&&!permitted(actor,'inventory.approve'))where.createdById=actor.id
  }else if(entity==='balances'){
   model='stockBalance';select={id:true,quantity:true,version:true,condition:true,lot:{select:{label:true,resource:{select:{name:true}}}},location:{select:{name:true}}}
-  const duties=effectiveAccess(actor,'operations.stock').source==='User restriction'?[]:await p.warehouseResponsibility.findMany({where:{OR:[{primaryUserId:actor.id},{deputyUserIds:{has:actor.id}}]},select:{storeId:true}})
+  const duties=effectiveAccess(actor,'operations.stock').source==='User restriction'?[]:await p.warehouseResponsibility.findMany({where:await responsibilityScope(p,actor.id),select:{storeId:true}})
   where={...(permitted(actor,'operations.stock')?{}:{locationId:{in:duties.map(d=>d.storeId)}}),...(q?{lot:{resource:{name:{contains:q,mode:'insensitive'}}}}:{})}
  }else fail('INVALID_LOOKUP',400)
  if(q&&entity!=='balances')where[entity==='users'?'displayName':'name']={contains:q,mode:'insensitive'}

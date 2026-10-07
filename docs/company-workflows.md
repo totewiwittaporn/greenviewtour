@@ -1,5 +1,7 @@
 # Company workflows: implemented scope and remaining boundaries
 
+> Environment update (30 September 2026): referenced Preview/provider seed and delivery scripts below are historical and now fail closed. Preserve the domain requirements, but use [Local/Production workflow](local-production-workflow.md) for current execution and testing. No live provider delivery is authorized.
+
 Authority: the owner's Greenview Tour decisions confirmed on 2026-09-13, including manual per-period payroll: enter the base wage, additions and deductions with reasons, then obtain approval. This document describes executable code in the current company-workflows change. It does not equate the new workflows with a complete accounting or HR system.
 
 ## Work categories

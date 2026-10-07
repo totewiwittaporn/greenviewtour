@@ -14,14 +14,15 @@ const content = {
 // Read and remove credentials before loading any third-party assets. Nothing is persisted.
 const fragment = new URLSearchParams(window.location.hash.slice(1))
 const invitation = window.location.pathname === '/accept-invitation' && fragment.get('invitation') ? { code: fragment.get('invitation') } : null
-const recovery = window.location.pathname === '/reset-password' && fragment.get('type') === 'recovery'
-  ? { access_token: fragment.get('access_token'), refresh_token: fragment.get('refresh_token') } : null
+const recovery=window.location.pathname==='/reset-password'&&fragment.get('recovery')?{token:fragment.get('recovery')}:null
+const verification=fragment.get('verify')?{token:fragment.get('verify')}:null
 const callbackError = fragment.has('error')
-if (window.location.hash) window.history.replaceState(null, '', window.location.pathname)
+if (window.location.hash && !window.location.pathname.startsWith('/onboarding')) window.history.replaceState(null, '', window.location.pathname)
 export default function AuthPage({ mode = 'login' }) {
  const { locale } = useLocale()
   const [values, setValues] = useState({ email: '', password: '', confirm: '' })
   const [errors, setErrors] = useState({}), [busy, setBusy] = useState(false), [message, setMessage] = useState('')
+  const [notice,setNotice]=useState('')
   const [failure, setFailure] = useState(callbackError ? 'This link is invalid or expired. Request a new link.' : '')
   const [ready, setReady] = useState(!['reset','register'].includes(mode)), form = useRef(null), lock = useRef(false)
   const [retryUntil, setRetryUntil] = useState(0), [now, setNow] = useState(Date.now())
@@ -47,21 +48,28 @@ export default function AuthPage({ mode = 'login' }) {
       return () => { active = false }
     }
     if (mode !== 'reset') return
-    if (!recovery?.access_token || !recovery?.refresh_token) {
+    if (!recovery?.token) {
       let active = true
       api('/api/auth/recovery-status').then(() => { if (active) setReady(true) }).catch(() => {})
       return () => { active = false }
     }
     // A module-level promise prevents duplicate exchange under React StrictMode.
-    recovery.promise ||= api('/api/auth/recovery-session', { access_token: recovery.access_token, refresh_token: recovery.refresh_token }).finally(() => { delete recovery.access_token; delete recovery.refresh_token })
+    recovery.promise ||= api('/api/auth/recovery-session', {token:recovery.token}).finally(()=>{delete recovery.token})
     let active = true
     recovery.promise.then(() => { if (active) setReady(true) }).catch(error => { if (active) setFailure(authMessage(error)) })
     return () => { active = false }
   }, [mode, title])
+  useEffect(()=>{
+    if(!verification)return
+    verification.promise ||= api('/api/auth/verify-email',{token:verification.token}).finally(()=>{delete verification.token})
+    let active=true
+    verification.promise.then(()=>{if(active)setNotice('Email verified. You can now sign in.')}).catch(error=>{if(active)setFailure(authMessage(error))})
+    return ()=>{active=false}
+  },[])
   useEffect(() => {
     if (mode !== 'login') return
     const controller = new AbortController()
-    api('/api/me', undefined, { signal: controller.signal }).then(() => { if (!controller.signal.aborted) window.location.replace('/dashboard') }).catch(() => {})
+    api('/api/me', undefined, { signal: controller.signal }).then(() => { if (!controller.signal.aborted) window.location.replace('/dashboard') }).catch(() => {if(!controller.signal.aborted)api('/api/onboarding',undefined,{signal:controller.signal}).then(data=>{if(!controller.signal.aborted&&data.state!=='ACTIVE')window.location.replace('/onboarding')}).catch(()=>{})})
     return () => controller.abort()
   }, [mode])
   const change = name => event => { setValues(old => ({ ...old, [name]: event.target.value })); setErrors(old => ({ ...old, [name]: '' })) }
@@ -79,7 +87,7 @@ export default function AuthPage({ mode = 'login' }) {
     if (Object.keys(next).length) { requestAnimationFrame(() => form.current?.querySelector('[aria-invalid="true"]')?.focus()); return }
     lock.current = true; setBusy(true); setFailure('')
     try {
-      if (mode === 'login') { await api('/api/auth/login', { email: values.email, password: values.password }); window.location.replace('/dashboard'); return }
+      if (mode === 'login') { const result=await api('/api/auth/login', { email: values.email, password: values.password }); window.location.replace(result.redirect==='/onboarding'?'/onboarding':'/dashboard'); return }
       if (mode === 'register') { const result = await api('/api/auth/accept-invitation', { password: values.password, invitationCode: invitation?.code }); setMessage(result.message === 'READY_TO_SIGN_IN' ? 'Your password is set. Return to sign in.' : 'Check your inbox to confirm your email, then sign in. If you already have an account, sign in with your existing password or use Forgot password.') }
       if (mode === 'forgot') { await api('/api/auth/recover', { email: values.email }); setMessage('If your email can receive a reset message, a link will arrive shortly. Check your inbox and spam folder.') }
       if (mode === 'reset') { const result = await api('/api/auth/reset-password', { password: values.password }); setMessage(result.warning ? 'Your password has been updated and you have been signed out of this workspace. Contact your administrator to check remaining session cleanup.' : 'Your password has been updated. Sign in with your new password.') }
@@ -88,6 +96,7 @@ export default function AuthPage({ mode = 'login' }) {
     finally { lock.current = false; setBusy(false) }
   }
   return <AuthLayout title={bilingualLabel(title)} description={t(description)}>
+    {notice&&<p role="status">{t(notice)}</p>}
     {message ? <div className="auth-result" role="status"><strong>{mode === 'reset' ? t('Password updated') : t('Check your email')}</strong><p>{t(message)}</p><a href="/login">{t("Return to sign in →")}</a></div> : <form ref={form} noValidate onSubmit={submit} aria-busy={busy}>
       <div className="form-feedback" role={failure ? 'alert' : undefined}>{t(failure)}</div>
       {mode === 'register' && !ready ? <div className="auth-result"><p>{invitation && !failure ? t('Checking your invitation…') : t('Accounts are created by invitation only. Ask your Manager for a new invitation link.')}</p><a href="/login">{t("Return to sign in")}</a></div> : mode === 'reset' && !ready ? <div className="auth-result"><p>{recovery && !failure ? t('Checking your reset link…') : t('Open the password reset link from your email to continue.')}</p><a href="/forgot-password">{t("Request a new reset link")}</a></div> : <>

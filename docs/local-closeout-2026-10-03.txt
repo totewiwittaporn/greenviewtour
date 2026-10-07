@@ -1,0 +1,113 @@
+Greenview Tour — Local closeout acceptance
+Date: 3 October 2026 (Asia/Bangkok)
+Scope: Continue checklist in pairs; Local only. Production is not authorized.
+
+Acceptance gate: NOT READY for full Local sign-off. Real owner LINE pairing/receipt remains unverified.
+
+Checklist
+1 PASS — Public Contact Flow completed in preceding round. Latest shared company channels, TH/EN inquiry copy, legacy Member CTA conversion, Staff Login retained.
+2 PASS — Shared Company source used by existing Backoffice editor/API/Public; email optional and blank. See local-contact-closeout-2026-10-03.txt for complete first-round evidence/files.
+3 PARTIAL — Local signed-link/identity/role lifecycle passes. Real owner account pairing still requires actual private configuration and verified binding; no real pairing claimed.
+4 BLOCKED — No actual LINE delivery or owner receipt verified. Owner has been asked for private configuration status/location (never secrets in chat); response pending. Do not count mocks or provider acceptance as receipt.
+5 PASS (Local) — Tomorrow's assigned work is collected by role from current DispatchRun/DispatchStaff, GuideAssignment and CompanyWorkRecord. Captain/boat crew, Guide, Driver, Housekeeping, count and maintenance are covered where assigned and authorized. Cancelled/ineligible work is excluded. No invented recurring jobs.
+6 PARTIAL — Manual preparation, simulation and explicit resend are implemented and tested. Ordinary Local cannot request live sending or choose an arbitrary recipient. Real manual/resend delivery depends on item 4.
+7 PASS (Local planning scope) — Bangkok tomorrow/date/time planning and repeated-tick deduplication verified. Personal send time must be supplied explicitly; no schedule time inferred from group summaries. No Cron installed and no Worker scheduled trigger activated.
+8 PASS — Runtime Supabase audit: 135 checks, 35 retired entrypoints, no active Supabase SDK/client/config dependency. Historical source provenance/guard regex/documentation intentionally retained. pg remains a transitive better-auth dependency, not the Local runtime database adapter.
+9 PASS — Unit, builds, Auth, booking/assignment/business/API and fixture/actual browser regression all passed. Actual three-site desktop/mobile run reported no runtime errors, HTTP 5xx, blank screen, overlay or overflow.
+10 PASS (audit only) — Prior work preserved; combined uncommitted change set is not independently certified merge-ready. No merge/commit/push performed.
+11 REPORT COMPLETE — This report records current acceptance and outstanding live prerequisite; gate remains blocked by items 3/4/6 real evidence.
+
+What changed this round
+- Existing Backoffice Daily summaries now contains staff digest preview, preparation, per-person manual simulation and explicit resend. Date locks while a mutation is pending. English/Thai and desktop/mobile verified.
+- Prepared/resend previews use exact stored text. Failed resend requests retain command ID for safe retry.
+- Saved outbox rows use exact payload/hash, unique retry key and revision; simultaneous preparation deduplicates. Simulation never fabricates a verified binding or invokes provider transport.
+- Staff/current roles, active verified account, channel binding and work are rechecked. Stale prepared work is blocked; uncertain attempted results cannot silently become a new send key. Retry/claim limits and settled-only explicit resend enforced.
+- Public API response excludes LINE recipient identifiers and private customer/job notes.
+- New D1 migration 0010 adds staff digest storage. Applied only to Local after backup/restore proof. Prior migrations and frozen PostgreSQL schema unchanged.
+- Local planning CLI: npm run local:staff-digest:plan -- --at HH:mm [--now ISO_TIMESTAMP]. Read-only: no DB, credentials or provider/network access.
+
+Verification
+- npm run check:quiet PASS: 527 backend tests, 60 frontend tests, workflow audit, ESLint, 3 application builds and Worker dry-run (no deployment).
+- Final Backoffice build + targeted UI/scripts lint + git diff --check PASS.
+- Full fixture-browser aggregate PASS all 26 suite/app invocations, including Public contact/Company settings/new digest UI. Screenshots inspected at desktop and Thai mobile widths; no live provider calls.
+- Signed simulated LINE API lifecycle and real-browser link UI PASS on copied Local data: duplicate callbacks, binding isolation, revoked sessions, suspension, versioning, unlink and unfollow protection.
+- Actual Local Worker/D1 staff-digest check PASS, including two simultaneous prepare requests, explicit resend replay, stale work blocking, role removal, tomorrow tick, restart persistence and live/arbitrary-recipient rejection.
+- Fresh runtime PASS all ten migrations, foreign keys, D1 transaction rollback, R2 persistence, actual health, ordinary Member paused, missing workspace Auth fails closed.
+- Local business regression PASS (11 suites), including booking capacity/assignment/dispatch/attendance and simulated commerce in isolated tests.
+- Actual three-site Local browser PASS: /Users/tootee/GreenviewBackups/browser-real-fc7d2R; actual publication API controls whether the test requires or rejects an announcement dialog. Existing active-announcement fixture coverage retained.
+- Actual Local Auth API PASS: durable sessions, role isolation, password recovery, invitations, suspended/revoked access and abuse limits; active data unchanged.
+- Premium UI strict static audit: zero findings.
+- Resolved test drift: migration/model counts, expected Member-paused behavior, digest GET fixture and expired Sep 30 announcement expectation (actual Public correctly hid it on Oct 3). No scenario intentionally skipped.
+
+Data preservation and safety
+- Backup before 0010: /Users/tootee/GreenviewBackups/staff-digest-before-20261003. Restore verified 89 tables and 7 R2 objects.
+- Compared 87 pre-existing business tables to backup: no unexpected differences; new active StaffDailyDigest table has 0 rows. Fixture jobs/messages remain in isolated copies.
+- No production deploy, remote DB migration/reset, real secret change, Supabase connection or real LINE message.
+- Member remains paused in ordinary Local. Member commerce regression runs only in the isolated regression harness.
+
+Known limitations/blockers
+- Item 4 needs private Local LINE configuration plus verified owner-only binding and actual receipt evidence. Existing Oct 1 live-test blocker is preserved; no alternate credential extraction attempted.
+- Live delivery is deliberately unavailable through ordinary Local API/UI. The safe provider adapter/service has simulated tests, not live acceptance. Preparation/simulation success cannot close real delivery.
+- Personal schedule time remains a required explicit input; real Cron is future Production work.
+- Existing Vite large-chunk advisory, baseline-browser-mapping age advisory and Node experimental SQLite warning remain; no test/build errors attributable to them.
+- Whole repository contains prior uncommitted migration/auth/LINE/member work in addition to this task. Do not merge blindly based on this report.
+
+Evidence (temporary detailed logs may expire)
+- Aggregate check: /var/folders/f2/fqb1xwfs7wngynpm32y47m6m0000gn/T/greenview-check-2026-10-03T02-20-09-274Z.log
+- Fixture browser: /tmp/greenview-staff-digests-all-browser.log
+- Final UI: /private/tmp/gv-closeout-rounds/ui-final.log
+- Actual digest D1/API: .local/staff-digest-tests-z3MZvk/result.json
+- Actual Auth API: .local/auth-api-tests-J7HgvZ/result.json
+- Runtime: .local/runtime-check-6RSm7p/result.json
+- Business: .local/item3-tests-8RqvPH/
+- Signed LINE: .local/staff-line-tests-3LZ3yK/
+- LINE browser: /Users/tootee/GreenviewBackups/browser-real-K0NdLn/
+- Actual browser final log: /private/tmp/gv-closeout-rounds/real-browser-final.log
+- Safety audit, data comparison and Git hash evidence: /private/tmp/gv-closeout-rounds/
+
+Git
+- Repository: /Users/tootee/Documents/Projects/greenviewtour
+- Branch: feat/cloudflare-d1-foundation; HEAD 486742dcc4d56869d2f2731fc23c097efdff6248 unchanged.
+- main/origin-main fef53de: branch 10 ahead, 0 behind; no upstream configured. No commits, pushes, checkout, stash, reset or merge.
+- Machine-readable starting baseline contains 216 files (authoritative count); no baseline file missing. 202 byte-identical, 14 intentionally extended at initial final audit. Count will include final regression/report changes below.
+
+Files changed/added this continuation, relative to repository
+- backend/prisma-d1/digest-models.prisma
+- backend/prisma-d1/migration-checksums.json
+- backend/prisma-d1/migrations/0010_staff_daily_digest.sql
+- backend/prisma-d1/schema.prisma
+- backend/scripts/generate-d1-atomic-metadata.mjs
+- backend/scripts/generate-d1-schema.js
+- backend/src/app/http.js
+- backend/src/cloudflare/staff-digest-check.ts
+- backend/src/modules/notifications/staff-digest-schedule.js
+- backend/src/modules/notifications/staff-digest.js
+- backend/src/platform/database/atomic/schema.js
+- backend/test/cloudflare-d1.test.js
+- backend/test/d1-atomic-unit.test.js
+- backend/test/local-checkpoint.test.js
+- backend/test/local-environment.test.js
+- backend/test/staff-digest-schedule.test.js
+- backend/test/staff-digest.test.js
+- backend/test/staff-line-recipient.test.js
+- frontend/backoffice/src/core/i18n/translations.js
+- frontend/backoffice/src/features/operations/DailyClosePage.jsx
+- frontend/backoffice/src/features/operations/StaffDailyDigestPanel.jsx
+- package.json
+- scripts/local-import/checkpoint.js
+- scripts/plan-staff-digest.js
+- scripts/smoke-browser-fixtures.js
+- scripts/smoke-data-fetch.js
+- scripts/smoke-staff-digests.mjs
+- scripts/test-local-cloudflare.mjs
+- scripts/test-staff-digests.mjs
+- scripts/test-local-browser.mjs
+- docs/local-closeout-2026-10-03.txt (this report)
+
+Local handoff
+- Local launcher restored successfully: Public http://localhost:5173; Backoffice http://localhost:5174; Worker127.0.0.1:8787.
+- Final Public company HTTP200: phone +66954266847, LINE @greenviewtour, Instagram https://www.instagram.com/greenviewtour/, email null.
+- Final ordinary Member API HTTP503 MEMBER_PAUSED.
+- View new preview/simulation controls in existing Backoffice Daily summaries. No live send is offered.
+
+Final Git file accounting: 232 dirty paths; starting baseline 216 files; 0 missing, 15 modified, 201 byte-identical, 16 newly dirty paths. Counts include this report. Newly dirty does not necessarily mean newly created.

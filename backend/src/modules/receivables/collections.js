@@ -1,3 +1,4 @@
+import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {randomUUID} from 'node:crypto'
 import {bookingQuote} from '../../../../packages/contracts/booking-plan.js'
 import {cents} from '../../../../packages/contracts/personnel-finance.js'
@@ -16,7 +17,7 @@ export async function recordBookingCollection(prisma,actorId,input){
  keys(input,['id','bookingId','version','payer','basis','received','receivedOn','reference']);uuid(input.id);uuid(input.bookingId);int(input.version)
  const fingerprint=hash(input)
  return prisma.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   await receivableAccess(tx,actorId)
   const prior=await tx.financePersonnelCommand.findUnique({where:{id:input.id}})
   if(prior){if(prior.actorId!==actorId||prior.requestHash!==fingerprint)fail('COMMAND_CONFLICT');return prior.result}
@@ -81,7 +82,7 @@ export async function applyHeldMargin(tx,actorId,receipt){
 export async function reconcileAgentMargin(prisma,actorId,input){
  keys(input,['id','receiptId']);uuid(input.id);uuid(input.receiptId);const fingerprint=hash(input)
  return prisma.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(7082027)`
+  await acquireWriteLock(tx)
   await receivableAccess(tx,actorId)
   const prior=await tx.financePersonnelCommand.findUnique({where:{id:input.id}})
   if(prior){if(prior.actorId!==actorId||prior.requestHash!==fingerprint)fail('COMMAND_CONFLICT');return prior.result}

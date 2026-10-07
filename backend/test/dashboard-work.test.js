@@ -23,9 +23,10 @@ test('authorized run summaries count every row, restrict table to 10, and reuse 
  let query;const tx={dispatchRun:{findMany:async args=>{query=args;return Array.from({length:31},(_,i)=>run(i))}}}
  const result=await workSummary(tx,actor,'2026-09-26',[source],now)
  assert.deepEqual(query.where.AND[0],source.base);assert.equal(query.take,undefined)
+ assert.equal(query.include,undefined);assert.deepEqual(Object.keys(query.select).sort(),['assignments','capacity','code','direction','id','kind','name','slot','staff','status']);assert.deepEqual(Object.keys(query.select.staff.select).sort(),['role','user','userId'])
  assert.equal(result.dispatch[0].days[0].total,31);assert.equal(result.dispatch[0].days[0].outboundPax,155)
  assert.equal(result.dispatch[0].days[0].rows.length,10);assert.equal(result.dispatch[0].days[1].total,0)
- assert.equal(query.include.assignments.select.bookingLine.select.booking.select.contactPhone,undefined);assert.equal(query.include.slot.select.vehicle.select.ownership,undefined);assert.equal(result.dispatch[0].prepare,false);assert.equal(query.include.assignments.select.bookingLine.select.booking.select.status,true)
+ assert.equal(query.select.assignments.select.bookingLine.select.booking.select.contactPhone,undefined);assert.equal(query.select.slot.select.vehicle.select.ownership,undefined);assert.equal(result.dispatch[0].prepare,false);assert.equal(query.select.assignments.select.bookingLine.select.booking.select.status,true)
 })
 test('reporting season includes May 15 and advances to next season on May 16',()=>{
  const expected={from:'2026-10-15',through:'2027-05-15'}
@@ -50,4 +51,17 @@ test('finance card projection contains only list identity and status',async()=>{
  const result=await workSummary(tx,actor,'2026-09-26',[source],now)
  assert.deepEqual(query.select,{id:true,title:true,status:true});assert.equal(query.take,5)
  assert.equal(result.finance.length,1);assert.equal(result.finance[0].href,'/company/expenses')
+})
+
+
+test('preparation dashboard uses explicit run and crew fields without dropping stock calculation relations',async()=>{
+ let calls=0,query
+ const tx={dispatchRun:{findMany:async args=>{calls++;query=args;return []}}}
+ const source={id:'guide',title:'Boat jobs',href:'/operations/guide',model:'dispatchRun',base:{kind:'BOAT'},visibility:'Assigned'}
+ await workSummary(tx,{...actor,permissionOverrides:[{permissionCode:'operations.prepareStock',effect:'ALLOW'}]},'2026-09-26',[source],now)
+ assert.equal(calls,1);assert.equal(query.include,undefined);assert.equal(query.select.staff.include,undefined)
+ assert.deepEqual(Object.keys(query.select.staff.select).sort(),['role','user','userId'])
+ const booking=query.select.assignments.select.bookingLine.select.booking.select
+ assert.equal(booking.lines.select.quantity,true);assert.equal(booking.lines.select.issuedQty,true);assert.equal(booking.lines.select.issues.select.settledQty,true);assert.equal(booking.lines.select.dispatchAssignments.select.run.select.direction,true)
+ assert.equal(query.take,undefined,'complete day totals must not be capped to the preview size')
 })

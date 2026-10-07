@@ -12,6 +12,7 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[]
  page.on('pageerror',e=>errors.push(e.message))
  const rows={company:[],partners:[],tours:[],rates:[],locations:[],vehicles:[],channels:[]};let failSave=false,failRead=false
+ await page.route(/\/api\/me\/line(?:\?.*)?$/,route=>route.request().method()==='GET'?route.fulfill({json:{status:'UNLINKED',linkedLineProfile:null}}):route.fallback())
  await page.route('**/api/me',r=>r.fulfill({json:{user:{id:'fixture',displayName:'Fixture Manager',roles:[],management:{company:true}}}}))
  await page.route('**/api/settings/**',route=>{
   const request=route.request(),url=new URL(request.url()),entity=url.pathname.split('/').at(-1)

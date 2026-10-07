@@ -1,0 +1,1497 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/d1"
+  runtime  = "cloudflare"
+}
+datasource db {
+  provider = "sqlite"
+}
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+
+}
+enum AccessScope {
+  SELF
+  COMPANY
+
+}
+model UserProfile {
+  firstName String?
+  lastName String?
+  id String @id
+  displayName String
+  nickname String?
+  department String?
+  address String?
+  primaryPhone String?
+  emergencyPhone String?
+  lineId String?
+  status AccountStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  roles UserRole[]
+  accessVersion Int @default(1)
+  permissionOverrides UserPermissionOverride[]
+  dispatchStaff DispatchStaff[]
+  guideAssignments GuideAssignment[]
+
+ province String?
+ district String?
+ subdistrict String?
+ postalCode String?
+ houseNumber String?
+ moo String?
+ villageName String?
+ mapUrl String?
+ latitude String?
+ longitude String?
+}
+model Role {
+  code String @id
+  name String
+  users UserRole[]
+  permissions RolePermission[]
+  invitations InvitationRole[]
+
+}
+model UserPermissionOverride {
+ id String @id @default(uuid())
+ userId String
+ permissionCode String
+ effect String
+ scopeId String?
+ startsAt DateTime?
+ expiresAt DateTime?
+ user UserProfile @relation(fields:[userId],references:[id],onDelete:Cascade)
+ @@index([userId])
+
+}
+model Permission {
+  code String @id
+  description String
+  roles RolePermission[]
+
+}
+model UserRole {
+  userId String
+  roleCode String
+  scope AccessScope @default(SELF)
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleCode], references: [code], onDelete: Restrict)
+  @@id([userId, roleCode, scope])
+  @@index([roleCode])
+
+}
+model RolePermission {
+  roleCode String
+  permissionCode String
+  role Role @relation(fields: [roleCode], references: [code], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+  @@id([roleCode, permissionCode])
+  @@index([permissionCode])
+
+}
+model Invitation {
+  id String @id @default(uuid())
+  email String @unique
+  tokenHash String @unique
+  displayName String
+  department String?
+  acceptedAt DateTime?
+  revokedAt DateTime?
+  createdById String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  consumedAt DateTime?
+  roles InvitationRole[]
+
+}
+model InvitationRole {
+  invitationId String
+  roleCode String
+  scope AccessScope @default(SELF)
+  invitation Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleCode], references: [code], onDelete: Restrict)
+  @@id([invitationId, roleCode, scope])
+  @@index([roleCode])
+
+}
+model AuditEvent {
+  id String @id @default(uuid())
+  actorId String?
+  action String
+  targetId String?
+  createdAt DateTime @default(now())
+  details Json
+  @@index([targetId, createdAt])
+  @@index([actorId, createdAt])
+
+}
+
+model SalesChannel {
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ code String @unique
+ name String
+ status String
+ kind String
+ @@index([status])
+
+}
+
+model CompanySettings {
+ lineId String?
+ instagramUrl String?
+ bankName String?
+ bankAccountName String?
+ bankAccountNumber String?
+ paymentInstructions String?
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ name String
+ legalName String?
+ taxId String?
+ address String?
+ phone String?
+ email String?
+
+ province String?
+ district String?
+ subdistrict String?
+ postalCode String?
+ houseNumber String?
+ moo String?
+ villageName String?
+ mapUrl String?
+ latitude String?
+ longitude String?
+}
+
+model BusinessPartner {
+ billingMode String?
+ billingCycleCount Int?
+ billingCycleUnit String?
+ billingCycleAnchor DateTime?
+ creditCount Int?
+ creditUnit String?
+ creditAnchor String?
+ shortName String?
+ bookingCommissionEligible Boolean @default(false)
+ allowedPaymentTerms Json @default("[\"PREPAID\",\"PAID\",\"COUNTER\",\"AGENT_CREDIT\"]")
+ defaultPaymentTerms String @default("COUNTER")
+ agreements AgentAgreement[]
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ code String @unique
+ name String
+ status String
+ roles Json @default("[]")
+ contactName String?
+ phone String?
+ email String?
+ address String?
+ association String?
+ paymentTerms String?
+ services OperationResource[]
+ tours TourProgram[]
+ agentPrices AgentTourPrice[]
+ bookings TourBooking[]
+ vehicles FleetVehicle[]
+ @@index([status])
+
+ province String?
+ district String?
+ subdistrict String?
+ postalCode String?
+ houseNumber String?
+ moo String?
+ villageName String?
+ mapUrl String?
+ latitude String?
+ longitude String?
+}
+
+model TourProgram {
+ printCode String?
+ bookingCommissionEligible Boolean @default(false)
+ bookingAdultCommission Decimal?
+ bookingChildCommission Decimal?
+ publicStatus String @default("DRAFT")
+ homeFeatured Boolean @default(false)
+ homeFeaturedOrder Int?
+ homeBadge String?
+ slug String? @unique
+ tourType String?
+ description String?
+ highlights String?
+ imageUrls String?
+ meals String?
+ fees String?
+ inclusions String?
+ exclusions String?
+ preparationNotes String?
+ seasons TourSeason[]
+ promotions TourPromotion[]
+ customerRequests CustomerRequest[]
+ publicContent TourProgramContent[]
+ publicHighlights TourHighlight[]
+ itinerarySteps TourItineraryStep[]
+ publicFaqs TourFaq[]
+ publicMedia TourMedia[]
+
+ partnerSourceUrl String?
+ partnerTermsVerifiedAt DateTime?
+ partnerContentVerifiedAt DateTime?
+
+ journeyMode String @default("FIXED")
+ durationDays Int? @default(1)
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ code String @unique
+ name String
+ status String
+ ownership String
+ operatorId String?
+ route String?
+ departureTimes String?
+ childPolicy String?
+ confirmationMode String
+ cancellationTerms String?
+ bookingCutoff String?
+ adultPrice Decimal?
+ childPrice Decimal?
+ supplierPricing String
+ supplierAdultNet Decimal?
+ supplierChildNet Decimal?
+ supplierAdultCommission Decimal?
+ supplierChildCommission Decimal?
+ operator BusinessPartner? @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+ components ProgramComponent[]
+ trips OperationTrip[]
+ agentPrices AgentTourPrice[]
+ @@index([operatorId])
+ @@index([status])
+
+}
+
+model TourProgramContent {
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ tourId String
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ locale String
+ name String?
+ summary String?
+ introduction String?
+ longDescription String?
+ departureTimes String?
+ childPolicy String?
+ cancellationTerms String?
+ bookingCutoff String?
+ meals String?
+ fees String?
+ inclusions String?
+ exclusions String?
+ preparationNotes String?
+ specialConditions String?
+ suitableFor String?
+ meetingPoint String?
+ weatherNotes String?
+ seoTitle String?
+ metaDescription String?
+ ogTitle String?
+ ogDescription String?
+ contentReviewedAt DateTime?
+ @@unique([tourId,locale])
+ @@index([tourId])
+
+}
+
+model TourHighlight {
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ tourId String
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ sortOrder Int @default(0)
+ status String @default("ACTIVE")
+ titleTh String?
+ titleEn String?
+ descriptionTh String?
+ descriptionEn String?
+ @@index([tourId,status,sortOrder])
+
+}
+
+model TourItineraryStep {
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ tourId String
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ day Int @default(1)
+ sortOrder Int @default(0)
+ timeLabel String?
+ status String @default("ACTIVE")
+ titleTh String?
+ titleEn String?
+ descriptionTh String?
+ descriptionEn String?
+ locationTh String?
+ locationEn String?
+ @@index([tourId,status,day,sortOrder])
+
+}
+
+model TourFaq {
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ tourId String
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ sortOrder Int @default(0)
+ status String @default("ACTIVE")
+ questionTh String?
+ answerTh String?
+ questionEn String?
+ answerEn String?
+ @@index([tourId,status,sortOrder])
+
+}
+
+model TourMedia {
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ tourId String
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ sortOrder Int @default(0)
+ kind String @default("GALLERY")
+ status String @default("ACTIVE")
+ url String
+ altTh String?
+ altEn String?
+ captionTh String?
+ captionEn String?
+ @@index([tourId,status,sortOrder])
+
+}
+
+model AgentTourPrice {
+ agreementId String?
+ agreement AgentAgreement? @relation(fields:[agreementId],references:[id],onDelete:Restrict)
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ agentId String
+ tourId String
+ adultPrice Decimal?
+ childPrice Decimal?
+ status String
+ agent BusinessPartner @relation(fields: [agentId], references: [id], onDelete: Restrict)
+ tour TourProgram @relation(fields: [tourId], references: [id], onDelete: Restrict)
+ @@unique([agentId, tourId, agreementId])
+ @@index([tourId])
+ @@index([status])
+
+}
+
+model PickupLocation {
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ code String @unique
+ name String
+ status String
+ kind String
+ zone String?
+ address String?
+ latitude String?
+ longitude String?
+ pickupNotes String?
+ @@index([status])
+
+ province String?
+ district String?
+ subdistrict String?
+ postalCode String?
+ houseNumber String?
+ moo String?
+ villageName String?
+ mapUrl String?
+}
+
+model FleetVehicle {
+ capacityOffers CapacityOffer[]
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ code String @unique
+ name String
+ status String
+ kind String
+ capacity Int
+ engineCount Int?
+ totalCapacity Int?
+ expectedCrew Int?
+ purposes Json @default("[]")
+ hireCost Decimal?
+ commissionType String?
+ commissionValue Decimal?
+ ownership String
+ providerId String?
+ registration String?
+ notes String?
+ slots ServiceSlot[]
+ provider BusinessPartner? @relation(fields: [providerId], references: [id], onDelete: Restrict)
+ @@index([providerId])
+ @@index([status])
+
+}
+
+// Shared catalog identity; kind-specific validation belongs to operations/contracts.
+model OperationResource {
+ id String @id
+ version Int @default(1)
+ code String @unique
+ name String
+ status String
+ kind String
+ category String
+ baseUnit String
+ ownership String?
+ mealPeriod String?
+ accommodationType String?
+ occupancy Int?
+ serviceMode String?
+ verificationStatus String @default("UNVERIFIED")
+ packSize Int?
+ caseSize Int?
+ size String?
+ providerId String?
+ origin String?
+ destination String?
+ salePrice Decimal?
+ costPrice Decimal?
+ notes String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ provider BusinessPartner? @relation(fields: [providerId], references: [id], onDelete: Restrict)
+ components ProgramComponent[]
+ slots ServiceSlot[]
+ lots StockLot[]
+ bookingLines BookingComponent[]
+ @@index([kind,status])
+
+}
+model StockLocation {
+ id String @id
+ version Int @default(1)
+ code String @unique
+ name String
+ kind String
+ status String
+ notes String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ balances StockBalance[]
+ issuedFrom StockIssue[] @relation("IssueSource")
+ issuedTo StockIssue[] @relation("IssueDestination")
+ sources BookingComponent[]
+
+}
+model ProgramComponent {
+ removalCredit Decimal?
+ id String @id
+ version Int @default(1)
+ tourId String
+ resourceId String
+ selection String
+ basis String
+ quantity Int
+ usagePoint String
+ day Int @default(1)
+ notes String?
+ status String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ tour TourProgram @relation(fields:[tourId], references:[id], onDelete:Restrict)
+ resource OperationResource @relation(fields:[resourceId], references:[id], onDelete:Restrict)
+ @@index([tourId,status])
+
+}
+model ServiceSlot {
+ run DispatchRun?
+ id String @id
+ version Int @default(1)
+ code String @unique
+ name String
+ resourceId String
+ vehicleId String?
+ startsAt DateTime
+ endsAt DateTime
+ capacity Int
+ status String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ resource OperationResource @relation(fields:[resourceId],references:[id],onDelete:Restrict)
+ vehicle FleetVehicle? @relation(fields:[vehicleId],references:[id],onDelete:Restrict)
+ bookingLines BookingComponent[]
+ @@index([resourceId,startsAt,endsAt])
+ @@index([vehicleId,startsAt,endsAt])
+
+}
+model OperationTrip {
+ id String @id
+ version Int @default(1)
+ code String @unique
+ name String
+ tourId String?
+ startsAt DateTime
+ endsAt DateTime
+ capacity Int
+ status String @default("OPEN")
+ notes String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ tour TourProgram? @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ bookings TourBooking[]
+ @@index([startsAt,endsAt])
+
+}
+model TourBooking {
+ assigneeId String?
+ @@index([assigneeId])
+ commissionSnapshot Json?
+ attendance BookingAttendance[]
+ guideAssignments GuideAssignment[]
+ customerRequest CustomerRequest?
+ billLine AgentBillLine?
+ outboundDate DateTime?
+ returnDate DateTime?
+ returnStatus String @default("OUR")
+ createdById String?
+ hotelId String?
+ channelId String?
+ allergyStatus String @default("UNKNOWN")
+ specialRequirements Json @default("[]")
+ @@index([outboundDate,status])
+ @@index([returnDate,status])
+ agentId String?
+ agentName String?
+ agentPhone String?
+ agentReference String?
+ contactPhone String?
+ hotel String?
+ room String?
+ pickupPoint String?
+ dropoffPoint String?
+ allergies String?
+ assistance String?
+ requestNotes String?
+ paymentTerms String @default("UNSET")
+ afterServiceReason String?
+ agent BusinessPartner? @relation(fields:[agentId],references:[id],onDelete:Restrict)
+ @@index([agentId])
+ id String @id
+ version Int @default(1)
+ code String @unique
+ name String
+ tripId String?
+ adults Int
+ children Int
+ status String @default("DRAFT")
+ adultPrice Decimal?
+ childPrice Decimal?
+ programSnapshot Json
+ requestHash String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ trip OperationTrip? @relation(fields:[tripId],references:[id],onDelete:Restrict)
+ lines BookingComponent[]
+ @@index([tripId,status])
+
+}
+model BookingComponent {
+ dispatchDirection String @default("BOTH")
+ dispatchAssignments DispatchAssignment[]
+ id String @id
+ bookingId String
+ resourceId String
+ slotId String?
+ sourceId String?
+ quantity Int
+ issuedQty Int @default(0)
+ selected Boolean
+ included Boolean
+ usagePoint String
+ snapshot Json
+ unitPrice Decimal?
+ booking TourBooking @relation(fields:[bookingId],references:[id],onDelete:Restrict)
+ resource OperationResource @relation(fields:[resourceId],references:[id],onDelete:Restrict)
+ slot ServiceSlot? @relation(fields:[slotId],references:[id],onDelete:Restrict)
+ source StockLocation? @relation(fields:[sourceId],references:[id],onDelete:Restrict)
+ issues StockIssue[]
+ @@index([resourceId,sourceId])
+ @@index([slotId])
+ @@index([bookingId])
+
+}
+model StockLot {
+ id String @id
+ resourceId String
+ label String
+ receivedOn DateTime
+ expiresOn DateTime?
+ createdAt DateTime @default(now())
+ resource OperationResource @relation(fields:[resourceId],references:[id],onDelete:Restrict)
+ balances StockBalance[]
+ issues StockIssue[]
+ @@index([resourceId,expiresOn])
+
+}
+model StockBalance {
+ id String @id
+ lotId String
+ locationId String
+ condition String
+ quantity Int
+ version Int @default(1)
+ lot StockLot @relation(fields:[lotId],references:[id],onDelete:Restrict)
+ location StockLocation @relation(fields:[locationId],references:[id],onDelete:Restrict)
+ @@unique([lotId,locationId,condition])
+ @@index([locationId,condition])
+
+}
+model StockIssue {
+ runId String?
+ @@index([runId])
+ id String @id
+ lotId String
+ bookingLineId String?
+ sourceId String
+ destinationId String
+ custodian String
+ quantity Int
+ settledQty Int @default(0)
+ createdAt DateTime @default(now())
+ lot StockLot @relation(fields:[lotId],references:[id],onDelete:Restrict)
+ source StockLocation @relation("IssueSource",fields:[sourceId],references:[id],onDelete:Restrict)
+ destination StockLocation @relation("IssueDestination",fields:[destinationId],references:[id],onDelete:Restrict)
+ bookingLine BookingComponent? @relation(fields:[bookingLineId],references:[id],onDelete:Restrict)
+ @@index([bookingLineId])
+
+}
+model StockMovement {
+ id String @id
+ requestHash String
+ kind String
+ quantity Int
+ enteredQuantity Int
+ enteredUnit String
+ factor Int
+ details Json
+ actorId String
+ createdAt DateTime @default(now())
+ @@index([createdAt])
+
+}
+model OperationCommand {
+ id String @id
+ requestHash String
+ result Json
+ createdAt DateTime @default(now())
+
+}
+
+model DispatchRun {
+ id String @id
+ version Int @default(1)
+ code String @unique
+ name String
+ kind String
+ direction String
+ period String
+ capacity Int
+ status String @default("OPEN")
+ slotId String @unique
+ requestHash String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ slot ServiceSlot @relation(fields:[slotId],references:[id],onDelete:Restrict)
+ staff DispatchStaff[]
+ assignments DispatchAssignment[]
+ @@index([kind,status])
+
+}
+model DispatchStaff {
+ id String @id
+ runId String
+ userId String
+ role String
+ run DispatchRun @relation(fields:[runId],references:[id],onDelete:Restrict)
+ user UserProfile @relation(fields:[userId],references:[id],onDelete:Restrict)
+ @@unique([runId,userId])
+ @@index([userId])
+
+}
+model DispatchAssignment {
+ status String @default("ASSIGNED")
+ cancellationReason String?
+ id String @id
+ runId String
+ bookingLineId String
+ adults Int
+ children Int
+ pickupAt DateTime?
+ dropoffPoint String?
+ notes String?
+ actualAdults Int?
+ actualChildren Int?
+ changeReason String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ run DispatchRun @relation(fields:[runId],references:[id],onDelete:Restrict)
+ bookingLine BookingComponent @relation(fields:[bookingLineId],references:[id],onDelete:Restrict)
+ @@unique([runId,bookingLineId])
+ @@index([bookingLineId])
+
+}
+
+model OperationDailySnapshot {
+ id String @id
+ serviceDate DateTime
+ kind String
+ revision Int
+ contentHash String
+ runs Json
+ actorId String
+ createdAt DateTime @default(now())
+ outbox OperationNotificationOutbox?
+ @@unique([serviceDate,kind,revision])
+
+}
+model OperationNotificationOutbox {
+ id String @id
+ snapshotId String @unique
+ serviceDate DateTime
+ revision Int
+ status String @default("PREPARED")
+ retryKey String @unique
+ payload Json
+ attempts Int @default(0)
+ firstAttemptAt DateTime?
+ lastAttemptAt DateTime?
+ createdAt DateTime @default(now())
+ snapshot OperationDailySnapshot @relation(fields:[snapshotId],references:[id],onDelete:Restrict)
+
+}
+
+model DocumentAsset {
+ key String @id
+ mimeType String
+ objectKey String @unique
+ sha256 String
+ sourceUrl String
+ updatedAt DateTime @updatedAt
+
+}
+
+model AgentAgreement {
+ id String @id
+ version Int @default(1)
+ code String @unique
+ name String
+ agentId String
+ startsOn DateTime
+ endsOn DateTime
+ signedOn DateTime?
+ evidenceUrl String?
+ status String @default("ACTIVE")
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ agent BusinessPartner @relation(fields:[agentId],references:[id],onDelete:Restrict)
+ rates AgentTourPrice[]
+ @@index([agentId,startsOn,endsOn])
+
+}
+model BookingSequence {
+ year Int @id
+ value Int @default(0)
+
+}
+
+model CompanyWorkRecord {
+ id String @id
+ kind String
+ name String
+ status String @default("DRAFT")
+ version Int @default(1)
+ payload Json
+ parentId String?
+ dueOn DateTime?
+ assigneeId String?
+ storeId String?
+ createdById String
+ approvedById String?
+ completedById String?
+ commandHash String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([kind,status,dueOn])
+ @@index([assigneeId,kind])
+ @@unique([parentId,dueOn])
+
+}
+
+model WarehouseResponsibility {
+ storeId String @id
+ primaryUserId String
+ deputyUserIds Json @default("[]")
+ version Int @default(1)
+ reason String
+ updatedById String
+ updatedAt DateTime @updatedAt
+
+}
+
+model PurchaseOrder {
+ id String @id
+ name String
+ status String @default("DRAFT")
+ version Int @default(1)
+ supplierId String
+ storeId String
+ lines Json
+ total Decimal
+ receivedTotal Decimal @default(0)
+ requestId String?
+ reason String
+ quotationUrl String?
+ createdById String
+ approvedById String?
+ commandHash String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([status,createdAt])
+
+}
+
+model CompanyWorkCommand {
+ id String @id
+ requestHash String
+ result Json
+ actorId String
+ createdAt DateTime @default(now())
+
+}
+
+model FinancePersonnelRecord {
+ id String @id
+ kind String
+ title String
+ employeeId String
+ payload Json
+ status String @default("DRAFT")
+ version Int @default(1)
+ createdBy String
+ approvedBy String?
+ payment Json?
+ clearance Json?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([kind,status])
+ @@index([employeeId])
+
+}
+model FinancePersonnelCommand {
+ id String @id
+ actorId String
+ requestHash String
+ result Json
+ createdAt DateTime @default(now())
+
+}
+
+model EvidenceAttachment {
+ id String @id
+ createdAt DateTime @default(now())
+ targetKind String
+ targetId String
+ uploadedBy String
+ filename String
+ mimeType String
+ size Int
+ sha256 String
+ objectKey String @unique
+ note String
+ documentNumber String
+ category String
+ requestHash String
+ @@index([targetKind, targetId, createdAt])
+
+}
+
+model AgentBill {
+ billingPolicySnapshot Json?
+ originalDueOn DateTime?
+ promisedOn DateTime?
+ rescheduleHistory Json @default("[]")
+ id String @id
+ version Int @default(1)
+ title String
+ agentId String
+ agentName String
+ total Decimal
+ paid Decimal @default(0)
+ status String @default("OPEN")
+ dueOn DateTime
+ snapshot Json
+ createdBy String
+ createdAt DateTime @default(now())
+ lines AgentBillLine[]
+ payments AgentPayment[]
+ @@index([agentId,status])
+
+}
+model AgentBillLine {
+ bookingId String @id
+ booking TourBooking @relation(fields:[bookingId],references:[id],onDelete:Restrict)
+ billId String
+ bill AgentBill @relation(fields:[billId],references:[id],onDelete:Restrict)
+ @@index([billId])
+
+}
+model AgentPayment {
+ id String @id
+ billId String
+ amount Decimal
+ receivedOn DateTime
+ reference String
+ recordedBy String
+ createdAt DateTime @default(now())
+ bill AgentBill @relation(fields:[billId],references:[id],onDelete:Restrict)
+ @@index([billId,createdAt])
+
+}
+
+model TourSeason {
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ code String @unique
+ name String
+ status String
+ tourId String
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ startsOn DateTime
+ endsOn DateTime
+ onlineStartsOn DateTime
+ onlineEndsOn DateTime
+ bookingStartsOn DateTime
+ bookingEndsOn DateTime
+ cutoffDays Int @default(1)
+ closedDates String?
+ @@index([tourId,status])
+
+}
+model TourPromotion {
+ holdHours Int?
+ requests CustomerRequest[]
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ code String @unique
+ name String
+ status String
+ tourId String
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ startsOn DateTime
+ endsOn DateTime
+ serviceStartsOn DateTime
+ serviceEndsOn DateTime
+ adultPrice Decimal?
+ childPrice Decimal?
+ quota Int?
+ quotaUnit String
+ terms String?
+ @@index([tourId,status])
+
+}
+model WebsitePopup {
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ code String @unique
+ name String
+ status String
+ imageUrl String
+ imageAlt String
+ mobileImageUrl String?
+ title String?
+ linkUrl String?
+ buttonLabel String?
+ startsOn DateTime
+ endsOn DateTime
+ frequency String
+ priority Int @default(0)
+ @@index([status,startsOn,endsOn])
+
+}
+model CustomerProfile {
+ id String @id
+ version Int @default(1)
+ authUserId String? @unique
+ displayName String
+ nickname String?
+ email String?
+ phone String?
+ lineId String?
+ status String @default("ACTIVE")
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ requests CustomerRequest[]
+ @@index([status,displayName])
+
+}
+model CustomerRequest {
+ capacityHolds CapacityHold[]
+ holdUntil DateTime?
+ tour TourProgram @relation(fields:[tourId],references:[id],onDelete:Restrict)
+ promotion TourPromotion? @relation(fields:[promotionId],references:[id],onDelete:Restrict)
+ booking TourBooking? @relation(fields:[bookingId],references:[id],onDelete:Restrict)
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ customerId String
+ customer CustomerProfile @relation(fields:[customerId],references:[id],onDelete:Restrict)
+ tourId String
+ promotionId String?
+ serviceDate DateTime
+ adults Int
+ children Int
+ status String @default("REQUESTED")
+ requestHash String
+ snapshot Json
+ details Json
+ bookingId String? @unique
+ staffNote String?
+ @@index([customerId,createdAt])
+ @@index([promotionId,status])
+ @@index([status,createdAt])
+
+}
+
+model WebsiteImage {
+ id String @id
+ createdAt DateTime @default(now())
+ filename String
+ mimeType String
+ objectKey String @unique
+ size Int
+ sha256 String
+ uploadedBy String
+
+}
+
+model GuideAssignment {
+ id String @id
+ version Int @default(1)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ bookingId String
+ guideId String
+ startsAt DateTime
+ endsAt DateTime
+ status String @default("PLANNED")
+ notes String?
+ requestHash String
+ booking TourBooking @relation(fields:[bookingId],references:[id],onDelete:Restrict)
+ guide UserProfile @relation(fields:[guideId],references:[id],onDelete:Restrict)
+ @@index([guideId,status,startsAt])
+ @@index([bookingId])
+
+}
+
+model BookingAttendance {
+ id String @id
+ bookingId String
+ serviceDate DateTime
+ direction String
+ version Int @default(1)
+ adults Int @default(0)
+ children Int @default(0)
+ noShowAdults Int @default(0)
+ noShowChildren Int @default(0)
+ reason String?
+ financeStatus String @default("NONE")
+ financeReason String?
+ financeReviewedBy String?
+ changes Json @default("[]")
+ updatedBy String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ booking TourBooking @relation(fields:[bookingId],references:[id],onDelete:Restrict)
+ @@unique([bookingId,serviceDate,direction])
+ @@index([serviceDate,direction])
+ @@index([financeStatus])
+
+}
+model ServiceDayClose {
+ id String @id
+ serviceDate DateTime @unique
+ version Int @default(1)
+ status String @default("CLOSED")
+ snapshot Json
+ reason String?
+ updatedBy String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+
+}
+
+// Physical readiness is configured per service window, never inferred from ACTIVE alone.
+model CapacityPool {
+ id String @id
+ version Int @default(1)
+ code String @unique
+ name String
+ kind String
+ serviceDate DateTime
+ direction String
+ startsAt DateTime
+ endsAt DateTime
+ resourceIds Json @default("[]")
+ status String @default("ACTIVE")
+ holdMinutes Int
+ overnightLoadTenths Int @default(12)
+ notes String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ offers CapacityOffer[]
+ holds CapacityHold[]
+ @@index([serviceDate,direction,status])
+
+}
+model CapacityOffer {
+ id String @id
+ poolId String
+ vehicleId String
+ capacity Int
+ status String
+ pool CapacityPool @relation(fields:[poolId],references:[id],onDelete:Restrict)
+ vehicle FleetVehicle @relation(fields:[vehicleId],references:[id],onDelete:Restrict)
+ @@unique([poolId,vehicleId])
+ @@index([vehicleId])
+
+}
+// Confirmed occupancy comes from TourBooking itself; these rows are temporary request holds only.
+model CapacityHold {
+ id String @id
+ poolId String
+ requestId String
+ passengers Int
+ exclusive Boolean @default(false)
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ pool CapacityPool @relation(fields:[poolId],references:[id],onDelete:Restrict)
+ request CustomerRequest @relation(fields:[requestId],references:[id],onDelete:Restrict)
+ @@unique([poolId,requestId])
+ @@index([poolId,expiresAt])
+ @@index([requestId])
+
+}
+
+// Verified external receipts: source remains on TourBooking; payer is independent.
+model BookingReceipt {
+ id String @id
+ bookingId String
+ agentId String?
+ payer String
+ basis String
+ received Decimal
+ net Decimal
+ margin Decimal
+ refunded Decimal @default(0)
+ receivedOn DateTime
+ reference String
+ recordedBy String
+ createdAt DateTime @default(now())
+ @@index([bookingId])
+ @@index([agentId])
+
+}
+model AgentMarginOffset {
+ bookingId String?
+ id String @id
+ receiptId String
+ billId String?
+ amount Decimal
+ recordedBy String
+ createdAt DateTime @default(now())
+ @@unique([receiptId,billId])
+
+}
+
+model BookingCommissionClaim {
+ bookingId String @id
+ recordId String @unique
+ createdAt DateTime @default(now())
+
+}
+
+model PersonalLineDelivery {
+ id String @id
+ eventId String
+ userId String
+ mode String
+ recipient String
+ status String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([eventId,userId,mode])
+
+}
+
+model AgentRefundClaim {
+ receiptId String @id
+ recordId String @unique
+
+}
+
+model D1BusinessPartnerPaymentTerm {
+  ownerId String
+  value   String
+  @@id([ownerId, value])
+  @@index([value, ownerId])
+}
+
+model D1BusinessPartnerRole {
+  ownerId String
+  value   String
+  @@id([ownerId, value])
+  @@index([value, ownerId])
+}
+
+model D1FleetVehiclePurpose {
+  ownerId String
+  value   String
+  @@id([ownerId, value])
+  @@index([value, ownerId])
+}
+
+model D1TourBookingSpecialRequirement {
+  ownerId String
+  value   String
+  @@id([ownerId, value])
+  @@index([value, ownerId])
+}
+
+model D1WarehouseResponsibilityDeputy {
+  ownerId String
+  value   String
+  @@id([ownerId, value])
+  @@index([value, ownerId])
+}
+
+model D1CapacityPoolResource {
+  ownerId String
+  value   String
+  @@id([ownerId, value])
+  @@index([value, ownerId])
+}
+
+model D1JsonProjection {
+  source    String
+  ownerId   String
+  textValue String
+  @@id([source, ownerId])
+  @@index([source, textValue, ownerId])
+}
+
+// Local and Production use these same D1 authentication models.
+model AuthUser {
+ id String @id
+ name String
+ email String @unique
+ emailVerified Boolean @default(false)
+ image String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ sourceCreatedAt DateTime?
+ disabled Boolean @default(false)
+ bannedUntil DateTime?
+ accounts AuthAccount[]
+ sessions AuthSession[]
+ webSessions WebSession[]
+}
+model AuthSession {
+ id String @id
+ token String @unique
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ ipAddress String?
+ userAgent String?
+ userId String
+ user AuthUser @relation(fields:[userId],references:[id],onDelete:Cascade)
+ webSessions WebSession[]
+ @@index([userId])
+}
+model AuthAccount {
+ id String @id
+ accountId String
+ providerId String
+ userId String
+ user AuthUser @relation(fields:[userId],references:[id],onDelete:Cascade)
+ accessToken String?
+ refreshToken String?
+ idToken String?
+ accessTokenExpiresAt DateTime?
+ refreshTokenExpiresAt DateTime?
+ scope String?
+ password String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([providerId,accountId])
+ @@index([userId])
+}
+model AuthVerification {
+ id String @id
+ identifier String @unique
+ value String
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ webSessions WebSession[]
+}
+model WebSession {
+ id String @id
+ userId String
+ user AuthUser @relation(fields:[userId],references:[id],onDelete:Cascade)
+ authSessionId String?
+ authSession AuthSession? @relation(fields:[authSessionId],references:[id],onDelete:Cascade)
+ verificationId String? @unique
+ verification AuthVerification? @relation(fields:[verificationId],references:[id],onDelete:Cascade)
+ purpose String
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ @@index([userId])
+ @@index([authSessionId])
+}
+model LocalMail {
+ id String @id @default(uuid())
+ kind String
+ recipient String
+ link String
+ createdAt DateTime @default(now())
+ @@index([createdAt])
+}
+
+// Staff-only LINE mapping. No customer roles, credentials or business records are changed.
+model StaffLineBinding {
+ id String @id
+ channelKey String
+ userId String
+ lineUserId String?
+ displayName String?
+ status String
+ version Int @default(1)
+ linkedAt DateTime?
+ unlinkedAt DateTime?
+ sourceEventAt DateTime?
+ updatedAt DateTime @updatedAt
+ @@unique([channelKey,userId])
+ @@unique([channelKey,lineUserId])
+}
+model StaffLineRequest {
+ id String @id
+ channelKey String
+ sourceEventId String
+ lineUserId String
+ displayName String?
+ tokenHash String
+ sealedTicket String?
+ userId String?
+ webSessionId String?
+ nonceHash String? @unique
+ status String
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([channelKey,sourceEventId])
+ @@index([channelKey,userId,status])
+ @@index([expiresAt])
+}
+model StaffLineEvent {
+ id String @id
+ channelKey String
+ payloadHash String
+ status String
+ outcome String?
+ updatedAt DateTime @updatedAt
+ createdAt DateTime @default(now())
+}
+
+// Local staff daily digest outbox; provider acceptance is not receipt.
+model StaffDailyDigest {
+ id String @id
+ retryKey String @unique
+ sourceId String?
+ userId String
+ serviceDate DateTime
+ channelKey String
+ mode String
+ revision Int
+ contentHash String
+ bindingVersion Int
+ payload Json
+ status String
+ attempts Int @default(0)
+ firstAttemptAt DateTime?
+ lastAttemptAt DateTime?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([serviceDate,userId,mode,channelKey,revision])
+ @@index([serviceDate,status])
+}
+
+// Durable staff onboarding; credentials remain in Better Auth tables.
+model EmployeeOnboarding {
+ invitationId String @id
+ userId String? @unique
+ emailVerifiedAt DateTime?
+ profileCompletedAt DateTime?
+ passwordSetAt DateTime?
+ completedAt DateTime?
+ emailSentAt DateTime?
+ firstName String?
+ lastName String?
+ address String?
+ addressDetails Json?
+ primaryPhone String?
+ updatedAt DateTime @updatedAt
+}

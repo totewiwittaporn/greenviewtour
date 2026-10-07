@@ -1,5 +1,7 @@
 # DEMO FLOW — ทดลองตามการไหลของข้อมูล
 
+> Environment update (30 September 2026): referenced Preview/provider seed and delivery scripts below are historical and now fail closed. Preserve the domain requirements, but use [Local/Production workflow](local-production-workflow.md) for current execution and testing. No live provider delivery is authorized.
+
 ข้อมูลสาธิตชุด `DEMO-FLOW-260913` ใช้วันเดินทาง **20 กันยายน 2026** (โปรแกรมค้างคืนกลับวันที่ 21) ชื่อรายการขึ้นต้น `DEMO FLOW` ราคา สัญญา ยอดสต๊อก และสถานะการเดินทางทั้งหมดเป็นข้อมูลสมมุติ ไม่ใช่รายการจริง สัญญาตัวอย่างไม่มีลายเซ็นหรือเอกสารรับรอง
 
 ## เปิดดูตามลำดับ

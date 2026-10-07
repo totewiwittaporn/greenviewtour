@@ -33,11 +33,12 @@ try{
    assert.ok(g.main.top-g.header.bottom<=12,label+' unnecessary gap below navbar');
    assert.ok(g.header.bottom<=g.main.top+.5,label+' navbar overlaps main');assert.ok(g.header.bottom<=g.hero.top+.5,label+' navbar overlaps Hero')
    assert.equal(g.overlaps,false,label+' toolbar controls overlap');assert.equal(g.overflow,false,label+' page overflow')
-   for(const box of [g.name,g.role]){assert.ok(box.left>=g.button.left&&box.right<=g.button.right+.5,label+' identity outside button horizontally');assert.ok(box.top>=g.button.top&&box.bottom<=g.button.bottom+.5,label+' identity outside button vertically')}
+   if(width>760)for(const box of [g.name,g.role]){assert.ok(box.left>=g.button.left&&box.right<=g.button.right+.5,label+' identity outside button horizontally');assert.ok(box.top>=g.button.top&&box.bottom<=g.button.bottom+.5,label+' identity outside button vertically')}
+   if(width<=760){assert.equal(await page.locator('.account-name').isVisible(),false);assert.equal(await page.locator('.reference-account-role').isVisible(),false);assert.ok(g.button.width>=44&&g.button.height>=44,label+' avatar target too small')}
    assert.ok(g.account.width<=180.5,label+' account exceeds compact width')
    assert.equal(await page.locator('.account-name').evaluate(el=>getComputedStyle(el).textOverflow),'ellipsis')
    await page.evaluate(()=>window.scrollTo(0,300));assert.ok(Math.abs((await geometry()).header.top)<=1,label+' navbar scrolls away');await page.evaluate(()=>window.scrollTo(0,0))
-   assert.ok(g.account.bottom<=g.header.bottom+.5,label+' account outside navbar');assert.ok(Math.abs(g.header.right-g.paddingRight-g.account.right)<=1,label+' account not right aligned');assert.equal(g.timeColor,'rgb(255, 255, 255)',label+' hero time not white');assert.equal(g.logo,'/images/brand/greenview-logo.png')
+   assert.ok(g.account.bottom<=g.header.bottom+.5,label+' account outside navbar');assert.ok(Math.abs(g.header.right-g.paddingRight-g.account.right)<=1,label+' account not right aligned');assert.equal(g.timeColor,'rgb(255, 255, 255)',label+' hero time not white');assert.equal(g.logo,'/images/brand/greenview-logo.webp')
    await page.locator('.account-menu button').click();await page.getByRole('menu').waitFor();const menuGeometry=await geometry();assert.ok(menuGeometry.header.bottom<=menuGeometry.main.top+.5,label+' open account shifts navbar over main');await page.keyboard.press('Escape')
    if(width<=760){await page.locator('.menu-toggle').click();const openGeometry=await geometry();assert.ok(openGeometry.header.bottom<=openGeometry.main.top+.5,label+' open navigation overlaps main');assert.ok(openGeometry.header.bottom<=openGeometry.hero.top+.5,label+' open navigation overlaps Hero');await page.locator('.menu-toggle').click()}
    if((width===390&&locale==='th')||(width===1440&&locale==='en'))await page.screenshot({path:`${output}/${role}-${locale}-${width}.png`})

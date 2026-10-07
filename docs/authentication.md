@@ -1,85 +1,56 @@
 # Local authentication and identity
 
-## Implemented phase
+Current runtime: Better Auth on Local D1 with separate durable staff/member sessions. See [Auth/API acceptance](local-auth-api-acceptance-2026-09-30.md), [Local startup](local-development.md), and [Local/Production workflow](local-production-workflow.md).
 
-Prisma 7.10 uses the existing verified PostgreSQL pool through `@prisma/adapter-pg`. Application models live in `app_private`; Supabase exclusively owns `auth.users`, passwords, confirmation and provider sessions. The migration adds an application-profile foreign key to `auth.users` without managing Auth's tables in Prisma. Never run `db push`, `migrate reset`, or auto-generate a migration that drops Supabase-owned objects.
+Staff onboarding remains invitation-only; Member accounts are separate from staff roles. HttpOnly cookies, current role/status authorization, recovery grants and Local verification mail are tested through the real Local API and browser suite. No provider credentials or old session tokens are loaded.
 
-Models: UserProfile, Role, Permission, UserRole, RolePermission, Invitation, InvitationRole, AuditEvent. All application tables have RLS and no Data API grants. The backend accesses them through the private database connection. No browser client receives database credentials or a service-role key.
+The former PostgreSQL/Supabase connection and owner-bootstrap paths are retired. Historical design/evidence is preserved in [the original authentication record](history/authentication-pre-local-cutover.md); it is not a setup guide. Production registration/email/provider setup requires separate approval.
 
-The 13 agreed roles and eight account-management permission definitions are seeded. A role grant has an explicit SELF or COMPANY scope. Undefined access is denied. Team/assigned-work scopes and Manager delegation UI need the later employee/team workflow; no team scope is silently treated as company scope. Only an owner invitation explicitly bootstrapped for a named email receives ADMIN_MANAGER/COMPANY. No first-signup promotion, hard-coded owner email, self-role changes or public role editor exists. Manager user-administration screens are the next phase.
 
-## First owner
+## Employee onboarding (owner-approved 2026-10-03)
 
-After the owner identifies their email and display name:
+The current Better Auth + D1 flow replaces the former manually copied staff invitation link. It does not use Supabase.
 
-```powershell
-npm run owner:invite -- "owner@example.com" "Owner name"
-```
+1. A permitted Manager creates an invitation with only Email, Role and Department. Server authority and role limits still apply. Sending/resending uses the existing mail adapter: LocalMail locally, the configured email adapter in Production. Admin responses never expose the raw invitation credential.
+2. The employee opens `/onboarding#invitation=...` from the email. A single-use exchange confirms the email and creates an HttpOnly session restricted to onboarding. Existing manually copied staff links cannot confirm email; resend them through the new flow. Owner bootstrap remains separate.
+3. The employee saves legal first name, legal last name, structured address and phone. Province, district, subdistrict and house number are required; postal code is derived server-side from the shared Thai-area dataset. Moo, village and Google Maps pin use the existing profile address controls. Names are individually stored, not derived from LINE display names. Phone is normalized. Unknown fields, empty/oversized values and control characters are rejected.
+4. The employee sets and confirms a 12-128 character password. The server hashes it through the existing Better Auth password implementation. Passwords are never stored in browser persistence or audit events.
+5. LINE Login uses `openid profile`, PKCE S256, server-held nonce and a session-bound single-use state expiring after 10 minutes. The server verifies the ID token issuer, audience, nonce, expiry and subject, then queries friendship status. Only `friendFlag=true` permits activation. Access tokens are ephemeral and revoked after use.
+6. Activation atomically creates the ACTIVE staff profile, invited roles, LINE binding and completion marker, consumes the invitation and promotes the current session. Existing role-based dashboard authorization then applies. No staff profile or workspace access exists before this transaction.
 
-The command refuses if an owner already exists or an unexpired owner invitation is pending. It writes the one-time code to ignored `backend/bootstrap.local/owner-invitation.txt`; it does not create a password or send email. Open `/register`, enter the invited email, code and a private password. Confirm the Supabase email, then sign in. The login transaction consumes the invitation and creates the profile/grants atomically. Delete the local invitation file after activation. The code expires in 72 hours.
+`EmployeeOnboarding` persists email verification, profile, password and completion timestamps. Derived stages are INVITED, EMAIL_VERIFIED, PROFILE_COMPLETED, PASSWORD_SET and ACTIVE. LINE binding and ACTIVE commit together, so there is no partially committed LINE_CONNECTED state. Reload resumes the last saved step. After password setup, ordinary login returns an incomplete employee to onboarding. Before password setup, a lost session requires a Manager resend. A revoked/expired invitation or removed inviter authority blocks continuation; resend rotates its credential and invalidates outstanding LINE challenges. Unsaved form text is not durable.
 
-## Supabase setup
+### Local migration and recovery
 
-Backend requires `SUPABASE_URL=https://qplzgpyidszxbtbyknjc.supabase.co` and `SUPABASE_PUBLISHABLE_KEY` (the modern publishable key). No service-role key is needed in this phase.
+Migration `0011_employee_onboarding.sql` adds EmployeeOnboarding and nullable UserProfile firstName/lastName. It does not rewrite existing employee names or business data. Generated D1 schema/atomic metadata include the additive models; the historical source schema is unchanged. The exact reviewed checkpoint transition preserves imported-data verification.
 
-In Authentication → URL Configuration, set the local Preview Site URL to `http://localhost:5174` and allow exactly:
+Before applying on an existing Local installation, stop its launcher, create a backup with `npm run local:backup -- --directory <absolute-private-backup-directory>`, then run `npm run local:db:migrate`. The import verification commands `local:data:verify`, `local:identity:verify` and `local:auth:verify` each require `-- --source <absolute-offline-export-directory>`. They compare against the historical import, so later legitimate Local edits can produce a mismatch; compare a fresh pre-migration backup to establish migration preservation. Do not apply this to Production as part of a Local handoff.
 
-- `http://localhost:5174/login`
-- `http://localhost:5174/reset-password`
+### LINE configuration boundary
 
-Keep email confirmation enabled. Confirm-signup and password-reset emails must retain Supabase's `{{ .ConfirmationURL }}` link. Sending to staff beyond the project's permitted recipients may require custom SMTP; delivery must be verified with the owner's actual mailbox before wider onboarding. No email was sent during automated tests.
+Local intentionally disables live LINE Login and saves progress at PASSWORD_SET; it never inherits provider secrets. Unit/integration tests exercise activation using the real D1 transaction planner with fake LINE HTTP responses. Local Worker tests verify that the mandatory LINE gate cannot be skipped. No test-only activation endpoint is installed.
 
-## Sessions and routes
+Before a separately authorized real-provider rollout, configure a LINE Login web channel under the existing Staff OA provider `2005588057`, link it to the Greenview Staff OA Messaging API channel `2011806264` (OA `@335bydey`), and register `https://<backoffice-host>/onboarding/line-callback`. Validate the linked OA in LINE Developers Console: friendship status refers to the OA linked to the Login channel, not an arbitrary supplied OA ID.
 
-The BFF stores Supabase access/refresh tokens only in bounded server memory, never browser storage. The browser receives a random HttpOnly, SameSite=Strict cookie scoped to `/api` (eight-hour absolute lifetime). Backend restarts require signing in again. Secure cookies/HTTPS, distributed session storage and non-local deployment configuration must be implemented before hosted deployment; the server deliberately refuses production mode and remains loopback-only.
+Required server settings are `LINE_STAFF_LOGIN_ENABLED=true`, `LINE_STAFF_LOGIN_PROVIDER_ID=2005588057`, `LINE_STAFF_LOGIN_CHANNEL_ID`, secret `LINE_STAFF_LOGIN_CHANNEL_SECRET`, and HTTPS `BACKOFFICE_ORIGIN`. Keep the secret in the approved secret store. The Login channel ID is distinct from the Messaging API channel ID. Existing Staff OA credentials and existing employees' LINE bindings are preserved. Real email delivery, real LINE consent/friendship and provider-to-provider user-ID consistency require a separately authorized acceptance run; they are not claimed by Local fixture tests.
 
-Every protected request validates the user with Supabase, verifies that the underlying Auth session still exists and is not expired/banned, reads current profile status and checks current database role/permission/scope grants. User metadata is never authorization input. Local proxy tokens alone do not grant staff access. POST routes require the same-origin browser Origin, JSON content and a bounded body; local auth requests have an aggregate rate limit.
+References: [LINE Login web flow](https://developers.line.biz/en/docs/line-login/integrate-line-login/), [friendship status](https://developers.line.biz/en/reference/line-login/#get-friendship-status).
 
-- `/login`: email/password; uninvited and inactive accounts cannot enter.
-- `/register`: invitation code + bound email, password and confirmation; email verification precedes account activation.
-- `/forgot-password`: generic confirmation without revealing account existence.
-- `/reset-password`: exchanges an email-link session into a restricted BFF recovery session; updates password, revokes provider refresh sessions and all local sessions for the user.
-- `/`: own account workspace or Users for authorized administrators.
-- `/settings/users`: requires `users.read:COMPANY` on the server.
 
-Logout removes the local session immediately, then attempts provider-session revocation. No secret, password or reset link is logged. Auth pages have no analytics; URL fragments are removed before the page mounts. Password entry state is deliberately not persisted or restored after navigation.
+### Production activation, 2026-10-03
 
-## Migration ownership
+The owner explicitly authorized deployment after the Local handoff. Migration 0011 is now applied to Production. LINE Login channel 2011848467 under provider 2005588057 is Published, linked to Greenview Staff OA @335bydey, with callback https://backoffice.greenviewtour.com/onboarding/line-callback. The Login secret is installed only in the Cloudflare secret store; the ignored release config enables the channel. Local continues to disable live Login. See employee-onboarding-production-2026-10-03.txt for release evidence and live-test limits.
 
-`backend/prisma/migrations` is the only application migration ledger. Apply with `npm run db:migrate`; do not apply the same SQL through Supabase's separate migration ledger. Seeded capability definitions do not grant any actual account access until an explicit UserRole is created. Do not create business/financial rights merely because a role name exists.
 
-## Audit notes
+### Structured-address correction, 2026-10-03
 
-Supabase advisory review: the eight private tables intentionally have no client RLS policies (default deny). The pre-existing `public.rls_auto_enable()` function returns `event_trigger`, has a fixed pg_catalog search path and is not an ordinary callable RPC; its generic SECURITY DEFINER advisor warning is recorded rather than changing the platform's event trigger. No new SECURITY DEFINER function was introduced.
-
-Dependency audit reports Prisma toolchain advisories in deepmerge-ts/mysql2. This PostgreSQL-only local service does not use the MySQL driver or merge untrusted Prisma configuration. npm's proposed fix downgrades Prisma to version 6; no automatic major downgrade was applied. Resolve the toolchain findings before a hosted production release.
-
-## User Info and delegated profile editing (2026-09-08)
-
-User Info owns the authenticated name, email, department, status, role grants, public-site link and Sign out. The toolbar exposes one User Info trigger. It never displays credential/token values.
-
-Company-scoped ADMIN_MANAGER and MANAGER can edit display name/department for profiles of every role. HEAD_BOOKING, HEAD_GUIDE, HEAD_CAPTAIN and HEAD_DRIVER require an explicit matching department assignment; their directory, counts and search are restricted to that department. They can edit display names within that department, excluding Manager/Admin Manager profiles, and cannot change department. Department is a dedicated field, never inferred from user-editable Auth metadata. Unassigned/mismatched heads fail closed.
-
-These actions edit profile data only. Role grants, account suspension/deactivation, email and password administration are separate security operations; the owner's intended delegation for those operations must be clarified before adding them. No role-edit control is presented by this phase. Current role definitions are preserved. Department changes require a review step explaining the access consequence. Row versions prevent stale overwrites; writes re-read actor/target authorization inside a transaction and record before/after profile values.
-
-Transient Auth network/5xx/rate-limit failures preserve local sessions; invalid credentials on a protected token verification revoke the local session. A password-reset audit attempt is recorded before changing the provider password. Once the password changes, local sessions are always removed. Provider revocation failures are reported as follow-up warnings, not password-change failures; an audit-finalization outage leaves the durable attempt record for investigation.
-
-## Manager-led staff invitations (2026-09-08)
-
-The owner requested account and row Dropdowns, Add employee, invitation-only staff onboarding and self-chosen passwords. Manager with COMPANY users.invite may invite ordinary and Head roles. Admin Manager may also invite Manager. Admin Manager appointments remain reserved for the owner bootstrap; existing account role changes are not part of this form.
-
-POST /api/invitations creates a 72-hour invitation. The raw random 256-bit code is returned once; only SHA-256 is stored. GET lists up to 100 recent invitations and never returns hashes or secrets. POST /api/invitations/:id/renew rotates the link; /revoke invalidates it. The BFF rechecks current manager grants during creation, renewal, acceptance and final activation. Heads must have a matching department; ordinary roles keep SELF scope. New profiles inherit the invited department. Revocation and membership activation serialize using the same database lock. Already activated accounts cannot use these invitation actions. Duplicate email invitations require explicit renewal.
-
-The link is /accept-invitation#invitation=CODE. The frontend removes the fragment immediately, verifies the invitation and displays fixed email plus password/confirmation. POST /api/auth/accept-invitation is the only application registration path; /api/auth/register returns 410. Password submission marks acceptedAt only after a successful provider request and revalidation. Concurrent link submissions are rejected in this single-process local BFF. Failed provider registration can be retried. Verified-email login consumes the invitation exactly once and creates the profile. Provider signUp never grants workspace access by itself. The application gate does not change the project's Supabase signup configuration.
-
-Supabase email confirmation remains required. If the provider returns no immediate session, employees must confirm the email before signing in. Email delivery requires a working Supabase email configuration; default SMTP restrictions and .local addresses can prevent delivery. Configure and test custom SMTP before inviting real external staff. These localhost links only work on the same computer; hosted HTTPS URLs, redirects, secure-cookie settings and multi-instance coordination are a separate deployment gate.
-
-POST /api/me/profile lets every active user edit their own display name only. POST /api/users/:id/reset-password lets Manager request a reset email for lower-role staff; Admin Manager may additionally assist Manager. It never returns a password or recovery token, and logs only a reset request. No administrator can view stored passwords. All POST requests share the bounded local rate limiter. Tests use fixture auth responses and rolled-back database transactions; no unsolicited staff emails are sent.
-
-## Access editor extension · 2026-09-13
-
-Migration 20260913090000_user_access adds UserProfile.accessVersion, private UserPermissionOverride, Sales and Housekeeping roles/departments. Configure permissions is a separate Manager-only GET/POST /api/users/:id/access workflow with fresh authorization, explicit review, version conflict protection and before/after audit. Per-request profileInclude now loads overrides. See company-workflows.md and UX-CONTRACT.md for the current implementation; the earlier phase descriptions above remain historical. Database rollout of this extension is not claimed by code verification.
-
-## Dashboard landing · 21 September 2026
-
-The earlier root workspace description is superseded: successful staff login and the root route now lead to `/dashboard`. An authenticated `/login` visit returns there after `/api/me` verifies the account; recovery and invitation routes remain independent. GET `/api/dashboard` composes permission/scope-filtered summaries under the existing workspace-session guard. See dashboard.md for the count contract and validation limits.
+EmployeeOnboardingPage reuses core AddressFields instead of a Full address textarea.
+Migration 0012 adds nullable addressDetails JSON to EmployeeOnboarding; activation
+copies its named fields into existing UserProfile address columns. The formatted
+address remains available for older readers. Unknown hierarchies and unsafe map
+URLs are rejected; the server recomputes postal code rather than trusting input.
+Existing incomplete profiles with legacy free-text addresses return to the information
+step and display the previous address. Saved passwords and invitation sessions
+remain valid; saving structured fields resumes the next completed-state boundary.
+Existing ACTIVE profiles are not modified. Refresh the existing onboarding page;
+do not resend or reuse the consumed invitation email merely to load the new form.
