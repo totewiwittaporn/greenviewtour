@@ -36,6 +36,7 @@ try{
    reads.push(path+url.search)
    if(detail&&holdDetail){const gate=holdDetail;gate.started();await gate.promise;if(req.failure())return}
    if(detail&&failDetail){return route.fulfill({status:503,json:{code:'FIXTURE_DETAIL_FAILED'}})}
+   if(path==='/api/me/line')return route.fulfill({json:{status:'UNLINKED',linkedLineProfile:null}})
    if(path==='/api/me')return route.fulfill({json:{user}})
    if(path===`/api/settings/tours/${tour.id}/editor`)return route.fulfill({json:tourEditor})
    if(path==='/api/settings/tours')return route.fulfill({json:list([detail?tour:project(tour,catalogReadSelect('tours','list'))])})
@@ -44,6 +45,7 @@ try{
    if(path==='/api/personnel-finance')return route.fulfill({json:{...list([detail?finance:{...finance,payload:{},amountCents:10025,payment:undefined,clearance:undefined}]),employees:[{id:finance.employeeId,displayName:'Audit Employee'}],runs:[],purchases:[],access:{view:true,edit:true,approve:true,pay:true},actorId:user.id,summary:{draft:0,submitted:1,approved:0}}})
    if(path==='/api/company-work')return route.fulfill({json:{...list([detail?job:{...job,payload:{jobKind:'CLEANING'},references:undefined}]),permissions:{'housekeeping.manage':true,'housekeeping.approve':true},actorId:user.id}})
    if(path==='/api/guide-assignments')return route.fulfill({json:{...list([{id:id(60),version:3,bookingId:booking.id,guideId:id(800),status:'PLANNED',startsAt:'2026-10-20T02:00:00Z',endsAt:'2026-10-20T04:00:00Z',guide:{displayName:'Audit Guide'},booking:detail?{...booking,programName:tour.name,allergies:'Guide allergy instruction'}:{id:booking.id,code:booking.code,name:booking.name,status:'CONFIRMED'},...(detail?{notes:'Full guide briefing retained'}:{})}]),canManage:true}})
+   if(path==='/api/operations/staff-digests')return route.fulfill({json:{serviceDate:url.searchParams.get('date'),rows:[],coverage:'ASSIGNED_WORK_ONLY'}})
    if(path==='/api/operations/daily-summary'){
     const snapshot={id:id(65),kind:'CLOSE',revision:1,serviceDate:p.get('date'),createdAt:'2026-10-19T00:00:00Z'}
     return route.fulfill({json:p.get('snapshotId')?{row:{...snapshot,runs:Array.from({length:28},(_,i)=>({id:id(700+i),name:'Snapshot run '+i,kind:'BOAT',direction:'OUTBOUND',adults:1,children:0,passengers:1}))}}:{snapshots:[{...snapshot,runCount:28}],total:1,page:1,pageSize:25,readiness:{missing:[],schedulerEnabled:false,deliveryEnabled:false}}})

@@ -1,3 +1,4 @@
+import {canSeeUser,userVisibility} from './user-visibility.js'
 import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import thaiAreas from '../../../../packages/contracts/data/thai-areas.js'
 import { postalCodeFor } from '../../../../packages/contracts/thai-address.js'
@@ -10,14 +11,15 @@ import {isD1Client} from '../../platform/database/d1-runtime.js'
 export const departments = ['MANAGEMENT', 'BOOKING', 'ACCOUNT', 'GUIDE', 'CAPTAIN', 'DRIVER', 'SALES', 'HOUSEKEEPING']
 const heads = { HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER', HEAD_HOUSEKEEPING: 'HOUSEKEEPING' }
 export function managementScope(actor) {
-  if (actor?.status !== 'ACTIVE') return null
+  if (actor?.status !== 'ACTIVE'||!userVisibility(actor)) return null
   if (actor.roles.some(grant => ['ADMIN_MANAGER','MANAGER'].includes(grant.roleCode) && grant.scope === 'COMPANY' && grant.role.permissions.some(item => item.permissionCode === 'users.read'))) return { company: true, department: null }
   if (actor.department && actor.roles.some(grant => heads[grant.roleCode] === actor.department && grant.role.permissions.some(item => item.permissionCode === 'users.read'))) return { company: false, department: actor.department }
+  if(actor.roles.some(grant=>grant.role?.permissions?.some(item=>item.permissionCode==='users.read')))return {company:false,department:null}
   return null
 }
 export function canEditProfile(actor, target) {
   const scope = managementScope(actor)
-  if (!scope || !target) return false
+  if (!scope || !target || !canSeeUser(actor,target)) return false
   const editable = actor.roles.some(grant => grant.role.permissions.some(item => item.permissionCode === 'users.profile.edit') && (scope.company
     ? ['ADMIN_MANAGER','MANAGER'].includes(grant.roleCode) && grant.scope === 'COMPANY'
     : heads[grant.roleCode] === scope.department))

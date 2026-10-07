@@ -1,0 +1,96 @@
+Greenview Tour — Local closeout items 1–2
+Date: 3 October 2026 (Asia/Bangkok)
+Scope: Public contact flow and existing shared Company settings only.
+
+Behavior
+- Contact Modal uses the shared /api/public/company source, with a fresh read whenever opened.
+- Phone: 095-426-6847 (stored/clickable international form +66954266847).
+- LINE: @greenviewtour. Instagram: https://www.instagram.com/greenviewtour/.
+- Email remains nullable, blank by default; no invented contact email.
+- Copy inquiry includes programme, promotion when applicable, travel date and adult/child numbers in TH/EN. Clipboard denial selects the message for manual copy.
+- Tour availability and promotion CTAs open contact instead of Member. Legacy Member destinations in published popup CTAs open contact. Staff Login footer preserved.
+- Company contact remains available even when company loading fails/returns empty. Error retry, modal Escape/focus restoration and mobile width verified.
+- Existing Backoffice Company editor owns all fields; existing permissions and version conflict protection retained. Public projection excludes private company/banking/tax fields.
+- Member API on ordinary Local remains 503 MEMBER_PAUSED. No payment/member flow activated.
+
+Data and environment
+- Latest base: /Users/tootee/Documents/Projects/greenviewtour, feat/cloudflare-d1-foundation, HEAD 486742d.
+- Read-only remote ref check confirms origin/main fef53de; current branch is 10 commits ahead. Older chat worktree c89f255 was not used for implementation.
+- 191 pre-existing dirty/untracked files were recorded before work; preserved, including edits to files extended by this task. No reset, commit, push or checkout.
+- Old Local launcher had exited, leaving orphan Local Wrangler/Member processes and a stale lock. Verified exact processes, stopped them gracefully, verified closed state, and preserved old lock owner in ignored .local/orphan-application-dev-20261003.json.
+- Backup before migration: /Users/tootee/GreenviewBackups/contact-before-20261003. Restore proof passed (89 tables, 7 R2 objects).
+- Applied only new reviewed Local D1 migration 0009_company_public_contact.sql. Historical migrations and frozen source PostgreSQL schema preserved.
+- Compared 87 business tables to backup: no unexpected changes. Company fields other than approved contact/version/timestamp unchanged. D1 migration metadata/transaction counter expected to advance.
+- Local launcher restarted successfully: Public5173, Backoffice5174, Member5175, Worker8787.
+- No Production deployment, migration, data reset, real secrets edits, or external provider messages.
+
+Verification
+- npm run check:quiet PASS: workflow audit, ESLint, 506 backend tests, 60 frontend tests, all three application builds and Worker dry-run.
+- After final public focus/shared-validator changes: Public build, 17 Public unit tests, and targeted/full lint PASS; git diff --check PASS.
+- scripts/test-company-contact.mjs PASS on isolated copied Local D1 and actual Worker HTTP: latest migration values, authorized edit/public reflection/restart persistence, email blank, private-field preservation, unauthenticated and suspended access rejection, stale conflict and unsafe URL rejection.
+- scripts/smoke-company-contact.mjs PASS: existing Company editor English desktop/Thai mobile, edit/save/reload, optional email and invalid LINE rejection; screenshots inspected.
+- scripts/smoke-public-contact.js PASS: current channels, programme/date/count context, copy and clipboard-denied fallback, error/retry/empty contacts, keyboard/modal focus, stacked popup conversion and 320px layout; screenshots inspected.
+- Premium UI static audit: 0 findings.
+- Browser aggregate coverage PASS: all 24 suite/app invocations completed (18 Backoffice, 4 Public, 2 isolated Member regression). Initial aggregate stopped on stale Member-link and unscoped Retry expectations; these were updated narrowly, then failed suites and every remaining suite passed. No scenario skipped. The additional Company contact browser suite also passed separately and is now included in future aggregate runs.
+
+Evidence
+- Aggregate unit/build log: /var/folders/f2/fqb1xwfs7wngynpm32y47m6m0000gn/T/greenview-check-2026-10-03T01-53-14-521Z.log
+- Actual Worker copied-state test: .local/company-contact-tests-hMPqGH/result.json
+- Backoffice browser screenshots: .local/company-contact-browser-4mSLgi/
+- Public screenshots: /private/tmp/greenview-public-contact-desktop.png and /private/tmp/greenview-public-contact-mobile.png
+- Browser aggregate first pass: /private/tmp/greenview-contact-all-browser-fixtures.log
+- Capacity rerun: /private/tmp/greenview-contact-capacity-fixture.log
+- Browser remaining Backoffice suites: /private/tmp/greenview-contact-browser-remainder.log
+- Public/Member remainder: /private/tmp/greenview-contact-browser-public-member.log
+
+Known issues / coverage boundaries
+- Browser fixture checks simulate API responses; actual persistence/authorization separately verified using copied Local D1/Worker. No real LINE/Instagram message or phone call sent (outside items 1–2).
+- Existing baseline-browser-mapping package emits a stale-data advisory; checks do not fail. Dependency updates are outside this task.
+- Git remains intentionally dirty with existing work plus this task. Nothing committed, pushed or merged.
+
+Files changed in this task (relative to latest repository)
+- backend/prisma-d1/migration-checksums.json
+- backend/prisma-d1/migrations/0009_company_public_contact.sql
+- backend/prisma-d1/schema.prisma
+- backend/scripts/generate-d1-atomic-metadata.mjs
+- backend/scripts/generate-d1-schema.js
+- backend/src/modules/commerce/service.js
+- backend/src/modules/service-catalog/settings.js
+- backend/src/platform/database/atomic/schema.js
+- backend/test/catalog.test.js
+- backend/test/local-checkpoint.test.js
+- backend/test/local-environment.test.js
+- backend/test/public-company-contact.test.js
+- backend/test/public-home.test.js
+- frontend/backoffice/src/features/translations.js
+- frontend/public-web/src/app/App.jsx
+- frontend/public-web/src/core/locale.js
+- frontend/public-web/src/core/ui/Controls.jsx
+- frontend/public-web/src/features/catalog/Catalog.jsx
+- frontend/public-web/src/features/catalog/Popup.jsx
+- frontend/public-web/src/features/catalog/TourAvailability.jsx
+- frontend/public-web/src/features/catalog/TourDetail.jsx
+- frontend/public-web/src/features/company/CompanyContactProvider.jsx
+- frontend/public-web/src/features/company/CompanyLocation.jsx
+- frontend/public-web/src/features/company/ContactButton.jsx
+- frontend/public-web/src/features/company/ContactLinks.jsx
+- frontend/public-web/src/features/company/contact.css
+- frontend/public-web/src/features/company/inquiry.js
+- frontend/public-web/src/features/company/useCompanyContact.js
+- frontend/public-web/src/features/content/contact.js
+- frontend/public-web/test/contact.test.js
+- frontend/public-web/test/locale.test.js
+- packages/contracts/catalog.js
+- packages/contracts/contact.js
+- scripts/local-import/checkpoint.js
+- scripts/local-import/source.js
+- scripts/smoke-browser-fixtures.js
+- scripts/smoke-capacity-ui.js
+- scripts/smoke-company-contact.mjs
+- scripts/smoke-public-contact.js
+- scripts/smoke-public-content.js
+- scripts/smoke-public-locale.js
+- scripts/test-company-contact.mjs
+
+Acceptance
+Item 1: CLOSED on Local. Item 2: CLOSED on Local. No outstanding blocker within scope. Stop after these two items; Production remains untouched.

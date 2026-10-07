@@ -23,7 +23,7 @@ export function validateLocalConfig(config){
   return config
 }
 export function localEnvironment(source=process.env){
-  const allowed=['HOME','USERPROFILE','TMPDIR','TEMP','TMP','SystemRoot','WINDIR','COMSPEC','TERM']
+  const allowed=['HOME','USERPROFILE','TMPDIR','TEMP','TMP','SystemRoot','WINDIR','COMSPEC','TERM','ProgramData','PROGRAMDATA','APPDATA','LOCALAPPDATA']
   const env=Object.fromEntries(allowed.filter(key=>typeof source[key]==='string').map(key=>[key,source[key]]))
   env.PATH=[path.dirname(process.execPath),'/opt/homebrew/bin','/usr/bin','/bin','/usr/sbin','/sbin'].join(path.delimiter)
   return {...env,NODE_ENV:'development',APP_ENV:'local',TZ:'UTC',CI:'true',WRANGLER_SEND_METRICS:'false',CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV:'false',CLOUDFLARE_INCLUDE_PROCESS_ENV:'false'}

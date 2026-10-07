@@ -40,7 +40,7 @@ test('JSON projection uses bounded Prisma reads and portable nested paths',async
 test('booking list preserves price-review, journey and capacity flags without the full snapshot',async()=>{
  const snapshot={journeyMode:'OPEN_RETURN',capacityReview:{status:'WAITING_TEAM'},priceException:{status:'PENDING',requestedById:id(2)}}
  const rows=await attachBookingListFlags({tourBooking:{findMany:async()=>[{id:id(1),programSnapshot:snapshot}]}},[{id:id(1),status:'DRAFT'}])
- assert.deepEqual(rows[0].programSnapshot,{journeyMode:'OPEN_RETURN',capacityReview:{status:'WAITING_TEAM'},priceException:{status:'PENDING',requestedById:id(2)}})
+ assert.deepEqual(rows[0].programSnapshot,{name:null,tourId:null,dateStatus:null,journeyMode:'OPEN_RETURN',capacityReview:{status:'WAITING_TEAM'},priceException:{status:'PENDING',requestedById:id(2)}})
 })
 test('capacity projection reads every obligation, not the first page or arbitrary cap',async()=>{
  let args;const obligations=Array.from({length:70},(_,n)=>({id:id(n),lines:[],adults:1,children:0})),where={status:{in:['CONFIRMED','COMPLETED']}}

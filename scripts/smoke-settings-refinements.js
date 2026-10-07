@@ -10,6 +10,7 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];let meCalls=0,company=null,fail=false,profilePatch
  const user={id:'fixture',displayName:'Fixture Manager',roles:[],status:'ACTIVE',management:{company:true},updatedAt:new Date().toISOString(),address:'Original address retained'}
  page.on('pageerror',e=>{errors.push(e.message);console.error(e.message)})
+ await page.route(/\/api\/me\/line(?:\?.*)?$/,route=>route.request().method()==='GET'?route.fulfill({json:{status:'UNLINKED',linkedLineProfile:null}}):route.fallback())
  await page.route('**/api/me',r=>{meCalls++;return r.fulfill({json:{user}})})
  await page.route('**/api/me/profile',r=>{profilePatch=r.request().postDataJSON();Object.assign(user,profilePatch,{updatedAt:new Date().toISOString()});return r.fulfill({json:{ok:true}})})
  await page.route('**/api/settings/**',r=>{

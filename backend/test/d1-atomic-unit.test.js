@@ -110,7 +110,9 @@ test('generated unit metadata matches the reviewed schema and immutable migratio
   const file=name==='source'?'../prisma/schema.prisma':name==='target'?'../prisma-d1/schema.prisma':'../prisma-d1/migrations/'+name
   assert.equal(createHash('sha256').update(readFileSync(new URL(file,import.meta.url))).digest('hex'),digest)
  }
- assert.equal(Object.keys(schema.tables).length,76)
+ assert.equal(Object.keys(schema.tables).length,87)
+ assert.ok(schema.tables.StaffDailyDigest.columns.some(column=>column.name==='sourceId'))
+ assert.ok(schema.tables.StaffDailyDigest.columns.some(column=>column.name==='retryKey'))
  assert.equal(schema.tables.UserProfile.columns.find(c=>c.name==='id').native,'Uuid')
  assert.equal(schema.tables.AgentBill.columns.find(c=>c.name==='total').nativeArgs[0],14)
 })

@@ -1,3 +1,4 @@
+import {userVisibility} from '../../modules/identity-access/user-visibility.js'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
 import {createD1Prisma} from '../../platform/database/d1-client.ts'
@@ -12,15 +13,28 @@ export async function identityWrites(env){
  let stage='fixture'
  try{
   const tag='QAID-'+id().slice(0,8),email=tag.toLowerCase()+'@example.invalid'
-  const admin=await db.userProfile.findFirst({where:{status:'ACTIVE',roles:{some:{roleCode:'ADMIN_MANAGER',scope:'COMPANY'}}}});assert.ok(admin)
+  const admin=await db.userProfile.findFirst({where:{status:'ACTIVE',roles:{some:{roleCode:'ADMIN_MANAGER',scope:'COMPANY'}}},include:{roles:true}});assert.ok(admin)
   let staff=await db.userProfile.create({data:{id:id(),displayName:tag,department:'BOOKING',roles:{create:{roleCode:'BOOKING',scope:'SELF'}}}})
   await db.$executeRaw`INSERT INTO D1Identity(id,email,created_at,provider) VALUES(${staff.id},${email},${new Date().toISOString()},'local-fixture')`
   stage='directory'
-  const detail=await listUsers(db,{recordId:staff.id,department:'BOOKING',view:'detail'})
+  const detail=await listUsers(db,{visibility:userVisibility(admin),recordId:staff.id,department:'BOOKING',view:'detail'})
   assert.equal(detail.users[0].email,email);assert.equal(detail.users[0].roles[0].roleCode,'BOOKING')
-  assert.equal((await listUsers(db,{search:tag,department:'GUIDE'})).total,0)
-  assert.equal((await listUsers(db,{search:tag,department:'BOOKING'})).total,1)
+  assert.equal((await listUsers(db,{visibility:userVisibility(admin),search:tag,department:'GUIDE'})).total,0)
+  assert.equal((await listUsers(db,{visibility:userVisibility(admin),search:tag,department:'BOOKING'})).total,1)
   checks.push('provider-neutral identity SQL preserves department scope and private detail boundary')
+  const managerVisibility=userVisibility({id:id(),status:'ACTIVE',roles:[{roleCode:'MANAGER',scope:'COMPANY'}]})
+  const headVisibility=userVisibility({id:id(),status:'ACTIVE',department:'BOOKING',roles:[{roleCode:'HEAD_BOOKING',scope:'SELF'}]})
+  await assert.rejects(()=>listUsers(db,{visibility:managerVisibility,recordId:admin.id}),{code:'NOT_FOUND'})
+  await assert.rejects(()=>listUsers(db,{visibility:managerVisibility,recordId:id()}),{code:'NOT_FOUND'})
+  const managerDirectory=await listUsers(db,{visibility:managerVisibility,pageSize:5000})
+  assert.ok(managerDirectory.users.every(user=>!user.roles.some(role=>role.roleCode==='ADMIN_MANAGER')))
+  assert.equal(managerDirectory.summary.total,managerDirectory.total)
+  assert.equal((await listUsers(db,{visibility:headVisibility,search:tag})).total,1)
+  await db.userRole.create({data:{userId:staff.id,roleCode:'MANAGER',scope:'COMPANY'}})
+  assert.equal((await listUsers(db,{visibility:headVisibility,search:tag})).total,0)
+  await assert.rejects(()=>listUsers(db,{visibility:headVisibility,recordId:staff.id}),{code:'NOT_FOUND'})
+  await db.userRole.deleteMany({where:{userId:staff.id,roleCode:'MANAGER'}})
+  checks.push('real D1 directory hides owner from counts/details and prevents a lower role exposing a higher multi-role account')
   stage='native-profile'
   const own={displayName:tag,nickname:'Updated locally',updatedAt:staff.updatedAt.toISOString()}
   await editOwnProfile(db,staff.id,own)

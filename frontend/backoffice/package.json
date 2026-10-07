@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --port 5174 --strictPort",
     "build": "vite build",
-    "preview": "vite preview --port 4174 --strictPort"
+    "serve:build": "vite preview --host 127.0.0.1 --port 4174 --strictPort"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",

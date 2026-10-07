@@ -1,0 +1,177 @@
+[
+  {
+    "path": "backend/scripts/bootstrap-owner.js",
+    "originalSha256": "248851289c2be31b4a3e3fa9633444e970846f44fbc140c1520bd26e781a5cb9",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/check-booking-capacity.js",
+    "originalSha256": "933a307037d2f871aa3ada5f1a738e7588fc86d61bd3d93474665e4397dc0030",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/check-capacity-concurrency.js",
+    "originalSha256": "47566aadca961047da528e61cbf4414d7b22e0705685e93924b5e1bf9975c718",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/check-db.js",
+    "originalSha256": "0bc45231f231726c6d2f0fda4b5e7fb637e267f4477defb0d2a6561721541f2f",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/check-demo-checkout.js",
+    "originalSha256": "488c6de28613f83deb1e54b63fa124d2590fb92280ba753ee637189ee551dc7a",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/check-document-data.js",
+    "originalSha256": "7c369b918fe2b901dad3a6c94014a0caeee4f8d7c192efdf575b733f731bca80",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/check-identity.js",
+    "originalSha256": "a394861fd9c1d7992999dbb00a8e39e0f0a98548cbf989b083bf3496b5f8f551",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/check-member-commerce.js",
+    "originalSha256": "5eaed4fe8e69aa263d528f5836b9a137770615d56f233f93e2394567b09cc489",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/check-service-attendance.js",
+    "originalSha256": "9627d805ae6c58febfd132e430a8950c0f168ba3ce2d9971807e972b9d972f3f",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/check-tour-settings.js",
+    "originalSha256": "a08c08c66acd33f52728ea3a995d8314474075456daafa0a9380bfbf8d4121df",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/commerce-browser-fixtures.js",
+    "originalSha256": "11d9f766757807d89be86c55487178d291b2e93e72cb8151a636e5b5205b3d44",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/create-checkin-demo.js",
+    "originalSha256": "433c6790df9e43f9c0ebeceb6488e7b34488158ab836a705bcd76583f52d0dec",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/demo45/accounts.mjs",
+    "originalSha256": "553ca403801465b2d97f1195afd84d3002e3383e8044c8a6c3b7b22a55a1277a",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/demo45/bookings.mjs",
+    "originalSha256": "4723ba7e162d6aeb14c6196bf3f9baac5d23cbfb9875d7fbcc8b46a85495096e",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/demo45/common.mjs",
+    "originalSha256": "ba134980b97c43e7196a4e961ff57c2fd9dce3f851cc856eb76204c942f45597",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/demo45/extras.mjs",
+    "originalSha256": "45164704a59e38e564265839714f3472b0debdc2f029d9e33de3a4019b9c02cc",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/demo45/login-check.mjs",
+    "originalSha256": "eb7aa8715c39b84182ab049fa62f4588e1fcc26a98415218d1a8761de0294bc6",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/demo45/masters.mjs",
+    "originalSha256": "957c9583c9a12b15c30d71bd765a5f03f1e878c5cf74b4b459dec71baa90c277",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/demo45/plan.mjs",
+    "originalSha256": "b187402099c6bd2071e3963c843e9e678ff159ec7caa5d71f9a197e82daf69df",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/demo45/support.mjs",
+    "originalSha256": "bd58c1e95a45d17ad83ddbb6b91ebd65b970b765e9257e912f3bee13ba34ed3e",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/demo45/tomorrow.mjs",
+    "originalSha256": "30b8ecfc18989bad37dd740bb11f03b8fc31234a6161f931de24b7d94aaa7d07",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/demo45/verify.mjs",
+    "originalSha256": "1359f71acc61a524c521043a93d835712ba5861f5394684e5796431445cbd58d",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/import-document-logo.js",
+    "originalSha256": "a20e275562b18039fa260ca286fe953a95207ff3dffbf7fc79d4c579a47cdd54",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/migrate-verified.js",
+    "originalSha256": "8e0e0be7fb2c75e5731f6b36821cbae3a97899cc5a26fd2de591e277e3649858",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/nightly-operations.js",
+    "originalSha256": "5e882d0796297ee4943f4e33f615a78208853eb76094b477310b13e8da97dd3b",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/personal-notifications.js",
+    "originalSha256": "9d56cdf93b3024409cfab94c278a32634299da332e89cc92194fb3ab5d226eec",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/seed-company-workflows.js",
+    "originalSha256": "78518cf1dd874ef109ccc9262b99ebc266a786c847ca05af5df6213d426be769",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/seed-demo-driver.js",
+    "originalSha256": "a7a98e8a21e68ac9c832d97261c4233be5c3fb5f95be69d02b49531d959f9f93",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/seed-demo-flow.js",
+    "originalSha256": "36dd0777aa622c5eb64a2cdbb9a1d755d269deaa6ac8ebbfd44d4cc4f60812af",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/seed-operation-starters.js",
+    "originalSha256": "3c25127405d862635e847fc8bf7084864d70f21eef227a3adf9dd6bf31cee8a2",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/seed-preview-van-demo.js",
+    "originalSha256": "fc0c2b3ba5a5c1548eddfb10dd4b39befdc19224757b7a7685411c5a7e5caae1",
+    "replacement": "Use the Local application or the documented offline seed workflow"
+  },
+  {
+    "path": "backend/scripts/smoke-dispatch.js",
+    "originalSha256": "6a3ab949b83b9d1159e1be35e9bdfc59fbf760d40bb95ba2bf572770ceeba395",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/smoke-operations.js",
+    "originalSha256": "8506aaf24f8622837aaf3c3a7837cd50bbb6ef3949f0fbc0ad4309ff2da988a4",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "backend/scripts/verify-booking-flow.js",
+    "originalSha256": "0b10ede5c4ab7a4cbb7a384faddcfeb53b87b08baa98551843288532ca994ad4",
+    "replacement": "npm run local:check:business"
+  },
+  {
+    "path": "scripts/backup-source.mjs",
+    "originalSha256": "d28eb2c646f42f2f2d9c859d6c67c082ea32f912da4d22857b667475a4d06a2c",
+    "replacement": "npm run local:backup"
+  }
+]

@@ -1,3 +1,4 @@
+import {userVisibility} from '../src/modules/identity-access/user-visibility.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { listUsers } from '../src/modules/identity-access/list-users.js'
@@ -10,7 +11,7 @@ test('directory uses a read-only transaction, parameterized search and releases 
     if (sql.startsWith('SELECT u.id')) return { rows: [{ id: 'example', email: 'qa@example.invalid' }] }
     return { rows: [] }
   }, release() { released = true } }
-  const result = await listUsers({ connect: async () => client }, { search: "' OR TRUE --", page: 99, pageSize: 25 })
+  const result = await listUsers({ connect: async () => client }, { search: "' OR TRUE --", page: 99, pageSize: 25, visibility:userVisibility({id:"11111111-1111-4111-8111-111111111111",status:"ACTIVE",roles:[{roleCode:"ADMIN_MANAGER",scope:"COMPANY"}]}) })
   assert.equal(result.page, 1)
   assert.equal(calls[0].sql, 'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY')
   assert.equal(calls[2].params[1], "' OR TRUE --")
@@ -42,7 +43,7 @@ test('evidence downloads allow saving but retain sandbox, attachment disposition
  const id='b0000000-0000-4000-8000-000000000001',content=Buffer.from('test file')
  let active=true,status,headers,body,mimeType='image/png'
  const prisma={userProfile:{findUnique:async()=>({status:active?'ACTIVE':'INACTIVE',roles:[{roleCode:'ACCOUNT',scope:'COMPANY'}]})},agentPayment:{findUnique:async()=>({id})},evidenceAttachment:{findUnique:async()=>({id,targetKind:'AGENT_PAYMENT',targetId:id,filename:'เอกสาร.png',mimeType,size:content.length,content})}}
- const handler=createHandler({port:5001,token:'a'.repeat(32),prisma,sessions:{authenticated:async()=>({user:{id},entry:{purpose:'workspace'}})}})
+ const handler=createHandler({memberRegression:true,port:5001,token:'a'.repeat(32),prisma,sessions:{authenticated:async()=>({user:{id},entry:{purpose:'workspace'}})}})
  const request=(query='')=>handler({method:'GET',url:`/api/evidence/${id}${query}`,headers:{host:'localhost:5001','x-greenview-local-token':'a'.repeat(32)}},{writeHead:(s,h)=>{status=s;headers=h},end:b=>{body=b}})
  await request();assert.equal(status,200);assert.deepEqual(body,content)
  assert.equal(headers['Content-Security-Policy'],"default-src 'none'; sandbox allow-downloads")
@@ -56,7 +57,7 @@ test('evidence downloads allow saving but retain sandbox, attachment disposition
 test('member/public origins cannot invoke staff endpoints or borrow staff sessions',async()=>{
  const {createHandler}=await import('../src/app/http.js')
  let staffCalls=0
- const handler=createHandler({port:5001,token:'a'.repeat(32),sessions:{authenticated:async()=>{staffCalls++;throw Error('staff access')}}})
+ const handler=createHandler({memberRegression:true,port:5001,token:'a'.repeat(32),sessions:{authenticated:async()=>{staffCalls++;throw Error('staff access')}}})
  async function get(url,origin,cookie='gv_session=STAFF'){
   let status,data,headers
   await handler({method:'GET',url,headers:{host:'localhost:5001',origin,cookie,'x-greenview-local-token':'a'.repeat(32)}},{writeHead:(s,h)=>{status=s;headers=h},end:b=>{data=JSON.parse(b)}})
@@ -72,19 +73,39 @@ test('member/public origins cannot invoke staff endpoints or borrow staff sessio
 
 test('member password recovery uses an isolated session and clears both local identities after a successful reset',async()=>{
  const {createHandler}=await import('../src/app/http.js')
- const {SessionStore}=await import('../src/platform/auth/sessions.js')
+ const {SessionStore}=await import('./helpers/memory-sessions.js')
  const user={id:'b0000000-0000-4000-8000-000000000001',email_confirmed_at:'yes'},customer={id:'b0000000-0000-4000-8000-000000000002',status:'ACTIVE'}
  const token='x.'+Buffer.from(JSON.stringify({exp:Math.floor(Date.now()/1000)+3600,session_id:'b0000000-0000-4000-8000-000000000003'})).toString('base64url')+'.x'
  const sessions=new SessionStore(),staffId=sessions.create({user}),events=[]
  let changed=0
- const handler=createHandler({port:5001,token:'a'.repeat(32),sessions,pool:{query:async()=>({rowCount:1})},provider:{user:async()=>user,password:async()=>{changed++;return {providerRevoked:true}}},prisma:{customerProfile:{upsert:async()=>customer,findUnique:async()=>customer},auditEvent:{create:async({data})=>{events.push(data.action);return {id:'audit'}},update:async({data})=>events.push(data.action)}}})
+ const handler=createHandler({memberRegression:true,port:5001,token:'a'.repeat(32),sessions,pool:{query:async()=>({rowCount:1})},provider:{recovery:async()=>({user,session:{user,access_token:token,expires_at:Date.now()/1000+3600}}),user:async()=>user,password:async()=>{changed++;return {providerRevoked:true}}},prisma:{customerProfile:{upsert:async()=>customer,findUnique:async()=>customer},auditEvent:{create:async({data})=>{events.push(data.action);return {id:'audit'}},update:async({data})=>events.push(data.action)}}})
  let cookie=''
  async function post(path,data){let status,result,headers;const request={method:'POST',url:path,headers:{host:'localhost:5001',origin:'http://localhost:5175','content-type':'application/json','x-greenview-local-token':'a'.repeat(32),cookie},async *[Symbol.asyncIterator](){yield JSON.stringify(data)}};await handler(request,{writeHead:(s,h)=>{status=s;headers=h},end:b=>{result=JSON.parse(b)}});if(headers['Set-Cookie'])cookie=headers['Set-Cookie'].split(';')[0];return {status,result,headers}}
  assert.equal((await post('/api/member/reset-password',{password:'test-only-long-password'})).status,401)
  assert.equal(changed,0)
- assert.equal((await post('/api/member/recovery-session',{access_token:token,refresh_token:'test-refresh'})).status,200)
+ assert.equal((await post('/api/member/recovery-session',{token:'one-time-recovery-fixture'})).status,200)
  assert.ok(cookie.startsWith('gv_member_session='));assert.ok(sessions.entries.has(staffId))
  assert.equal((await post('/api/member/reset-password',{password:'test-only-long-password'})).status,200)
  assert.equal(changed,1);assert.equal(sessions.entries.has(staffId),false);assert.equal(cookie,'gv_member_session=')
  assert.deepEqual(events,['member.password.change.requested','member.password.changed'])
+})
+
+
+test('hosted handler requires exact configured HTTPS hosts and retains session/origin boundaries',async()=>{
+ const {createHandler}=await import('../src/app/http.js')
+ const allowedOrigins={workspace:['https://backoffice.greenviewtour.com'],public:['https://greenviewtour.com'],customer:['https://member.greenviewtour.com']}
+ assert.throws(()=>createHandler({workerRuntime:true,environment:'production'}),/PRODUCTION_ORIGINS_REQUIRED/)
+ assert.throws(()=>createHandler({workerRuntime:true,environment:'production',allowedOrigins:{workspace:['http://backoffice.greenviewtour.com']}}),/PRODUCTION_ORIGINS_REQUIRED/)
+ const handler=createHandler({workerRuntime:true,environment:'production',port:443,allowedOrigins})
+ async function request({host='backoffice.greenviewtour.com',origin,method='GET',url='/api/me'}={}){
+  let status,data
+  await handler({method,url,headers:{host,...(origin?{origin}:{})}},{writeHead(code){status=code},end(body){data=JSON.parse(body)}})
+  return {status,data}
+ }
+ assert.equal((await request()).status,401)
+ assert.equal((await request({host:'attacker.example'})).status,403)
+ assert.equal((await request({origin:'https://attacker.example'})).status,403)
+ assert.equal((await request({origin:'https://greenviewtour.com'})).status,403)
+ assert.equal((await request({method:'POST'})).status,403)
+ assert.equal((await request({url:'/api/member/profile'})).data.code,'MEMBER_PAUSED')
 })

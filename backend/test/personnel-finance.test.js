@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { cents,payrollTotal,recordActions } from '../../packages/contracts/personnel-finance.js'
-import { validatePayload,savePersonnelFinance,commandPersonnelFinance,listPersonnelFinance } from '../src/modules/personnel-finance/service.js'
+import { exportPayroll,validatePayload,savePersonnelFinance,commandPersonnelFinance,listPersonnelFinance } from '../src/modules/personnel-finance/service.js'
 const actor=randomUUID(),reviewer=randomUUID(),employeeId=randomUUID()
 function fixture(kind='REIMBURSEMENT',payload={date:'2026-09-13',amount:'100.20',evidence:'Receipt 01',notes:'Fuel'}){
  const row={id:randomUUID(),kind,payload,employeeId,title:'Test',status:'DRAFT',version:1,createdBy:actor},commands=new Map(),events=[]
@@ -112,4 +112,13 @@ test('replay still requires the current action permission',async()=>{
  await commandPersonnelFinance(prisma,actor,input)
  profiles[actor].permissionOverrides=profiles[actor].permissionOverrides.filter(g=>g.permissionCode!=='expenses.edit')
  await assert.rejects(commandPersonnelFinance(prisma,actor,input),{code:'TRANSITION_NOT_ALLOWED'})
+})
+
+
+test('payroll CSV excludes other owners at read time while preserving own records and underlying data',async()=>{
+ const {prisma}=fixture('PAYROLL'),hidden=randomUUID(),queries=[]
+ prisma.userProfile.findMany=async args=>{queries.push(args);return args.where.roles?[{id:hidden}]:[]}
+ prisma.financePersonnelRecord.findMany=async args=>{assert.deepEqual(args.where.employeeId,{notIn:[hidden]});return []}
+ const result=await exportPayroll(prisma,actor,new URLSearchParams())
+ assert.equal(result.count,0);assert.equal(queries[0].where.id.not,actor);assert.equal(queries[0].where.roles.some.roleCode,'ADMIN_MANAGER');assert.doesNotMatch(result.csv,new RegExp(hidden))
 })

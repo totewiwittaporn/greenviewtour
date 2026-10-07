@@ -1,3 +1,4 @@
+import {safeLineId,safeInstagramUrl,normalizePhone} from '../../../../packages/contracts/contact.js'
 import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {capacityDemandRows} from '../operations/capacity-read.js'
 import {requestListSelect,customerDirectorySelect,requestListDetails,memberRequestSnapshots} from './read-models.js'
@@ -6,7 +7,7 @@ import {holdRequestCapacity,releaseRequestCapacity} from '../operations/capacity
 import { formatAddress, safeMapUrl, validateAddress } from '../../../../packages/contracts/address.js'
 import {demoTourEnabled} from './demo-checkout.js'
 import { programBookingPlan } from '../operations/booking-plan.js'
-import { saveBooking, bookingStatus, amendBookingDetails } from '../operations/bookings.js'
+import { saveBooking, bookingStatus, getBookingPriceReview, amendBookingDetails } from '../operations/bookings.js'
 import { bookingQuote } from '../../../../packages/contracts/booking-plan.js'
 import { canReadCustomers, effectiveAccess } from '../../../../packages/contracts/access.js'
 import { validateEvidence } from '../evidence/service.js'
@@ -54,10 +55,10 @@ export async function publicCatalog(db,params,now=new Date()) {
 }
 // Explicit publication boundary: company banking, tax and internal metadata stay private.
 export async function publicCompany(db) {
- const row=await db.companySettings.findFirst({select:{name:true,address:true,phone:true,email:true,houseNumber:true,moo:true,villageName:true,subdistrict:true,district:true,province:true,postalCode:true,mapUrl:true,latitude:true,longitude:true}})
+ const row=await db.companySettings.findFirst({select:{name:true,address:true,phone:true,email:true,lineId:true,instagramUrl:true,houseNumber:true,moo:true,villageName:true,subdistrict:true,district:true,province:true,postalCode:true,mapUrl:true,latitude:true,longitude:true}})
  if(!row)return {company:null}
  const invalid=validateAddress(row),coordinates=row.latitude&&row.longitude&&!invalid.latitude&&!invalid.longitude
- return {company:{name:row.name,address:formatAddress(row),phone:row.phone??null,email:row.email??null,mapUrl:safeMapUrl(row.mapUrl),latitude:coordinates?row.latitude:null,longitude:coordinates?row.longitude:null}}
+ return {company:{name:row.name,address:formatAddress(row),phone:/^\+?\d{7,15}$/.test(normalizePhone(row.phone))?normalizePhone(row.phone):null,email:typeof row.email==='string'&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)?row.email:null,lineId:safeLineId(row.lineId),instagramUrl:safeInstagramUrl(row.instagramUrl),mapUrl:safeMapUrl(row.mapUrl),latitude:coordinates?row.latitude:null,longitude:coordinates?row.longitude:null}}
 }
 export async function publicPopups(db,now=new Date()) {
  const day=new Date(thailandDay(now)+'T00:00:00Z')
@@ -195,6 +196,8 @@ export async function commandCustomerRequest(db,actorId,input) {
    await releaseRequestCapacity(tx,row.id)
    status='REJECTED'
   }else if(input.action==='ACCEPT'){
+   const priceChoice=input.priceConfirmation
+   if(priceChoice?.confirmed!==true||priceChoice.choice!=='KEEP_STORED'||priceChoice.serviceDate!==row.serviceDate.toISOString().slice(0,10)||priceChoice.total!==row.snapshot.packageTotal)fail('PRICE_CONFIRMATION_REQUIRED',400)
    if(!['REQUESTED','WAITING_TEAM'].includes(row.status)||row.bookingId)fail('BOOKING_LOCKED')
    const customer=await tx.customerProfile.findUnique({where:{id:row.customerId}})
    if(customer?.status!=='ACTIVE')fail('CUSTOMER_UNAVAILABLE',409)
@@ -220,7 +223,8 @@ export async function commandCustomerRequest(db,actorId,input) {
    await tx.tourBooking.update({where:{id:bookingId},data:{adultPrice:row.snapshot.adultPrice,childPrice:row.snapshot.childPrice,programSnapshot:{...book.programSnapshot,customerId:row.customerId,customerRequestId:row.id,priceSource:{kind:'DIRECT',promotion:row.snapshot.promotion},commerceTerms:row.snapshot.terms}}})
    const total=bookingQuote({...book,adultPrice:row.snapshot.adultPrice,childPrice:row.snapshot.childPrice}).total
    if(total===null||total!==row.snapshot.packageTotal)fail('PRICE_CHANGED_REVIEW_REQUIRED',409)
-   const confirmed=await bookingStatus(nested,actorId,{id:randomUUID(),bookingId,version:book.version,action:'CONFIRM'})
+   const {review}=await getBookingPriceReview(nested,actorId,bookingId)
+   const confirmed=await bookingStatus(nested,actorId,{id:randomUUID(),bookingId,version:book.version,action:'CONFIRM',priceConfirmation:{confirmed:true,choice:'KEEP_STORED',serviceDate:review.serviceDate,reviewToken:review.reviewToken}})
    if(!confirmed.ok)fail('BOAT_CAPACITY_REVIEW_REQUIRED')
    await releaseRequestCapacity(tx,row.id)
    snapshot={...snapshot,capacitySelections:availability.selections,capacityAvailability:availability,confirmedTotal:total,bookingCode:book.code}

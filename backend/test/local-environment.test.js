@@ -33,7 +33,7 @@ test('Every mutating D1 plan is local and every deploy plan is dry-run only',()=
 test('Existing D1 migration SQL has not been rewritten',()=>{
   const directory=path.join(root,'backend/prisma-d1')
   const hashes=JSON.parse(readFileSync(path.join(directory,'migration-checksums.json'),'utf8'))
-  assert.deepEqual(Object.keys(hashes),['0001_baseline.sql','0002_scalar_array_lookups.sql','0003_json_range_projections.sql','0004_atomic_unit_of_work.sql','0005_json_projection_null_values.sql','0006_identity_optional_created_at.sql'])
+  assert.deepEqual(Object.keys(hashes),['0001_baseline.sql','0002_scalar_array_lookups.sql','0003_json_range_projections.sql','0004_atomic_unit_of_work.sql','0005_json_projection_null_values.sql','0006_identity_optional_created_at.sql','0007_local_auth_sessions.sql','0008_staff_line_link.sql','0009_company_public_contact.sql','0010_staff_daily_digest.sql','0011_employee_onboarding.sql','0012_onboarding_structured_address.sql','0013_undated_booking_drafts.sql','0014_immutable_price_history.sql'])
   for(const [name,expected] of Object.entries(hashes))assert.equal(createHash('sha256').update(readFileSync(path.join(directory,'migrations',name))).digest('hex'),expected)
 })
 test('Production config remains an unbound example, not an enabled environment',()=>{

@@ -4,7 +4,7 @@ import { Readable } from 'node:stream'
 import { createHandler } from '../src/app/http.js'
 import { can, grantsFor } from '../src/modules/identity-access/policy.js'
 import { checkInvitation, hashToken } from '../src/modules/identity-access/membership.js'
-import { SessionStore } from '../src/platform/auth/sessions.js'
+import { SessionStore } from './helpers/memory-sessions.js'
 const token = 'a'.repeat(64)
 const active = { id: 'user', displayName: 'Test', status: 'ACTIVE', roles: [{ roleCode: 'MANAGER', scope: 'COMPANY', role: { name: 'Manager', permissions: [{ permissionCode: 'users.read' }] } }] }
 async function request({ headers = {}, method = 'GET', url = '/api/users', input = {}, profile = active, session = true, purpose = 'workspace', users = async () => ({ users: [], total: 0 }), provider = {} } = {}) {

@@ -2,19 +2,22 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {execFileSync} from 'node:child_process'
 import {readFileSync} from 'node:fs'
+import {fileURLToPath} from 'node:url'
 
 const read=url=>readFileSync(new URL(url,import.meta.url),'utf8')
 const modelNames=source=>[...source.matchAll(/^model\s+(\w+)/gm)].map(match=>match[1])
 
 test('D1 schema is deterministically derived from the PostgreSQL source schema',()=>{
-  execFileSync(process.execPath,[new URL('../scripts/generate-d1-schema.js',import.meta.url).pathname],{stdio:'pipe'})
+  execFileSync(process.execPath,[fileURLToPath(new URL('../scripts/generate-d1-schema.js',import.meta.url))],{stdio:'pipe'})
   const postgres=read('../prisma/schema.prisma')
   const d1=read('../prisma-d1/schema.prisma')
   const sourceModels=modelNames(postgres),d1Models=modelNames(d1)
   assert.deepEqual(d1Models.filter(name=>sourceModels.includes(name)).sort(),[...sourceModels].sort())
   assert.deepEqual(d1Models.filter(name=>!sourceModels.includes(name)).sort(),[
+    'AuthAccount','AuthSession','AuthUser','AuthVerification',
     'D1BusinessPartnerPaymentTerm','D1BusinessPartnerRole','D1CapacityPoolResource','D1FleetVehiclePurpose',
-    'D1JsonProjection','D1TourBookingSpecialRequirement','D1WarehouseResponsibilityDeputy',
+    'D1JsonProjection','D1TourBookingSpecialRequirement','D1WarehouseResponsibilityDeputy','EmployeeOnboarding','LocalMail',
+    'StaffDailyDigest','StaffLineBinding','StaffLineEvent','StaffLineRequest','WebSession',
   ])
   assert.match(d1,/datasource db \{\s*provider = "sqlite"/)
   assert.match(d1,/runtime\s*=\s*"cloudflare"/)

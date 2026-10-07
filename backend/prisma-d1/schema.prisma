@@ -18,6 +18,8 @@ enum AccessScope {
 
 }
 model UserProfile {
+  firstName String?
+  lastName String?
   id String @id
   displayName String
   nickname String?
@@ -142,6 +144,8 @@ model SalesChannel {
 }
 
 model CompanySettings {
+ lineId String?
+ instagramUrl String?
  bankName String?
  bankAccountName String?
  bankAccountNumber String?
@@ -612,7 +616,7 @@ model TourBooking {
  version Int @default(1)
  code String @unique
  name String
- tripId String
+ tripId String?
  adults Int
  children Int
  status String @default("DRAFT")
@@ -622,7 +626,7 @@ model TourBooking {
  requestHash String
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
- trip OperationTrip @relation(fields:[tripId],references:[id],onDelete:Restrict)
+ trip OperationTrip? @relation(fields:[tripId],references:[id],onDelete:Restrict)
  lines BookingComponent[]
  @@index([tripId,status])
 
@@ -1326,4 +1330,168 @@ model D1JsonProjection {
   textValue String
   @@id([source, ownerId])
   @@index([source, textValue, ownerId])
+}
+
+// Local and Production use these same D1 authentication models.
+model AuthUser {
+ id String @id
+ name String
+ email String @unique
+ emailVerified Boolean @default(false)
+ image String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ sourceCreatedAt DateTime?
+ disabled Boolean @default(false)
+ bannedUntil DateTime?
+ accounts AuthAccount[]
+ sessions AuthSession[]
+ webSessions WebSession[]
+}
+model AuthSession {
+ id String @id
+ token String @unique
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ ipAddress String?
+ userAgent String?
+ userId String
+ user AuthUser @relation(fields:[userId],references:[id],onDelete:Cascade)
+ webSessions WebSession[]
+ @@index([userId])
+}
+model AuthAccount {
+ id String @id
+ accountId String
+ providerId String
+ userId String
+ user AuthUser @relation(fields:[userId],references:[id],onDelete:Cascade)
+ accessToken String?
+ refreshToken String?
+ idToken String?
+ accessTokenExpiresAt DateTime?
+ refreshTokenExpiresAt DateTime?
+ scope String?
+ password String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([providerId,accountId])
+ @@index([userId])
+}
+model AuthVerification {
+ id String @id
+ identifier String @unique
+ value String
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ webSessions WebSession[]
+}
+model WebSession {
+ id String @id
+ userId String
+ user AuthUser @relation(fields:[userId],references:[id],onDelete:Cascade)
+ authSessionId String?
+ authSession AuthSession? @relation(fields:[authSessionId],references:[id],onDelete:Cascade)
+ verificationId String? @unique
+ verification AuthVerification? @relation(fields:[verificationId],references:[id],onDelete:Cascade)
+ purpose String
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ @@index([userId])
+ @@index([authSessionId])
+}
+model LocalMail {
+ id String @id @default(uuid())
+ kind String
+ recipient String
+ link String
+ createdAt DateTime @default(now())
+ @@index([createdAt])
+}
+
+// Staff-only LINE mapping. No customer roles, credentials or business records are changed.
+model StaffLineBinding {
+ id String @id
+ channelKey String
+ userId String
+ lineUserId String?
+ displayName String?
+ status String
+ version Int @default(1)
+ linkedAt DateTime?
+ unlinkedAt DateTime?
+ sourceEventAt DateTime?
+ updatedAt DateTime @updatedAt
+ @@unique([channelKey,userId])
+ @@unique([channelKey,lineUserId])
+}
+model StaffLineRequest {
+ id String @id
+ channelKey String
+ sourceEventId String
+ lineUserId String
+ displayName String?
+ tokenHash String
+ sealedTicket String?
+ userId String?
+ webSessionId String?
+ nonceHash String? @unique
+ status String
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([channelKey,sourceEventId])
+ @@index([channelKey,userId,status])
+ @@index([expiresAt])
+}
+model StaffLineEvent {
+ id String @id
+ channelKey String
+ payloadHash String
+ status String
+ outcome String?
+ updatedAt DateTime @updatedAt
+ createdAt DateTime @default(now())
+}
+
+// Local staff daily digest outbox; provider acceptance is not receipt.
+model StaffDailyDigest {
+ id String @id
+ retryKey String @unique
+ sourceId String?
+ userId String
+ serviceDate DateTime
+ channelKey String
+ mode String
+ revision Int
+ contentHash String
+ bindingVersion Int
+ payload Json
+ status String
+ attempts Int @default(0)
+ firstAttemptAt DateTime?
+ lastAttemptAt DateTime?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([serviceDate,userId,mode,channelKey,revision])
+ @@index([serviceDate,status])
+}
+
+// Durable staff onboarding; credentials remain in Better Auth tables.
+model EmployeeOnboarding {
+ invitationId String @id
+ userId String? @unique
+ emailVerifiedAt DateTime?
+ profileCompletedAt DateTime?
+ passwordSetAt DateTime?
+ completedAt DateTime?
+ emailSentAt DateTime?
+ firstName String?
+ lastName String?
+ address String?
+ addressDetails Json?
+ primaryPhone String?
+ updatedAt DateTime @updatedAt
 }

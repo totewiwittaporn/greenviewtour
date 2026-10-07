@@ -1,14 +1,22 @@
 // Generated schema metadata; no application records.
 export const schema = {
   "hashes": {
-    "source": "199b965f74ba4c56dd330b112abf11635152f9ac7a1998ef7335e739a4e5f8e2",
-    "target": "de3711940fffb12c4fb3e060b7549a3a13f7fccaebba09f6a34fb059b3ce5a23",
+    "source": "78eb09bc4953f8ec6dcdac3a32141813cf29f1efe04a7763668264f3d7808c78",
+    "target": "108b948293e0f84f9a0184db5d6bef80592769ef915b6d41043a9dded031f543",
     "0001_baseline.sql": "ff8aa4f1bf29d2eaa8f2770e2d480de670a5d2f9c684902bf8a4156f6166161a",
     "0002_scalar_array_lookups.sql": "869549e3f29c1f7cffefdcc6a914a1b61552d0d9f45cc81e5e25994d9cb6edf0",
     "0003_json_range_projections.sql": "cec48c21dbfd89d81d3d7e5f4a3ec99a51a087485e0df0b5eff665b6f96410ff",
     "0004_atomic_unit_of_work.sql": "28cdd6d321522fa483c06b5a4879ceaa87be02a9bd3cb388682c368e1a541813",
     "0005_json_projection_null_values.sql": "ef19a1f9d0c328b46f32657676d10b04e4dbb878a2a9f0780566cfd7bde5848a",
-    "0006_identity_optional_created_at.sql": "d3975c8111612a0944e71bd4940a9fcd3a7308946517cf4c78ea065c63605501"
+    "0006_identity_optional_created_at.sql": "d3975c8111612a0944e71bd4940a9fcd3a7308946517cf4c78ea065c63605501",
+    "0007_local_auth_sessions.sql": "3ec1b6f56c0a7f56e61e225162d775d28b9a9d5cb19c09b544e4f64b7c1b928b",
+    "0008_staff_line_link.sql": "043d5bc4b761cfcd22146553b75f3a9810938996a96a46a49e4c89e4351a2b57",
+    "0009_company_public_contact.sql": "9af613b7f0f9d6c8e0448471b021f9cdeabe1ea8e2ee8c8961329c244e8689f0",
+    "0010_staff_daily_digest.sql": "0f2b6e513f4582146d22544da4a04e83d1671cf82d3eebe638d928e3720c2bdc",
+    "0011_employee_onboarding.sql": "0ac662eaf69d93fecada4cebc1b2c1dc4ac6adfa7254ff7a92ec92eea06ffa93",
+    "0012_onboarding_structured_address.sql": "7b43df7628988f6dc1ff3e59ac9376078b0e4bb5d8c2455c19bb34b23d4d758a",
+    "0013_undated_booking_drafts.sql": "946358d03e051cbb4848b805bcf6e9270ac95ffc6e72802e341aa4bd02356416",
+    "0014_immutable_price_history.sql": "83742c2dd5fca9de31f1d60728a3d0464dd9f87ecbe7174bd5dc7d130e11c291"
   },
   "tables": {
     "AgentAgreement": {
@@ -828,6 +836,369 @@ export const schema = {
       "unique": [
         [
           "id"
+        ]
+      ],
+      "foreignKeys": []
+    },
+    "AuthAccount": {
+      "relations": {
+        "user": "AuthUser"
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "accountId",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "providerId",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "userId",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "accessToken",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "refreshToken",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "idToken",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "accessTokenExpiresAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "refreshTokenExpiresAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "scope",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "password",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "createdAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": "CURRENT_TIMESTAMP",
+          "kind": "DateTime"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        }
+      ],
+      "pk": [
+        "id"
+      ],
+      "unique": [
+        [
+          "id"
+        ],
+        [
+          "providerId",
+          "accountId"
+        ]
+      ],
+      "foreignKeys": [
+        {
+          "table": "AuthUser",
+          "fields": [
+            "userId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "CASCADE",
+          "onDelete": "CASCADE"
+        }
+      ]
+    },
+    "AuthSession": {
+      "relations": {
+        "user": "AuthUser",
+        "webSessions": "WebSession"
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "token",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "expiresAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "createdAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": "CURRENT_TIMESTAMP",
+          "kind": "DateTime"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "ipAddress",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "userAgent",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "userId",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        }
+      ],
+      "pk": [
+        "id"
+      ],
+      "unique": [
+        [
+          "id"
+        ],
+        [
+          "token"
+        ]
+      ],
+      "foreignKeys": [
+        {
+          "table": "AuthUser",
+          "fields": [
+            "userId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "CASCADE",
+          "onDelete": "CASCADE"
+        }
+      ]
+    },
+    "AuthUser": {
+      "relations": {
+        "accounts": "AuthAccount",
+        "sessions": "AuthSession",
+        "webSessions": "WebSession"
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "email",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "emailVerified",
+          "type": "BOOLEAN",
+          "required": true,
+          "default": "false",
+          "kind": "Boolean"
+        },
+        {
+          "name": "image",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "createdAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": "CURRENT_TIMESTAMP",
+          "kind": "DateTime"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "sourceCreatedAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "disabled",
+          "type": "BOOLEAN",
+          "required": true,
+          "default": "false",
+          "kind": "Boolean"
+        },
+        {
+          "name": "bannedUntil",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        }
+      ],
+      "pk": [
+        "id"
+      ],
+      "unique": [
+        [
+          "id"
+        ],
+        [
+          "email"
+        ]
+      ],
+      "foreignKeys": []
+    },
+    "AuthVerification": {
+      "relations": {
+        "webSessions": "WebSession"
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "identifier",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "value",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "expiresAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "createdAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": "CURRENT_TIMESTAMP",
+          "kind": "DateTime"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        }
+      ],
+      "pk": [
+        "id"
+      ],
+      "unique": [
+        [
+          "id"
+        ],
+        [
+          "identifier"
         ]
       ],
       "foreignKeys": []
@@ -2438,6 +2809,20 @@ export const schema = {
           "nativeArgs": [
             30
           ]
+        },
+        {
+          "name": "lineId",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "instagramUrl",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
         }
       ],
       "pk": [
@@ -3797,6 +4182,137 @@ export const schema = {
       ],
       "foreignKeys": []
     },
+    "EmployeeOnboarding": {
+      "relations": {},
+      "columns": [
+        {
+          "name": "invitationId",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "userId",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "emailVerifiedAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "profileCompletedAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "passwordSetAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "completedAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "emailSentAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "firstName",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "lastName",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "address",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "primaryPhone",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "addressDetails",
+          "type": "JSON",
+          "required": false,
+          "default": null,
+          "kind": "Json"
+        }
+      ],
+      "pk": [
+        "invitationId"
+      ],
+      "unique": [
+        [
+          "invitationId"
+        ],
+        [
+          "userId"
+        ]
+      ],
+      "foreignKeys": [
+        {
+          "table": "AuthUser",
+          "fields": [
+            "userId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "RESTRICT"
+        },
+        {
+          "table": "Invitation",
+          "fields": [
+            "invitationId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "CASCADE"
+        }
+      ]
+    },
     "EvidenceAttachment": {
       "relations": {},
       "columns": [
@@ -4738,6 +5254,55 @@ export const schema = {
           "onDelete": "CASCADE"
         }
       ]
+    },
+    "LocalMail": {
+      "relations": {},
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "kind",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "recipient",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "link",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "createdAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": "CURRENT_TIMESTAMP",
+          "kind": "DateTime"
+        }
+      ],
+      "pk": [
+        "id"
+      ],
+      "unique": [
+        [
+          "id"
+        ]
+      ],
+      "foreignKeys": []
     },
     "OperationCommand": {
       "relations": {},
@@ -6666,6 +7231,477 @@ export const schema = {
         }
       ]
     },
+    "StaffDailyDigest": {
+      "relations": {},
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "retryKey",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "sourceId",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "userId",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "serviceDate",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "channelKey",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "mode",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "revision",
+          "type": "INTEGER",
+          "required": true,
+          "default": null,
+          "kind": "Int"
+        },
+        {
+          "name": "contentHash",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "bindingVersion",
+          "type": "INTEGER",
+          "required": true,
+          "default": null,
+          "kind": "Int"
+        },
+        {
+          "name": "payload",
+          "type": "JSONB",
+          "required": true,
+          "default": null,
+          "kind": "Json"
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "attempts",
+          "type": "INTEGER",
+          "required": true,
+          "default": "0",
+          "kind": "Int"
+        },
+        {
+          "name": "firstAttemptAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "lastAttemptAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "createdAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": "CURRENT_TIMESTAMP",
+          "kind": "DateTime"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        }
+      ],
+      "pk": [
+        "id"
+      ],
+      "unique": [
+        [
+          "id"
+        ],
+        [
+          "serviceDate",
+          "userId",
+          "mode",
+          "channelKey",
+          "revision"
+        ],
+        [
+          "retryKey"
+        ]
+      ],
+      "foreignKeys": [
+        {
+          "table": "UserProfile",
+          "fields": [
+            "userId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "RESTRICT"
+        },
+        {
+          "table": "StaffDailyDigest",
+          "fields": [
+            "sourceId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "RESTRICT"
+        }
+      ]
+    },
+    "StaffLineBinding": {
+      "relations": {},
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "channelKey",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "userId",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "lineUserId",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "displayName",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "version",
+          "type": "INTEGER",
+          "required": true,
+          "default": "1",
+          "kind": "Int"
+        },
+        {
+          "name": "linkedAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "unlinkedAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "sourceEventAt",
+          "type": "DATETIME",
+          "required": false,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        }
+      ],
+      "pk": [
+        "id"
+      ],
+      "unique": [
+        [
+          "id"
+        ],
+        [
+          "channelKey",
+          "lineUserId"
+        ],
+        [
+          "channelKey",
+          "userId"
+        ]
+      ],
+      "foreignKeys": [
+        {
+          "table": "UserProfile",
+          "fields": [
+            "userId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "CASCADE"
+        }
+      ]
+    },
+    "StaffLineEvent": {
+      "relations": {},
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "channelKey",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "payloadHash",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "outcome",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "createdAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": "CURRENT_TIMESTAMP",
+          "kind": "DateTime"
+        }
+      ],
+      "pk": [
+        "id"
+      ],
+      "unique": [
+        [
+          "id"
+        ]
+      ],
+      "foreignKeys": []
+    },
+    "StaffLineRequest": {
+      "relations": {},
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "channelKey",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "sourceEventId",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "lineUserId",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "displayName",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "tokenHash",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "sealedTicket",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "userId",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "webSessionId",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "nonceHash",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "expiresAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "createdAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": "CURRENT_TIMESTAMP",
+          "kind": "DateTime"
+        },
+        {
+          "name": "updatedAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        }
+      ],
+      "pk": [
+        "id"
+      ],
+      "unique": [
+        [
+          "id"
+        ],
+        [
+          "channelKey",
+          "sourceEventId"
+        ],
+        [
+          "nonceHash"
+        ]
+      ],
+      "foreignKeys": [
+        {
+          "table": "UserProfile",
+          "fields": [
+            "userId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "NO ACTION",
+          "onDelete": "CASCADE"
+        }
+      ]
+    },
     "StockBalance": {
       "relations": {
         "lot": "StockLot",
@@ -7518,7 +8554,7 @@ export const schema = {
         {
           "name": "tripId",
           "type": "TEXT",
-          "required": true,
+          "required": false,
           "default": null,
           "kind": "String",
           "native": "Uuid",
@@ -9844,6 +10880,20 @@ export const schema = {
           "nativeArgs": [
             30
           ]
+        },
+        {
+          "name": "firstName",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "lastName",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
         }
       ],
       "pk": [
@@ -10005,6 +11055,110 @@ export const schema = {
         ]
       ],
       "foreignKeys": []
+    },
+    "WebSession": {
+      "relations": {
+        "user": "AuthUser",
+        "authSession": "AuthSession",
+        "verification": "AuthVerification"
+      },
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "userId",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "authSessionId",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "verificationId",
+          "type": "TEXT",
+          "required": false,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "purpose",
+          "type": "TEXT",
+          "required": true,
+          "default": null,
+          "kind": "String"
+        },
+        {
+          "name": "expiresAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": null,
+          "kind": "DateTime"
+        },
+        {
+          "name": "createdAt",
+          "type": "DATETIME",
+          "required": true,
+          "default": "CURRENT_TIMESTAMP",
+          "kind": "DateTime"
+        }
+      ],
+      "pk": [
+        "id"
+      ],
+      "unique": [
+        [
+          "id"
+        ],
+        [
+          "verificationId"
+        ]
+      ],
+      "foreignKeys": [
+        {
+          "table": "AuthVerification",
+          "fields": [
+            "verificationId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "CASCADE",
+          "onDelete": "CASCADE"
+        },
+        {
+          "table": "AuthSession",
+          "fields": [
+            "authSessionId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "CASCADE",
+          "onDelete": "CASCADE"
+        },
+        {
+          "table": "AuthUser",
+          "fields": [
+            "userId"
+          ],
+          "references": [
+            "id"
+          ],
+          "onUpdate": "CASCADE",
+          "onDelete": "CASCADE"
+        }
+      ]
     },
     "WebsiteImage": {
       "relations": {},

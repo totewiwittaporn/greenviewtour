@@ -1,0 +1,78 @@
+// Local and Production use these same D1 authentication models.
+model AuthUser {
+ id String @id
+ name String
+ email String @unique
+ emailVerified Boolean @default(false)
+ image String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ sourceCreatedAt DateTime?
+ disabled Boolean @default(false)
+ bannedUntil DateTime?
+ accounts AuthAccount[]
+ sessions AuthSession[]
+ webSessions WebSession[]
+}
+model AuthSession {
+ id String @id
+ token String @unique
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ ipAddress String?
+ userAgent String?
+ userId String
+ user AuthUser @relation(fields:[userId],references:[id],onDelete:Cascade)
+ webSessions WebSession[]
+ @@index([userId])
+}
+model AuthAccount {
+ id String @id
+ accountId String
+ providerId String
+ userId String
+ user AuthUser @relation(fields:[userId],references:[id],onDelete:Cascade)
+ accessToken String?
+ refreshToken String?
+ idToken String?
+ accessTokenExpiresAt DateTime?
+ refreshTokenExpiresAt DateTime?
+ scope String?
+ password String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([providerId,accountId])
+ @@index([userId])
+}
+model AuthVerification {
+ id String @id
+ identifier String @unique
+ value String
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ webSessions WebSession[]
+}
+model WebSession {
+ id String @id
+ userId String
+ user AuthUser @relation(fields:[userId],references:[id],onDelete:Cascade)
+ authSessionId String?
+ authSession AuthSession? @relation(fields:[authSessionId],references:[id],onDelete:Cascade)
+ verificationId String? @unique
+ verification AuthVerification? @relation(fields:[verificationId],references:[id],onDelete:Cascade)
+ purpose String
+ expiresAt DateTime
+ createdAt DateTime @default(now())
+ @@index([userId])
+ @@index([authSessionId])
+}
+model LocalMail {
+ id String @id @default(uuid())
+ kind String
+ recipient String
+ link String
+ createdAt DateTime @default(now())
+ @@index([createdAt])
+}

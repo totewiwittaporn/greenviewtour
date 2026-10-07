@@ -351,3 +351,12 @@ td small { font-size:11px; }
 /* Full-page editors use the exact same field density as Core Add/Edit dialogs. */
 .core-editor-workspace .form-field{margin-bottom:2px}.core-editor-workspace .form-field label,.core-editor-workspace .field-label{font-size:12px;margin-bottom:6px}.core-editor-workspace .field-control input,.core-editor-workspace .core-select-trigger{min-height:36px;height:36px;padding-block:7px;font-size:12px}.core-editor-workspace .field-help{min-height:18px;padding-top:3px;font-size:10px}.core-editor-workspace .dialog-actions{margin-top:18px}
 @media(max-width:640px){.core-editor-workspace>.page-heading{flex-direction:column}.core-editor-workspace>.page-heading .page-actions{width:100%}.core-editor-workspace>.page-heading .page-actions>*{flex:1}.core-editor-workspace>.page-heading h1{font-size:24px}}
+
+.onboarding-steps { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; padding-left: 20px; margin-bottom: 24px; }
+.onboarding-steps li { color: var(--muted); padding: 4px; }
+.onboarding-steps li[aria-current="step"] { color: var(--primary); font-weight: 700; }
+
+/* Directory identity owns two independent lines; nested blocks must not share a line clamp. */
+.user-identity-cell > .table-cell-copy { display:block; max-height:none; -webkit-line-clamp:unset; line-clamp:unset; }
+.user-identity-cell .user-cell { display:block; min-width:0; }
+.user-identity-cell .user-cell :is(strong,small) { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

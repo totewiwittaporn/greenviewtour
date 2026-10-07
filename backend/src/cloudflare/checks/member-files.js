@@ -25,7 +25,7 @@ try{
   const result=await submitCustomerRequest(nested,user,input,now)
   assert.equal((await submitCustomerRequest(nested,user,input,now)).id,result.id)
   assert.equal((await memberRequests(tx,other,new URLSearchParams())).total,0)
-  await commandCustomerRequest(nested,manager.id,{id:randomUUID(),requestId:result.id,version:1,action:'ACCEPT',note:'DEMO QA availability reviewed'})
+  await commandCustomerRequest(nested,manager.id,{id:randomUUID(),requestId:result.id,version:1,action:'ACCEPT',note:'DEMO QA availability reviewed',priceConfirmation:{confirmed:true,choice:'KEEP_STORED',serviceDate:date,total:quote.packageTotal}})
   let row=await tx.customerRequest.findUnique({where:{id:result.id}})
   assert.equal(row.status,'AWAITING_PAYMENT');assert.equal(row.snapshot.confirmedTotal,'1500.00')
   const booking=await tx.tourBooking.findUnique({where:{id:row.bookingId},include:{lines:true}})

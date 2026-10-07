@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {saleDateAllowed,promotionAllowed,commerceErrors,cents,safeImageUrl} from '../../packages/contracts/commerce.js'
 import {saveCustomerProfile,customerFor,quoteRequest,publicTourSelect,submitCustomerRequest,publicCatalog,requestDisplayStatus,customerDocument,cancelCustomerRequest} from '../src/modules/commerce/service.js'
-import {SessionStore} from '../src/platform/auth/sessions.js'
+import {SessionStore} from './helpers/memory-sessions.js'
 const tourId='11111111-1111-4111-8111-111111111111'
 const now=new Date('2026-10-31T18:00:00Z')
 const season={status:'ACTIVE',startsOn:'2026-10-01',endsOn:'2027-05-31',onlineStartsOn:'2026-11-01',onlineEndsOn:'2027-04-30',bookingStartsOn:'2026-10-01',bookingEndsOn:'2027-04-30',cutoffDays:1,closedDates:'2026-11-03'}

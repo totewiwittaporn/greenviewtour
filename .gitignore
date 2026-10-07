@@ -46,3 +46,6 @@ backend/prisma-d1/*.db-*
 *.bundle
 .dev.vars
 .dev.vars.*
+
+# Private owner import drafts
+docs/*owner-import-draft*.json

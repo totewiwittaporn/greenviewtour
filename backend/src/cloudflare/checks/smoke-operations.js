@@ -1,3 +1,4 @@
+import {confirmationInput} from './booking-confirmation-input.js'
 import assert from 'node:assert/strict'
 import {randomUUID} from 'node:crypto'
 import {profileInclude} from '../../modules/identity-access/policy.js'
@@ -44,7 +45,7 @@ try{
  const later=await save('trips',{code:prefix+'-LATER',name:prefix+' Later',startsAt:'2026-10-11 08:00',endsAt:'2026-10-11 18:00',capacity:'10'})
  const slot=await save('slots',{code:prefix+'-SLOT',name:prefix+' Slot',resourceId:service.id,startsAt:start,endsAt:end,capacity:'2'})
  const book=async(tripId,lines,name='booking')=>(await saveBooking(prisma,actor,{id:newId(),version:0,code:prefix+'-'+created.size,name:prefix+' '+name,tripId,adults:1,children:0,adultPrice:'0',childPrice:'0',paymentTerms:'COUNTER',lines})).row
- const status=async(row,action)=>{const input={id:newId(),bookingId:row.id,version:row.version,action};await bookingStatus(prisma,actor,input);return prisma.tourBooking.findUnique({where:{id:row.id},include:{lines:true}})}
+ const status=async(row,action)=>{const input={id:newId(),bookingId:row.id,version:row.version,action,...(action==='CONFIRM'?{priceConfirmation:await confirmationInput(prisma,actor,row.id)}:{})};await bookingStatus(prisma,actor,input);return prisma.tourBooking.findUnique({where:{id:row.id},include:{lines:true}})}
  let booking=await book(trip.id,[{resourceId:fins.id,selected:true,quantity:10,sourceId:store.id,usagePoint:'BOAT'}])
  booking=await status(booking,'CONFIRM')
  let second=await book(later.id,[{resourceId:fins.id,selected:true,quantity:10,sourceId:store.id,usagePoint:'BOAT'}]);second=await status(second,'CONFIRM');pass('sequential equipment reservations reuse stock')

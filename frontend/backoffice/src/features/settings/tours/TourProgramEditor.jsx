@@ -1,3 +1,4 @@
+import {publicWebsiteOrigin} from '../../../core/navigation/publicWebsite.js'
 import {emptyTourContent, validateTourContent} from '../../../../../../packages/contracts/tour-content.js'
 import {catalog, initialValues, labelFor, validateCatalog, visibleField} from '../../../../../../packages/contracts/catalog.js'
 import {translateLabel as bilingualLabel, formatDate, formatNumber} from '../../../core/i18n/runtime.js'
@@ -19,7 +20,6 @@ const tabs=[
  ['overview','Overview'],['content','Public content'],['package','Package & availability'],['itinerary','Itinerary'],
  ['terms','Terms & conditions'],['media','Media'],['faq','FAQ'],['seo','SEO & publish'],
 ]
-const publicOrigin=()=>['localhost','127.0.0.1'].includes(location.hostname)?'http://localhost:5173':'https://greenviewtour.com'
 const uuid=()=>crypto.randomUUID()
 const listRow=(type,index)=> type==='highlight'?{id:uuid(),status:'ACTIVE',sortOrder:index,titleTh:'',titleEn:'',descriptionTh:'',descriptionEn:''}
  :type==='itinerary'?{id:uuid(),status:'ACTIVE',sortOrder:index,day:1,timeLabel:'',titleTh:'',titleEn:'',descriptionTh:'',descriptionEn:'',locationTh:'',locationEn:''}
@@ -96,7 +96,7 @@ export default function TourProgramEditor({tourId}){
  const mediaPreview=media.filter(row=>row.status==='ACTIVE'&&row.url),activeHighlights=highlights.filter(row=>row.status==='ACTIVE')
  const readiness=[['Thai summary',Boolean(content.th.summary)],['English summary',Boolean(content.en.summary)],['Hero image',media.some(row=>row.status==='ACTIVE'&&row.kind==='HERO'&&row.url)],['Itinerary',itinerary.some(row=>row.status==='ACTIVE')],['FAQ',faqs.some(row=>row.status==='ACTIVE')],['SEO title TH',Boolean(content.th.seoTitle)],['SEO title EN',Boolean(content.en.seoTitle)]]
  return <div className="core-editor-workspace">
-   <div className="page-heading"><div><span className="eyebrow">{bilingualLabel('TOUR PROGRAM')}</span><h1 tabIndex={-1}>{values.name||t(isNew?'New tour program':'Tour program')}</h1><p>{t('One source for operations, booking, public content and SEO. Public publishing never exposes supplier or Agent pricing.')}</p></div><div className="page-actions"><Button onClick={()=>navigate('/settings/tours')}>← Tour programs</Button>{values.slug&&<a className="button" target="_blank" rel="noreferrer" href={`${publicOrigin()}/tours?tour=${encodeURIComponent(values.slug)}`}>{t('Preview website')} ↗</a>}<Button className="button-primary" busy={saving} disabled={saving} onClick={save}>Save program</Button></div></div>
+   <div className="page-heading"><div><span className="eyebrow">{bilingualLabel('TOUR PROGRAM')}</span><h1 tabIndex={-1}>{values.name||t(isNew?'New tour program':'Tour program')}</h1><p>{t('One source for operations, booking, public content and SEO. Public publishing never exposes supplier or Agent pricing.')}</p></div><div className="page-actions"><Button onClick={()=>navigate('/settings/tours')}>← Tour programs</Button>{values.slug&&<a className="button" target="_blank" rel="noreferrer" href={`${publicWebsiteOrigin()}/tours?tour=${encodeURIComponent(values.slug)}`}>{t('Preview website')} ↗</a>}<Button className="button-primary" busy={saving} disabled={saving} onClick={save}>Save program</Button></div></div>
    {notice&&<p className={Object.keys(errors).length?'core-notice is-error':'core-notice'} role="status">{t(notice)}</p>}
    <Tabs items={tabs.map(([id,label])=>({id,label}))} value={tab} onChange={setTab} label="Tour program sections" idPrefix="tour-editor"/>
 

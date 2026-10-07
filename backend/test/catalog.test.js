@@ -18,7 +18,7 @@ function matches(row,where={}){
 }
 function fixture(){
  const records=Object.fromEntries(Object.keys(catalog).map(k=>[catalog[k].model,new Map()])),audit=[]
- const tx={userProfile:{findUnique:async()=>profile},$executeRaw:async()=>{},auditEvent:{create:async e=>audit.push(e)}}
+ const tx={userProfile:{findUnique:async()=>profile},$executeRaw:async()=>{},auditEvent:{findUnique:async({where})=>audit.find(event=>event.data.id===where.id)?.data||null,create:async e=>audit.push(e)}}
  for(const[model,rows]of Object.entries(records))tx[model]={
   findUnique:async({where})=>rows.get(where.id),count:async({where={}}={})=>[...rows.values()].filter(r=>matches(r,where)).length,
   findMany:async({where={},skip=0,take=25})=>[...rows.values()].filter(r=>matches(r,where)).slice(skip,skip+take),
@@ -132,4 +132,27 @@ test('tour print codes accept owner abbreviations without deriving services or j
   assert.equal(result.data.printCode,printCode);assert.equal(result.data.journeyMode,'FIXED');assert.equal(result.data.durationDays,1)
  }
  assert.ok(validateCatalog('tours',input('tours',{printCode:'ABCDEFGHIJK'})).errors.printCode)
+})
+
+test('company contact edits share one record, validate channels and protect stale/unauthorized writes',async()=>{
+ const {tx,records}=fixture()
+ const first=await saveSettings(tx,'actor','company',input('company',{name:'Greenview Tour',phone:'095-426-6847',email:'',lineId:'@greenviewtour',instagramUrl:'https://instagram.com/greenviewtour'}))
+ assert.equal(first.row.phone,'+66954266847');assert.equal(first.row.email,null)
+ assert.equal(first.row.instagramUrl,'https://www.instagram.com/greenviewtour/')
+ const update={...initialValues('company',first.row),id:first.row.id,version:1,lineId:'@updated',instagramUrl:''}
+ const changed=await saveSettings(tx,'actor','company',update)
+ assert.equal(changed.row.lineId,'@updated');assert.equal(changed.row.instagramUrl,null)
+ assert.equal(records.companySettings.size,1)
+ await assert.rejects(saveSettings(tx,'actor','company',update),{code:'SETTINGS_CONFLICT'})
+ await assert.rejects(saveSettings(tx,'actor','company',{...update,version:2,instagramUrl:'https://evil.example/greenviewtour'}),{code:'INVALID_SETTINGS'})
+ tx.userProfile.findUnique=async()=>({...profile,roles:[]})
+ await assert.rejects(saveSettings(tx,'actor','company',{...update,version:2}),{code:'PERMISSION_DENIED'})
+ assert.equal(records.companySettings.get(first.row.id).version,2)
+})
+
+test('optional company channels can be cleared and reject unsafe profiles',()=>{
+ const base={...initialValues('company'),name:'Greenview Tour'}
+ assert.deepEqual(validateCatalog('company',base).errors,{})
+ for(const lineId of ['greenviewtour','@bad/path','@bad?x=1','@bad\naccount'])assert.ok(validateCatalog('company',{...base,lineId}).errors.lineId)
+ for(const instagramUrl of ['javascript:alert(1)','https://www.instagram.com.evil.com/name','https://user@www.instagram.com/name','https://www.instagram.com/name?redirect=evil','https://www.instagram.com/p/post','http://instagram.com/name'])assert.ok(validateCatalog('company',{...base,instagramUrl}).errors.instagramUrl)
 })

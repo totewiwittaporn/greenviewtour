@@ -1,3 +1,4 @@
+import {userVisibilityWhere} from '../identity-access/user-visibility.js'
 import {audit,authorize,fail,hash,int,keys,string,uuid,write} from './common.js'
 import {parseStamp,localStamp} from '../../../../packages/contracts/operations.js'
 import {jobBooking} from './dispatch.js'
@@ -17,11 +18,11 @@ export async function listGuideAssignments(db,actorId,params){
  return {rows:lean?rows.map(row=>({...row,status:row.booking.status==='CANCELLED'?'CANCELLED':row.status})):rows.map(projection),total,page:actual,pageSize:25,canManage:access.manageGuide}
 }
 export async function guideAssignmentOptions(db,actorId,params){
- await authorize(db,actorId,'manageGuide')
+ const {actor}=await authorize(db,actorId,'manageGuide')
  const entity=params.get('entity'),q=string(params.get('q')||'',100,false),page=int(params.get('page')||1,1)
  if(!['bookings','staff'].includes(entity))fail('INVALID_FILTER',400)
  const staff=entity==='staff',model=staff?'userProfile':'tourBooking'
- const where=staff?{status:'ACTIVE',roles:{some:{roleCode:{in:guideRoles},scope:{in:['SELF','COMPANY']}}},...(q?{displayName:{contains:q,mode:'insensitive'}}:{})}:{status:'CONFIRMED',...(q?{OR:[{code:{contains:q,mode:'insensitive'}},{name:{contains:q,mode:'insensitive'}}]}:{})}
+ const where=staff?{status:'ACTIVE',AND:[userVisibilityWhere(actor)],roles:{some:{roleCode:{in:guideRoles},scope:{in:['SELF','COMPANY']}}},...(q?{displayName:{contains:q,mode:'insensitive'}}:{})}:{status:'CONFIRMED',...(q?{OR:[{code:{contains:q,mode:'insensitive'}},{name:{contains:q,mode:'insensitive'}}]}:{})}
  const total=await db[model].count({where}),actual=Math.min(page,Math.max(1,Math.ceil(total/25)))
  const rows=await db[model].findMany({where,select:staff?{id:true,displayName:true}:{id:true,code:true,name:true},skip:(actual-1)*25,take:25,orderBy:{id:'asc'}})
  return {rows:rows.map(r=>({...r,name:staff?r.displayName:r.code+' · '+r.name})),total,page:actual,pageSize:25}

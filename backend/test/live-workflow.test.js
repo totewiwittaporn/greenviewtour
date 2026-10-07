@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createAuthProvider } from '../src/platform/auth/provider.js'
+import { createAuthProvider } from './helpers/legacy-provider.js'
 const env = { SUPABASE_URL: 'https://qplzgpyidszxbtbyknjc.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test' }
 test('transient identity failure retries once without caching a completed check', async () => {
   let calls = 0

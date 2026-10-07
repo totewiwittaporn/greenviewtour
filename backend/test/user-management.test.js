@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { managementScope, canEditProfile, validateProfilePatch } from '../src/modules/identity-access/user-management.js'
-import { checkAuthResult, createAuthProvider } from '../src/platform/auth/provider.js'
-import { SessionStore } from '../src/platform/auth/sessions.js'
+import { checkAuthResult, createAuthProvider } from './helpers/legacy-provider.js'
+import { SessionStore } from './helpers/memory-sessions.js'
 const profile=(role,department,scope='SELF')=>({status:'ACTIVE',department,roles:[{roleCode:role,scope,role:{permissions:[{permissionCode:'users.read'},{permissionCode:'users.profile.edit'}]}}]})
 test('heads are scoped by assigned department, not editable metadata or target IDs',()=>{
   const head=profile('HEAD_GUIDE','GUIDE'), guide=profile('GUIDE','GUIDE')
@@ -12,8 +12,8 @@ test('heads are scoped by assigned department, not editable metadata or target I
   assert.equal(canEditProfile(head,profile('ADMIN_MANAGER','GUIDE')),false)
   assert.equal(managementScope(profile('HEAD_GUIDE',null)),null)
   assert.equal(managementScope(profile('HEAD_GUIDE','DRIVER')),null)
-  assert.equal(managementScope(profile('GUIDE','GUIDE')),null)
-  assert.equal(canEditProfile(profile('MANAGER',null,'COMPANY'),profile('ADMIN_MANAGER',null)),true)
+  assert.deepEqual(managementScope(profile('GUIDE','GUIDE')),{company:false,department:null})
+  assert.equal(canEditProfile(profile('MANAGER',null,'COMPANY'),profile('ADMIN_MANAGER',null)),false)
   assert.equal(managementScope(profile('MANAGER',null)),null)
 })
 test('profile edits reject roles, status, identity and department escalation',()=>{

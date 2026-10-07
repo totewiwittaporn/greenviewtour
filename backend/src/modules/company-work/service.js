@@ -1,3 +1,4 @@
+import {userVisibilityWhere} from '../identity-access/user-visibility.js'
 import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {readJsonFields} from '../../platform/database/read-json.js'
 import {scalarArrayWhere} from '../../platform/database/scalar-array.js'
@@ -292,7 +293,7 @@ async function lookup(p,actor,params){
  const entity=params.get('lookup'),q=(params.get('q')||'').trim(),page=int(params.get('page')||1,1,100000)
  if(q.length>100)fail('INVALID_FILTER',400)
  let model,where={},select={id:true,name:true}
- if(entity==='users'){model='userProfile';where={status:'ACTIVE'};select={id:true,displayName:true}}
+ if(entity==='users'){model='userProfile';where={status:'ACTIVE',AND:[userVisibilityWhere(actor)]};select={id:true,displayName:true}}
  else if(entity==='stores'){model='stockLocation';where={status:'ACTIVE'}}
  else if(entity==='resources'){model='operationResource';where={status:'ACTIVE',kind:{not:'SERVICE'}};select={id:true,name:true,baseUnit:true}}
  else if(entity==='partners'){model='businessPartner';where={status:'ACTIVE'}}

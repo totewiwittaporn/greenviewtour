@@ -5,24 +5,22 @@
   "type": "module",
   "dependencies": {
     "@prisma/adapter-d1": "7.10.0",
-    "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
-    "@supabase/supabase-js": "2.116.0",
-    "better-auth": "^1.7.6",
-    "pg": "8.23.0",
-    "@prisma/driver-adapter-utils": "7.10.0"
+    "@prisma/driver-adapter-utils": "7.10.0",
+    "bcryptjs": "3.0.3",
+    "better-auth": "1.7.6"
   },
   "scripts": {
-    "db:check": "node scripts/check-db.js",
+    "db:check": "node ../scripts/local-health.js",
     "test": "node --test test/*.test.js",
-    "dev": "node src/app/server.js",
-    "prisma:generate": "prisma generate",
-    "prisma:validate": "prisma validate",
-    "db:migrate": "prisma migrate deploy",
-    "owner:invite": "node scripts/bootstrap-owner.js",
-    "db:identity-check": "node scripts/check-identity.js",
+    "dev": "node ../scripts/dev.js --worker-only",
+    "prisma:generate": "prisma generate --config prisma.config.ts",
+    "prisma:validate": "prisma validate --config prisma.config.ts",
+    "db:migrate": "node ../scripts/local-cloudflare.js migrate",
+    "owner:invite": "node ../scripts/retired-source-command.js",
+    "db:identity-check": "node ../scripts/retired-source-command.js",
     "d1:schema": "node scripts/generate-d1-schema.js",
-    "d1:generate": "npm run d1:schema && prisma generate --schema prisma-d1/schema.prisma --config prisma-d1/prisma.config.ts"
+    "d1:generate": "node ../scripts/local-cloudflare.js generate"
   },
   "devDependencies": {
     "prisma": "7.10.0"

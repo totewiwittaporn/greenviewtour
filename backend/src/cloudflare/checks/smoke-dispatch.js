@@ -1,3 +1,4 @@
+import {confirmationInput} from './booking-confirmation-input.js'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { profileInclude } from '../../modules/identity-access/policy.js'
@@ -44,7 +45,7 @@ try{
   const trip = (await saveOperationCatalog(prisma, bookingUser, 'trips', { ...initialValues('trips'), id: id(), version: 0, code: prefix + '-TRIP', name: prefix + ' Trip', startsAt: date + ' 07:00', endsAt: date + ' 18:00', capacity: '30' })).row
   const bookingInput = { id: id(), version: 0, code: prefix + '-GROUP', name: prefix + ' Group', tripId: trip.id, adults: 3, children: 1, adultPrice: '0', childPrice: '0', paymentTerms: 'COUNTER', serviceDate:date,returnDate:date,returnStatus:'OUR',hotel: 'QA hotel', room: '123', contactPhone: '0812345678', allergies: 'QA shellfish', assistance: 'Wheelchair assistance requested', lines: [{ resourceId: boatService.id, quantity: 4, selected: true, dispatchDirection: 'BOTH' }, { resourceId: transfer.id, quantity: 4, selected: true, dispatchDirection: 'OUTBOUND' }] }
   const booking = (await saveBooking(prisma, bookingUser, bookingInput)).row
-  const confirmation=await bookingStatus(prisma, bookingUser, { id: id(), bookingId: booking.id, version: booking.version, action: 'CONFIRM' });assert.equal(confirmation.status,'CONFIRMED');booking.version++
+  const confirmation=await bookingStatus(prisma, bookingUser, { id: id(), bookingId: booking.id, version: booking.version, action: 'CONFIRM',priceConfirmation:await confirmationInput(prisma,bookingUser,booking.id) });assert.equal(confirmation.status,'CONFIRMED');booking.version++
   pass('Booking SELF role confirms unassigned boat and transfer independently')
   await reject(() => saveRun(prisma, bookingUser, { id: id(), version: 0, code: prefix + '-DENIED', name: 'Denied', kind: 'BOAT', direction: 'OUTBOUND', period: 'AM', resourceId: boatService.id, vehicleId: boat.id, startsAt: date + ' 10:00', endsAt: date + ' 12:00', capacity: 5, staff: [] }), 'PERMISSION_DENIED')
   await reject(() => saveBooking(prisma, bookingUser, { ...bookingInput, id: id(), code: prefix + '-AFTER', paymentTerms: 'AFTER_SERVICE', afterServiceReason: 'Requested exception' }), 'PERMISSION_DENIED')
@@ -99,7 +100,7 @@ try{
   const charterBookings=[]
   for(let index=0;index<2;index++){
     const item=(await saveBooking(prisma,bookingUser,{...bookingInput,id:id(),code:prefix+'-CHARTER-'+index,adults:1,children:0,lines:[{resourceId:charterService.id,quantity:1,selected:true,dispatchDirection:'OUTBOUND'}]})).row
-    assert.equal((await bookingStatus(prisma,bookingUser,{id:id(),bookingId:item.id,version:item.version,action:'CONFIRM'})).status,'CONFIRMED')
+    assert.equal((await bookingStatus(prisma,bookingUser,{id:id(),bookingId:item.id,version:item.version,action:'CONFIRM',priceConfirmation:await confirmationInput(prisma,bookingUser,item.id)})).status,'CONFIRMED')
     charterBookings.push(item)
   }
   await command(guide,charterRun,{action:'ASSIGN',bookingLineId:charterBookings[0].lines[0].id,adults:1,children:0})

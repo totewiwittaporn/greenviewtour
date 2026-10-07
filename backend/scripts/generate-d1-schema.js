@@ -1,3 +1,4 @@
+import {onboardingSchema} from '../prisma-d1/onboarding-schema.js'
 import {mkdir,readFile,writeFile} from 'node:fs/promises'
 import {fileURLToPath} from 'node:url'
 import path from 'node:path'
@@ -138,6 +139,11 @@ for(const [name,sql] of [['0002_scalar_array_lookups.sql',triggerSql],['0003_jso
   const current=await readFile(path.join(migrationsDir,name),'utf8')
   if(current!==sql.trim()+'\n')throw new Error('D1_MIGRATION_HISTORY_IMMUTABLE: add a new migration; do not regenerate '+name)
 }
+schema=schema.replace('model CompanySettings {','model CompanySettings {\n lineId String?\n instagramUrl String?')
+schema+='\n'+await readFile(path.join(targetDir,'auth-models.prisma'),'utf8')
+schema+='\n'+await readFile(path.join(targetDir,'line-models.prisma'),'utf8')
+schema+='\n'+await readFile(path.join(targetDir,'digest-models.prisma'),'utf8')
+schema=onboardingSchema(schema)+'\n'+await readFile(path.join(targetDir,'onboarding-models.prisma'),'utf8')
 await writeFile(target,schema)
 console.log(`Generated D1 Prisma schema: ${path.relative(backend,target)}`)
 console.log('Verified immutable D1 scalar-array lookup triggers')

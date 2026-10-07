@@ -5,9 +5,11 @@ import {join} from 'node:path'
 
 const stamp=new Date().toISOString().replace(/[:.]/g,'-')
 const logPath=join(tmpdir(),`greenview-check-${stamp}.log`)
-const npm=process.platform==='win32'?'npm.cmd':'npm'
+const npmCli=process.env.npm_execpath
+const command=npmCli?process.execPath:'npm'
+const args=npmCli?[npmCli,'run','check']:['run','check']
 const log=createWriteStream(logPath,{flags:'w'})
-const child=spawn(npm,['run','check'],{cwd:new URL('..',import.meta.url),shell:false,stdio:['ignore','pipe','pipe']})
+const child=spawn(command,args,{cwd:new URL('..',import.meta.url),shell:false,stdio:['ignore','pipe','pipe']})
 child.stdout.pipe(log,{end:false})
 child.stderr.pipe(log,{end:false})
 

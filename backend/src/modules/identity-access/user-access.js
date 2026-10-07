@@ -1,3 +1,4 @@
+import {canSeeUser} from './user-visibility.js'
 import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import { randomUUID } from 'node:crypto'
 import { accessDefinitions, effectiveAccess, isAdmin, isManager, roleNames } from '../../../../packages/contracts/access.js'
@@ -9,7 +10,7 @@ import {readTransaction} from '../../platform/database/read-transaction.js'
 const fail=(code,status=403)=>{throw new AccessError(code,status)}
 const privileged=profile=>(profile?.roles||[]).some(g=>['ADMIN_MANAGER','MANAGER'].includes(g.roleCode))
 export function canConfigureAccess(actor,target) {
- return Boolean(target && actor?.id!==target.id && isManager(actor) && !target.roles.some(g=>g.roleCode==='ADMIN_MANAGER') && (isAdmin(actor)||!privileged(target)))
+ return Boolean(target && canSeeUser(actor,target) && actor?.id!==target.id && isManager(actor) && !target.roles.some(g=>g.roleCode==='ADMIN_MANAGER') && (isAdmin(actor)||!privileged(target)))
 }
 function rolesFor(actor){return Object.entries(roleNames).filter(([code])=>code!=='ADMIN_MANAGER'&&(code!=='MANAGER'||isAdmin(actor))).map(([code,name])=>({code,name}))}
 function result(actor,target,history=[]) {

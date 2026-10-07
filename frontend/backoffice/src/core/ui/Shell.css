@@ -69,3 +69,16 @@
 }
 
 .workspace-startup{margin:0;max-width:none;min-height:100dvh;padding:48px 24px;background:#eaf7fc;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px}.workspace-startup>img{width:132px;height:72px;object-fit:contain}.workspace-startup section a{display:block;margin-top:16px}
+
+/* LINE identity is presentation only; compact mobile actions retain the same menu. */
+.workspace-reference .account-menu .avatar{overflow:hidden}
+.workspace-reference .account-menu .avatar img{display:block;width:100%;height:100%;object-fit:cover}
+@media(max-width:760px){
+ .workspace-reference .topbar{grid-template-columns:minmax(44px,1fr) 44px 44px 44px;gap:8px}
+ .workspace-reference .reference-brand-wrap{grid-column:1;grid-row:1}
+ .workspace-reference .topbar .reference-brand{display:none}
+ .workspace-reference .account-menu{grid-column:4;grid-row:1;width:44px;max-width:44px;justify-self:end}
+ .workspace-reference .account-menu .dropdown-anchor>.button{display:grid;grid-template-columns:1fr;place-items:center;width:44px;height:44px;min-height:44px;padding:4px;gap:0}
+ .workspace-reference .account-menu :is(.user-info-identity,.account-name,.user-menu-chevron){display:none}
+ .workspace-reference .reference-search{grid-column:1/-1;grid-row:2}
+}

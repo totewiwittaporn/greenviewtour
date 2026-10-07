@@ -18,7 +18,7 @@ test('invalid targets, message limits and retry keys fail before transport', asy
 })
 test('live transport fixes destination, prevents redirects and preserves retry key', async () => {
  const result = await pushText({ payload, retryKey, token: 'TEST', mode: 'live', transport: async (url, options) => {
-  assert.equal(url, 'https://api.line.me/v2/bot/message/push'); assert.equal(options.redirect, 'error')
+  assert.equal(url, 'https://api.line.me/v2/bot/message/push'); assert.equal(options.redirect, 'manual')
   assert.equal(options.headers['X-Line-Retry-Key'], retryKey); assert.deepEqual(JSON.parse(options.body), payload)
   return { ok: true, status: 200, headers: new Headers() }
  } })

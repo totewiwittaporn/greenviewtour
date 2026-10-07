@@ -1,5 +1,7 @@
 # Nightly operations summaries
 
+> Environment update (30 September 2026): referenced Preview/provider seed and delivery scripts below are historical and now fail closed. Preserve the domain requirements, but use [Local/Production workflow](local-production-workflow.md) for current execution and testing. No live provider delivery is authorized.
+
 ## Current availability
 
 The Daily close page captures immutable, versioned reference snapshots; it does **not** lock bookings or stop morning amendments. CLOSE and SUMMARY snapshots are separate. Repeating a capture with unchanged normalized run data reuses its revision. A changed capture creates the next revision; earlier evidence stays readable. Snapshots contain allocated runs only, not a guarantee that every booking has been allocated.

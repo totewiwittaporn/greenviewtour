@@ -1,0 +1,125 @@
+FOLLOW-UP: The owner subsequently authorized and completed Production deployment.
+See employee-onboarding-production-2026-10-03.txt. The Local report below describes
+the earlier checkpoint; its no-deploy/configuration-pending statements are historical.
+
+EMPLOYEE ONBOARDING LOCAL ACCEPTANCE - 2026-10-03
+
+Repository: /Users/tootee/Documents/Projects/greenviewtour
+Branch: feat/cloudflare-d1-foundation; original HEAD 486742d.
+Runtime: Better Auth + Cloudflare D1/R2. Supabase is retired.
+No commit, push, hosted Preview, Production deploy, real provider email or LINE message.
+Existing uncommitted work was preserved. The file list below is compared to the
+pre-task filesystem snapshot, not to HEAD (which contains substantial prior work).
+
+IMPLEMENTED
+Admin: Email + Role + Department only; mail adapter sends a one-use invitation.
+Employee: email exchange -> legal names/address/phone -> password+confirmation
+-> LINE Login and verified Staff OA friendship -> atomic ACTIVE + role dashboard.
+Pending staff have a restricted session and no UserProfile/workspace access.
+Saved steps resume after refresh; after password setup, login resumes onboarding.
+LINE nickname never replaces the employee's legal names.
+
+SECURITY
+Server role/department/inviter checks, strict fields, bounded bodies, origin checks,
+rate limits, one-use email credential, session-bound OAuth state, PKCE S256,
+OIDC issuer/audience/nonce/expiry verification, server-side friendship lookup,
+unique LINE binding and atomic activation. No password/token/contact values in
+audit events. Callback secrets are removed from browser URL; no-referrer applied.
+Revoked/expired invitations and revoked inviter authority prevent continuation.
+
+VERIFICATION
+- npm run check:quiet PASS: 627 backend tests, 60 frontend tests, lint,
+  Local workflow audit, three frontend builds and Worker bundle dry-run.
+  'Total Upload' in the dry-run log is a bundle size, not a deployment.
+- node scripts/smoke-browser-fixtures.js PASS for the existing browser suite.
+- node scripts/smoke-employee-onboarding.mjs PASS, now wired into that suite:
+  1440x1000 and 390x844; EN/TH; required fields/focus; reload resume;
+  mismatched passwords cannot submit; Local LINE disabled; enabled start and
+  callback using fixtures; StrictMode one-use request deduplication; no overflow
+  or browser runtime errors. These are browser/API fixtures, not live LINE.
+- npm run local:auth:check PASS: 14 grouped checks using real Local Worker and a
+  copied D1 database. Invitation mail/exchange, restricted API denial, durable
+  saved steps, password/login resume, revocation, origin/rate/session controls.
+  Active database unchanged by this test. No new activation test endpoint.
+- Six employee-onboarding integration tests use actual SQLite plus Prisma D1
+  transaction planning and fake LINE transport to exercise activation and failure
+  paths (replay/session mismatch, nonfriend, OIDC mismatch, concurrent revocation).
+- Migration 0011 applied only to active Local after verified backup restore.
+- Fresh backup comparison PASS: all 89 pre-existing application/system tables,
+  9,754 rows unchanged; new legal-name columns null; onboarding table empty;
+  SQLite integrity OK and no foreign-key issues.
+- Offline identity/auth verification PASS: 39 accounts, 32 credential records;
+  no password replacement. These checks read a local historical export only.
+- Historical business snapshot comparison is NOT PASS: CompanySettings.version
+  differs from the September 30 snapshot due to pre-existing Local edits. Fresh
+  pre-migration backup comparison proves this migration preserved those edits.
+  The verifier was updated to recognize only the reviewed nullable added fields.
+- git diff --check PASS.
+
+BACKUP AND EVIDENCE
+Backup: /Users/tootee/GreenviewBackups/pre-employee-onboarding-20261003
+Restore proof: 32 files, 90 tables, 7 R2 objects; restored copy verified.
+Evidence: .local/employee-onboarding-acceptance-20261003 (private, ignored).
+API copied-state evidence: .local/auth-api-tests-luqqRr.
+Source baseline: /private/tmp/greenview-onboarding-baseline-20261003.
+
+LIMITS / HANDOFF
+Local deliberately stops at LINE, preserving PASSWORD_SET. Real activation needs
+an authorized environment configured with LINE_STAFF_LOGIN_ENABLED, provider ID,
+Login channel ID/secret and HTTPS BACKOFFICE_ORIGIN. Login channel must be under
+Staff provider 2005588057 and linked to OA Messaging API 2011806264 (@335bydey).
+See docs/authentication.md for exact settings and callback path. No secrets added.
+Real email delivery, real LINE consent and OA friendship have not been tested.
+Existing ACTIVE users and historical owner-bootstrap flow are preserved.
+Existing pending staff links require email resend through the new flow.
+
+Automatic approval review rejected a proposed test-only activation endpoint as
+an authentication bypass. It was not installed. Activation coverage instead uses
+the real service and transaction planner with a fake provider transport in tests.
+
+FILES CHANGED IN THIS TASK
+MODIFIED UX-CONTRACT.md
+MODIFIED backend/prisma-d1/migration-checksums.json
+NEW backend/prisma-d1/migrations/0011_employee_onboarding.sql
+NEW backend/prisma-d1/onboarding-models.prisma
+NEW backend/prisma-d1/onboarding-schema.js
+MODIFIED backend/prisma-d1/schema.prisma
+MODIFIED backend/scripts/generate-d1-atomic-metadata.mjs
+MODIFIED backend/scripts/generate-d1-schema.js
+MODIFIED backend/src/app/http.js
+MODIFIED backend/src/cloudflare/api.ts
+NEW backend/src/modules/identity-access/employee-onboarding.js
+MODIFIED backend/src/modules/identity-access/invitations.js
+MODIFIED backend/src/modules/identity-access/membership.js
+MODIFIED backend/src/platform/auth/cloudflare/mail.js
+NEW backend/src/platform/auth/cloudflare/onboarding-api.js
+MODIFIED backend/src/platform/auth/cloudflare/provider.js
+MODIFIED backend/src/platform/auth/sessions.js
+MODIFIED backend/src/platform/database/atomic/schema.js
+NEW backend/src/platform/line/staff-login.js
+MODIFIED backend/test/cloudflare-d1.test.js
+MODIFIED backend/test/d1-atomic-unit.test.js
+NEW backend/test/employee-onboarding.test.js
+MODIFIED backend/test/local-checkpoint.test.js
+MODIFIED backend/test/local-environment.test.js
+NEW backend/test/local-onboarding-migration.test.js
+MODIFIED backend/test/staff-invitations.test.js
+MODIFIED docs/authentication.md
+MODIFIED frontend/backoffice/index.html
+MODIFIED frontend/backoffice/src/app/App.jsx
+MODIFIED frontend/backoffice/src/core/auth/api.js
+MODIFIED frontend/backoffice/src/core/ui/styles.css
+MODIFIED frontend/backoffice/src/features/auth/AuthPage.jsx
+NEW frontend/backoffice/src/features/auth/EmployeeOnboardingPage.jsx
+MODIFIED frontend/backoffice/src/features/settings/users/StaffInvitations.jsx
+MODIFIED frontend/backoffice/src/features/translations.js
+NEW packages/contracts/employee-onboarding.js
+MODIFIED scripts/local-import/checkpoint.js
+MODIFIED scripts/local-import/source.js
+MODIFIED scripts/local-import/transfer.js
+MODIFIED scripts/local-mail-lib.js
+MODIFIED scripts/smoke-browser-fixtures.js
+NEW scripts/smoke-employee-onboarding.mjs
+MODIFIED scripts/smoke-staff-invitations.js
+MODIFIED scripts/test-auth-api.mjs
+NEW docs/employee-onboarding-acceptance-2026-10-03.txt

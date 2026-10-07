@@ -1,0 +1,80 @@
+Greenview Tour — Daily Work Assignment Production Release
+Date: 2026-10-06 (Asia/Bangkok)
+
+Status: DEPLOYED / PRODUCTION GATE OPENED
+
+Owner authorization
+- Tee explicitly authorized opening the Production gate and applying real Production configuration.
+- Live message testing is deferred until a real customer/service day. No manual Production LINE test was performed in this release.
+
+Release
+- Worker: greenviewtour-api
+- Previous version: b5592258-1ab3-422b-af29-fe2d2e35bba6
+- Current version: 7d2e1b41-96c7-4a43-a986-f3b913457f15
+- Backoffice domain: https://backoffice.greenviewtour.com
+- Production D1: greenviewtour-production
+- D1 served from APAC / NRT during release audit.
+- No Public Worker deployment and no Member deployment in this release.
+
+Automatic Daily Work Assignment
+- Cloudflare scheduled handler is deployed.
+- Cron: 0 16 * * *
+- Intended local time: 23:00 Asia/Bangkok, for the following Bangkok service date.
+- DAILY_WORK_ASSIGNMENT_AUTO_SEND=true in private Production config.
+- Production execution actor was verified ACTIVE with company ADMIN_MANAGER authorization.
+- ADMIN_MANAGER remains excluded as a Daily Work Assignment recipient; the actor is authorization context only.
+- Existing Staff LINE provider configuration and secret bindings were preserved.
+- Manual Local/API test flow remains simulation-only.
+- Automatic Production delivery sends only to eligible active linked staff with role-based work for the service date.
+
+Production safety audit before deploy
+- Production secret names present: AUTH_SECRET, LINE_STAFF_ACCESS_TOKEN, LINE_STAFF_CHANNEL_SECRET, LINE_STAFF_LOGIN_CHANNEL_SECRET. Secret values were not printed or changed.
+- Production StaffDailyDigest table existed before release and contained 0 rows. No schema migration was required.
+- Production had 4 active profiles, 3 users with eligible Daily Work Assignment roles, and 4 linked LINE staff accounts.
+- Confirmed/completed Production bookings: 0.
+- For 2026-10-07: 0 vehicle/boat runs, 0 guide assignments and 0 due company-work records.
+- Therefore enabling the schedule did not create an immediate operational message workload.
+
+Validation before deploy
+- Local focused Daily Work Assignment tests: 25/25 PASS.
+- Actual copied Local D1/HTTP regression: PASS.
+- Full repository check: backend 673 tests, 672 pass, 0 fail, 1 skip; frontend 61/61 pass; three builds PASS; Cloudflare dry-run PASS.
+- Production-config Wrangler dry-run PASS.
+- Production-runtime isolated workerd test initially exposed a Windows-only test-harness import-path bug. The harness was corrected to normalize Windows paths and rerun PASS. This was a test portability issue, not an application/Production runtime failure.
+
+Deployment result
+- Asset upload succeeded.
+- Worker upload succeeded.
+- Trigger deployment succeeded.
+- Custom domain retained: backoffice.greenviewtour.com.
+- Cron shown by Wrangler after deploy: 0 16 * * *.
+- Deployed Worker handlers: fetch, scheduled.
+- Production bindings verify DAILY_WORK_ASSIGNMENT_AUTO_SEND=true and the configured authorization actor.
+- Existing secret bindings are still attached.
+
+Live post-deploy smoke
+- /login -> HTTP 200
+- /api/me anonymous -> HTTP 401
+- /api/member/profile -> HTTP 503 MEMBER_PAUSED
+- /health -> HTTP 404
+- /api/operations/staff-digests without staff session -> HTTP 401
+- StaffDailyDigest rows after release: 0
+- Accepted rows: 0
+- Failed rows: 0
+- No manual LINE message was sent.
+
+Configuration preservation
+- Private Production config on ESC:
+  .local/production-release/backoffice.esc.dwa.jsonc
+- Existing Mac private Production config was updated with the same cron and Daily Work Assignment production variables so a later Mac deployment does not silently remove the schedule.
+- Public example config remains fail-closed by default for generic setup; real enablement exists only in ignored private Production release config.
+
+Rollback
+- Previous Worker version is recorded above and can be restored without rolling Production D1 backward.
+- No Production database migration or data reset occurred in this release.
+- Do not restore an older Production database as a code rollback.
+
+Next real acceptance
+- Do not send a synthetic Production LINE test now.
+- On the first real customer/service day, allow the 23:00 Bangkok cron to run normally.
+- Verify role-specific messages and actual employee receipt against that real booking/assignment data.

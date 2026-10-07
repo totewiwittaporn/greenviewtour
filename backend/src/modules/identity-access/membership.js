@@ -24,11 +24,8 @@ export async function resolveMembership(prisma, user) {
     let profile = await tx.userProfile.findUnique({ where: { id: user.id }, include: profileInclude })
     if (!profile) {
       const invitation = await tx.invitation.findUnique({ where: { email: normalizeEmail(user.email) }, include: { roles: true } })
-      if (!invitation || invitation.consumedAt || invitation.revokedAt || invitation.expiresAt <= new Date() || (invitation.createdById && !invitation.acceptedAt)) throw new AccessError('INVITATION_REQUIRED')
-      if (invitation.createdById) {
-        const { assertInvitationAuthority } = await import('./invitations.js')
-        await assertInvitationAuthority(tx, invitation)
-      }
+      if (!invitation || invitation.consumedAt || invitation.revokedAt || invitation.expiresAt <= new Date()) throw new AccessError('INVITATION_REQUIRED')
+      if (invitation.createdById) throw new AccessError('ONBOARDING_REQUIRED', 403)
       const used = await tx.invitation.updateMany({ where: { id: invitation.id, consumedAt: null, expiresAt: { gt: new Date() } }, data: { consumedAt: new Date() } })
       if (used.count !== 1) throw new AccessError('INVITATION_REQUIRED')
       profile = await tx.userProfile.create({ data: { id: user.id, displayName: invitation.displayName, department: invitation.department,

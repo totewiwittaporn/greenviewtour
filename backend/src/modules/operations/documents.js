@@ -28,7 +28,7 @@ export async function dailyBookingDocument(prisma, actorId, date) {
   })
   const rows = bookings.map(b => ({
    id:b.id, code:b.code, version:b.version, name:b.name, agentName:b.agentName || 'Direct',
-   programId:b.programSnapshot?.tourId || b.trip.tourId || 'standalone', programName:b.programSnapshot?.name || b.trip.name,
+   programId:b.programSnapshot?.tourId || b.trip?.tourId || 'standalone', programName:b.programSnapshot?.name || b.trip?.name,
    adults:b.adults, children:b.children, paymentTerms:b.paymentTerms,
    collectAmount:b.paymentTerms==='COUNTER'?bookingAmount(b):null,
    hotel:b.hotel, room:b.room, notes:[b.allergies,...(b.specialRequirements||[]),b.assistance,b.requestNotes].filter(Boolean).join(' · '),

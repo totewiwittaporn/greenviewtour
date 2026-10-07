@@ -81,6 +81,7 @@ export async function bookingCapacityPreview(db,actorId,input) {
       const {access}=await authorize(tx,actorId,'islandBooking');if(!access.booking&&plan.program.journeyMode!=='RETURN_ONLY')fail('PERMISSION_DENIED',403)
       booking={adults:input.adults,children:input.children,...plan.journey,programSnapshot:{capacitySelections:selections(input.capacitySelections||[])},lines:plan.lines.map(l=>({...l,selected:input.lines?.find(x=>x.componentId===l.componentId)?.selected??l.selected}))}
     }
+    if(!booking.outboundDate&&!booking.returnDate)fail('SERVICE_DATE_REQUIRED',400)
     if(input.returnChange===true){
       if(!input.bookingId||booking.programSnapshot?.journeyMode!=='OPEN_RETURN'||!['OUR','OTHER','PENDING'].includes(input.returnStatus))fail('RETURN_NOT_OPEN',400)
       const returnDate=input.returnStatus==='OUR'?dateOnly(input.returnDate):null

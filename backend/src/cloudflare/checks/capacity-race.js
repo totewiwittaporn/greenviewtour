@@ -1,3 +1,4 @@
+import {confirmationInput} from './booking-confirmation-input.js'
 import {randomUUID} from 'node:crypto'
 import assert from 'node:assert/strict'
 import {createD1Prisma} from '../../platform/database/d1-client.ts'
@@ -22,9 +23,10 @@ export async function capacityRace(env){
  },{timeout:60000})
  const input={tourId:ids.tour,serviceDate:date,adults:1,children:0,name:code,phone:'0000000000',allergyStatus:'NONE',optionalIds:[]},quote=await publicQuoteAvailability(db,input)
  assert.equal(quote.availability.legs[0].remainingSeats,1)
+ const priceConfirmation=await confirmationInput(db,manager.id,ids.booking)
  const outcomes=await Promise.allSettled([
   submitCustomerRequest(db,{id:ids.auth,email_confirmed_at:new Date().toISOString()},{...input,id:ids.request,quoteKey:quote.quoteKey}),
-  bookingStatus(db,manager.id,{id:ids.command,bookingId:ids.booking,version:1,action:'CONFIRM'}),
+  bookingStatus(db,manager.id,{id:ids.command,bookingId:ids.booking,version:1,action:'CONFIRM',priceConfirmation}),
  ])
  const held=await db.capacityHold.count({where:{poolId:ids.pool,expiresAt:{gt:new Date()}}}),confirmed=await db.tourBooking.count({where:{id:ids.booking,status:'CONFIRMED'}})
  assert.equal(held+confirmed,1)

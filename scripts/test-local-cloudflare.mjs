@@ -34,10 +34,10 @@ try{
   assert.ok(Object.keys(platform.env).every(key=>['APP_ENV','D1_LOCATION_HINT','DB','FILES'].includes(key)))
   const db=platform.env.DB,bucket=platform.env.FILES
   const migrated=(await db.prepare('SELECT name FROM d1_migrations ORDER BY id').all()).results.map(row=>row.name)
-  assert.deepEqual(migrated,['0001_baseline.sql','0002_scalar_array_lookups.sql','0003_json_range_projections.sql','0004_atomic_unit_of_work.sql','0005_json_projection_null_values.sql','0006_identity_optional_created_at.sql'])
+  assert.deepEqual(migrated,['0001_baseline.sql','0002_scalar_array_lookups.sql','0003_json_range_projections.sql','0004_atomic_unit_of_work.sql','0005_json_projection_null_values.sql','0006_identity_optional_created_at.sql','0007_local_auth_sessions.sql','0008_staff_line_link.sql','0009_company_public_contact.sql','0010_staff_daily_digest.sql'])
   assert.equal((await db.prepare('SELECT count(*) AS n FROM "TourBooking"').first()).n,0)
   assert.equal((await db.prepare('PRAGMA foreign_key_check').all()).results.length,0)
-  checks.push('fresh schema / five migrations / foreign keys')
+  checks.push('fresh schema / ten migrations / foreign keys')
   await db.prepare('CREATE TABLE _local_runtime_probe(id TEXT PRIMARY KEY, amount INTEGER NOT NULL CHECK(amount>=0))').run()
   await db.prepare('INSERT INTO _local_runtime_probe VALUES (?, ?)').bind('balance',100).run()
   await assert.rejects(()=>db.batch([
@@ -84,10 +84,15 @@ try{
     if(endpoint==='/health/live')assert.equal(result.environment,'local')
   }
   assert.equal((await fetch(origin+'/health/live',{method:'POST',signal:AbortSignal.timeout(5000)})).status,405)
-  assert.equal((await fetch(origin+'/api/member/login',{signal:AbortSignal.timeout(5000)})).status,404)
-  checks.push('actual Worker HTTP + Prisma D1 health + R2 health; app cutover still pending')
+  const pausedMember=await fetch(origin+'/api/member/login',{signal:AbortSignal.timeout(5000)})
+  assert.equal(pausedMember.status,503)
+  assert.equal((await pausedMember.json()).code,'MEMBER_PAUSED')
+  const missingAuth=await fetch(origin+'/api/workspace/session',{signal:AbortSignal.timeout(5000)})
+  assert.equal(missingAuth.status,503)
+  assert.equal((await missingAuth.json()).code,'LOCAL_AUTH_CONFIGURATION_REQUIRED')
+  checks.push('actual Worker HTTP + Prisma D1/R2 health; Member remains paused; missing workspace Auth configuration fails closed')
   await stopWorker()
-  const report={status:'PASS',environment:'local',remoteBindings:false,fixtureDirectory:directory,checks,fullApplicationReady:false}
+  const report={status:'PASS',environment:'local',remoteBindings:false,fixtureDirectory:directory,checks,scope:'infrastructure-only; application acceptance is covered by the Auth/API and browser suites'}
   await writeFile(path.join(directory,'result.json'),JSON.stringify(report,null,2)+'\n',{mode:0o600})
   console.log('LOCAL_RUNTIME_PASS '+JSON.stringify(report))
 }catch(error){

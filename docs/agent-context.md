@@ -18,7 +18,7 @@ Choose only rows touched by the task. Read matching sections and implementation/
 | Navigation/page placement | [Menu map](backoffice-menu-map.md) | actual frontend routes and backend HTTP composition; reserved folders do not prove functionality |
 | Local startup | [Local development](local-development.md) | `scripts/dev.js`, package scripts, Vite config |
 | Schema/connection changes | [Database connection](database-connection.md) | `backend/prisma`, `backend/src/platform/database`; inspect migration commands before use |
-| Hosting or Preview rollout | [Deployment](deployment.md) | actual host settings and branch triggers |
+| Local environment or separately approved Production preparation | [Local/Production workflow](local-production-workflow.md), [deployment boundary](deployment.md) | Local scripts/config first; no cloud action without separate approval |
 
 Current code has public-web, backoffice, and member applications. Some older documents describe the initial two-app scaffold. Dated sections are evidence of their original change, not proof of current completeness. Preserve approved domain constraints and consult later explicit owner decisions for supersession. For example, the latest QR-payment requirement is not fulfilled merely because manual payment review or local demo checkout exists.
 
@@ -31,3 +31,5 @@ For shared seat availability, temporary holds, waiting-team confirmation and who
 For list/detail/lookup changes or performance work, read [the data-fetch audit and contracts](data-fetch-audit-2026-09-27.md). Reuse the domain-owned reduced read models and Core loading controls. Preserve complete capacity/stock/financial calculations and server-side authorization; list DTOs must not initialize editable forms. The report distinguishes fixture tests, stored-profile read-only checks and untested hosted environments.
 
 For Public company/Surin editorial pages, review [the 28 September content handoff](public-content-2026-09-28.md), `frontend/public-web/src/core/publicRoutes.js` and `features/content`. Shared contact reading belongs to `features/company/CompanyLocation.jsx`. Source-authored TH/EN copy is not localized CMS authoring or proof of a completed SEO migration.
+
+For employee-to-LINE mapping, read [Staff LINE linking](staff-line-link-2026-09-30.md). Inspect `modules/identity-access/staff-line.js`, `platform/line/staff-*` and Backoffice `features/line-link`. Customer LINE, payment and automatic notification delivery are outside that connection feature.

@@ -13,7 +13,9 @@ export async function inspectTarget(db,source){
   const dependencies=new Map();let foreignKeys=0
   for(const table of source.tables){
     const info=(await db.prepare(`PRAGMA table_info(${quote(table.name)})`).all()).results
-    if(!sameNames(info.map(column=>column.name),table.columns))fail('RUNTIME_SCHEMA_DRIFT:'+table.name)
+    const additive=table.name==='UserProfile'?['firstName','lastName']:table.name==='CompanySettings'?['lineId','instagramUrl']:[]
+    if(additive.some(name=>{const field=info.find(column=>column.name===name);return !field||field.type!=='TEXT'||field.notnull||field.pk}))fail('RUNTIME_ADDITIVE_FIELD_DRIFT:'+table.name)
+    if(!sameNames(info.map(column=>column.name).filter(name=>!additive.includes(name)),table.columns))fail('RUNTIME_SCHEMA_DRIFT:'+table.name)
     const primary=info.filter(column=>column.pk).sort((a,b)=>a.pk-b.pk).map(column=>column.name)
     if(JSON.stringify(primary)!==JSON.stringify(table.primary))fail('RUNTIME_PRIMARY_KEY_DRIFT:'+table.name)
     const fks=(await db.prepare(`PRAGMA foreign_key_list(${quote(table.name)})`).all()).results

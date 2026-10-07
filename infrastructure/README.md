@@ -1,3 +1,3 @@
-# infrastructure
+# Infrastructure boundary
 
-Deployment and environment configuration. No deployment is configured by this scaffold. See docs/deployment.md before connecting hosting.
+Local Worker/D1/R2 are enabled on the owner Mac. Production is an unbound, fail-closed example and there is no hosted Preview. This work creates no Cloudflare resources or deployment. See [Local/Production workflow](../docs/local-production-workflow.md) and [deployment boundary](../docs/deployment.md).

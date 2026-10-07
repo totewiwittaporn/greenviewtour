@@ -3,6 +3,7 @@ import {readFile,writeFile,mkdtemp,rename,unlink,lstat} from 'node:fs/promises'
 import {execFile} from 'node:child_process'
 import {promisify} from 'node:util'
 import path from 'node:path'
+import {verifySourceCheckpoint} from './local-import/checkpoint.js'
 import {root,statePath,configPath,localEnvironment,localPlan} from './local-cloudflare-policy.js'
 import {localPreflight,acquireStateLock,promotionJournal} from './local-cloudflare-safety.js'
 const run=promisify(execFile)
@@ -46,8 +47,9 @@ try{
     const {verifyPrismaRuntime}=await import('./local-import/prisma-runtime.js')
     if(args[0]==='verify'){
       const marker=JSON.parse(await readFile(path.join(statePath,'import-checkpoint.json'),'utf8'))
-      if(marker.fingerprint!==source.summary.fingerprint)throw new Error('SOURCE_CHECKPOINT_MISMATCH')
+      const checkpointProof=verifySourceCheckpoint(marker,source.summary)
       const report=await verifyData(source,existing)
+      report.checkpointProof=checkpointProof
       await closeRuntime()
       report.prismaProof=await verifyPrismaRuntime(source,statePath,directory)
       report.prismaReadableModels=report.prismaProof.modelsVerified

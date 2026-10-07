@@ -157,10 +157,21 @@ test('D1 manager edit fails closed when authorization changes before atomic writ
 
 test('D1 manager edit treats concurrent target access changes as a conflict',async()=>{
   const {editProfile}=await import('../src/modules/identity-access/user-management.js')
-  const fx=managerProfileFixture({changes:[0,0],afterTargetRole:'ADMIN_MANAGER',afterTargetVersion:4})
+  const fx=managerProfileFixture({changes:[0,0],afterTargetRole:'CAPTAIN',afterTargetVersion:4})
   await assert.rejects(
     ()=>editProfile(fx.client,'manager','guide',{displayName:'Guide New',updatedAt:previous.toISOString()}),
     error=>error.code==='PROFILE_CONFLICT'&&error.status===409,
+  )
+  assert.equal(fx.transactions(),0)
+})
+
+
+test('D1 manager edit cannot expose a target promoted to hidden owner during the write',async()=>{
+  const {editProfile}=await import('../src/modules/identity-access/user-management.js')
+  const fx=managerProfileFixture({changes:[0,0],afterTargetRole:'ADMIN_MANAGER',afterTargetVersion:4})
+  await assert.rejects(
+    ()=>editProfile(fx.client,'manager','guide',{displayName:'Guide New',updatedAt:previous.toISOString()}),
+    error=>error.code==='PERMISSION_DENIED',
   )
   assert.equal(fx.transactions(),0)
 })

@@ -1,19 +1,15 @@
-# Deployment integration
+# Deployment boundary
 
-> Current policy: Local development/testing on the Mac and Production on Cloudflare only. No hosted Preview. Older Preview guidance below is historical; follow [the current migration checkpoint](local-migration-2026-09-30.md). No Production deployment is currently authorized.
+Current Production update: the owner authorized employee onboarding deployment on 2026-10-03. See [the release record](employee-onboarding-production-2026-10-03.txt). The Local migration boundaries below describe the earlier checkpoint, not a claim that Production remains undeployed.
 
-No hosting changes or deployment are performed by this foundation. Before connecting an existing host, inspect its current build settings and branch triggers.
+**No hosted environment is configured or deployed by the Local migration.** See [Local/Production workflow](local-production-workflow.md) for the current commands and separate future Production approval gate. There is no hosted Preview.
 
-Use repository root as install/build working directory and `npm ci` for the frontend applications. Public command: `npm run build:public`; output: `frontend/public-web/dist`. Backoffice command: `npm run build:backoffice`; output: `frontend/backoffice/dist`. The previous root `dist` path is no longer produced. Do not change a production build path without verifying it in preview first.
+Builds run from the repository root: `npm run build:public`, `npm run build:backoffice`, `npm run build:member`. Outputs are `frontend/public-web/dist`, `frontend/backoffice/dist`, and `frontend/member/dist`. These commands do not publish. `npm run cloudflare:check` is a Local Worker dry-run only. The Production example has no bound database identifier and the Worker refuses hosted execution.
 
-Member command: `npm run build:member`; output: `frontend/member/dist`. Build commands only produce local artifacts; they do not deploy.
-
-Separate preview/production environment values and credentials. VITE_* variables are public browser values; secrets belong only in server environments. Do not commit .env files. API hosting readiness must be verified against the actual target. Prisma migration files and `db:migrate` exist; the command does not itself prove that the selected database is Preview. Verify the target before any authorized migration.
-
-Rollback of the structural migration should revert its commit through review; then restore any changed hosting paths. This branch does not alter hosting settings.
+A future release must separately review the actual Cloudflare account/resources, DNS, origins/cookies, private server secrets, email/provider configuration, schema/data migration and rollback. No deployment command or provider key is added by this checkpoint. Existing source and Local backups remain preserved; do not delete a source because a build passed.
 
 ## Search crawler boundary
 
-Only the Public website is intended for search indexing. Member and Backoffice ship `meta robots` with `noindex, nofollow, noarchive, nosnippet`, a root `robots.txt` with `Disallow: /`, and a static-host `_headers` rule emitting the same `X-Robots-Tag`. Public Core keeps the owner-approved quiet Staff login entry centered in the footer bottom bar: Local points to Backoffice port 5174 and hosted Public renders it only when `VITE_STAFF_LOGIN_URL` is configured. Member Login/Register remains a customer-facing entry point but is excluded from indexing.
+Only Public is intended for search indexing. Member and Backoffice retain noindex metadata, `robots.txt` disallow rules and static-host `X-Robots-Tag` headers. These are crawler directives, not authorization. Staff/member security remains in the server-side session, origin and fresh permission checks.
 
-Crawler directives are not an authentication mechanism. Backoffice and Member security continues to depend on server-side sessions, authorization, origin checks and private `app_private` database grants. If Backoffice is hosted on a public network, a separate edge access policy such as Cloudflare Access may be added after the actual deployment target and staff access requirements are verified; do not treat URL secrecy or robots rules as that security boundary.
+Earlier environment instructions are retained in [the historical deployment record](history/deployment-pre-local-cutover.md), not as an executable release plan.

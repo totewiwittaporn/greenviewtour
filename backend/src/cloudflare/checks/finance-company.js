@@ -97,7 +97,11 @@ export async function financeCompany(env){
   for(const kind of ['WORK_ADVANCE','SALARY_ADVANCE'])await finance(kind,{date:today,dueOn:'2026-10-01',amount:'100.30',notes:'local'},{doClear:true})
   await finance('SUPPLIER_PAYMENT',{sourcePurchaseId:order.id,date:today,amount:'100.10',evidence:'fixture',notes:'local'})
   await assert.rejects(()=>savePersonnelFinance(db,maker,{id:id(),version:0,kind:'SUPPLIER_PAYMENT',title:code,employeeId:employee,payload:{sourcePurchaseId:order.id,date:today,amount:'0.01',evidence:'fixture',notes:'exceeds balance'}}),{code:'SUPPLIER_BALANCE_EXCEEDED'})
-  assert.ok((await exportPayroll(db,maker,new URLSearchParams({q:code}))).count>=1)
+  const hiddenPayroll=await exportPayroll(db,maker,new URLSearchParams({q:code}))
+  assert.equal(hiddenPayroll.count,0,'another owner payroll must not be exported')
+  const ownPayroll=await exportPayroll(db,employee,new URLSearchParams({q:code}))
+  assert.equal(ownPayroll.count,1,'owner must retain access to their own payroll')
+  assert.match(ownPayroll.csv,/100\.20/,'payroll export preserves the exact net amount')
   checks.push('seven personnel/finance kinds, payment replay, exact payroll, clearance and supplier balance limits')
   // Remaining receipt/refund/commission checks continue below.
   stage='receivables'

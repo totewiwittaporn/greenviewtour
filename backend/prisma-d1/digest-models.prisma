@@ -1,0 +1,22 @@
+// Local staff daily digest outbox; provider acceptance is not receipt.
+model StaffDailyDigest {
+ id String @id
+ retryKey String @unique
+ sourceId String?
+ userId String
+ serviceDate DateTime
+ channelKey String
+ mode String
+ revision Int
+ contentHash String
+ bindingVersion Int
+ payload Json
+ status String
+ attempts Int @default(0)
+ firstAttemptAt DateTime?
+ lastAttemptAt DateTime?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([serviceDate,userId,mode,channelKey,revision])
+ @@index([serviceDate,status])
+}

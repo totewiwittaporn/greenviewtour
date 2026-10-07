@@ -1,3 +1,4 @@
+import {captureRateRevision} from './agent-price-history.js'
 import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {canManageBookingTeam} from '../../../../packages/contracts/access.js'
 import {catalogReadSelect} from './read-models.js'
@@ -67,7 +68,7 @@ export async function saveSettingsRecord(tx,actorId,entity,input){
   if(['company','partners','locations'].includes(entity)){Object.assign(data,englishAddress(data,thaiAreas));data.postalCode=postalCodeFor(data,thaiAreas)||null}
   if(Object.keys(errors).length)throw new AccessError('INVALID_SETTINGS',400)
   const existing=await tx[definition.model].findUnique({where:{id:input.id}})
-  for(const key of ['shortName','printCode','billingMode','billingCycleCount','billingCycleUnit','billingCycleAnchor','creditCount','creditUnit','creditAnchor'])if(existing&&definition.fields.some(f=>f.key===key)&&!Object.hasOwn(input,key))data[key]=existing[key]??null
+  for(const key of ['lineId','instagramUrl','shortName','printCode','billingMode','billingCycleCount','billingCycleUnit','billingCycleAnchor','creditCount','creditUnit','creditAnchor'])if(existing&&definition.fields.some(f=>f.key===key)&&!Object.hasOwn(input,key))data[key]=existing[key]??null
   if(entity==='company'&&['province','district','subdistrict','houseNumber','moo','villageName'].some(key=>(data[key]||'')!==(existing?.[key]||''))&&Object.keys(validateThaiAddress(data,thaiAreas)).length)throw new AccessError('INVALID_SETTINGS',400)
   if(existing&&input.version===0){
    const same=definition.fields.every(f=>f.type==='money' && existing[f.key]!==null && data[f.key]!==null ? Number(existing[f.key])===Number(data[f.key]) : String(existing[f.key]??'')===String(data[f.key]??''))
@@ -105,7 +106,9 @@ export async function saveSettingsRecord(tx,actorId,entity,input){
   if(entity==='vehicles'&&existing&&(data.status==='INACTIVE'||['capacity','kind','totalCapacity','expectedCrew','engineCount','ownership','providerId'].some(key=>String(data[key]??'')!==String(existing[key]??'')))&&await tx.serviceSlot.count({where:{vehicleId:existing.id,status:'ACTIVE'}}))throw new AccessError('SCHEDULE_IN_USE',409)
   if(entity==='partners'&&existing&&data.status==='INACTIVE'&&await tx.operationResource.count({where:{providerId:existing.id,status:'ACTIVE'}}))throw new AccessError('PARTNER_IN_USE',409)
   if(entity==='tours'&&existing&&data.status==='INACTIVE'&&await tx.agentTourPrice.count({where:{tourId:existing.id,status:'ACTIVE'}}))throw new AccessError('TOUR_IN_USE',409)
+  if(entity==='rates'&&existing)await captureRateRevision(tx,existing,actorId,{origin:'LEGACY_CAPTURE'})
   const row=existing?await tx[definition.model].update({where:{id:input.id},data:{...data,version:{increment:1}}}):await tx[definition.model].create({data:{...data,id:input.id}})
+  if(entity==='rates')await captureRateRevision(tx,row,actorId,{origin:'RECORDED_REVISION',effectiveFrom:new Date().toISOString()})
   await tx.auditEvent.create({data:{actorId,targetId:row.id,action:`settings.${entity}.${existing?'updated':'created'}`,details:{fields:Object.keys(data),version:row.version}}})
   return{row}
 }

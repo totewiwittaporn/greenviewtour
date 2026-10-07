@@ -1,4 +1,5 @@
 // Build-time schema metadata. This compiler reads no application records.
+import {onboardingSchema} from '../prisma-d1/onboarding-schema.js'
 import {DatabaseSync} from 'node:sqlite'
 import {readFile,writeFile,readdir} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
@@ -6,12 +7,14 @@ import {fileURLToPath} from 'node:url'
 import path from 'node:path'
 const backend=fileURLToPath(new URL('../',import.meta.url))
 const quote=name=>'"'+name.replaceAll('"','""')+'"'
-const source=await readFile(path.join(backend,'prisma/schema.prisma'),'utf8')
+const originalSource=await readFile(path.join(backend,'prisma/schema.prisma'),'utf8')
+const source=onboardingSchema(originalSource)
 const target=await readFile(path.join(backend,'prisma-d1/schema.prisma'),'utf8')
-const hashes={source:createHash('sha256').update(source).digest('hex'),target:createHash('sha256').update(target).digest('hex')}
+const hashes={source:createHash('sha256').update(originalSource).digest('hex'),target:createHash('sha256').update(target).digest('hex')}
 const enums=Object.fromEntries([...source.matchAll(/enum (\w+) \{([\s\S]*?)\n\}/g)].map(([,name,body])=>[name,[...body.matchAll(/^\s*(\w+)\s*$/gm)].map(match=>match[1])]))
 const models={}
-for(const [,name,body] of source.matchAll(/model (\w+) \{([\s\S]*?)\n\}/g)){
+const combined=source.replace('model CompanySettings {','model CompanySettings {\n lineId String?\n instagramUrl String?')+'\n'+await readFile(path.join(backend,'prisma-d1/auth-models.prisma'),'utf8')+'\n'+await readFile(path.join(backend,'prisma-d1/line-models.prisma'),'utf8')+'\n'+await readFile(path.join(backend,'prisma-d1/digest-models.prisma'),'utf8')+'\n'+await readFile(path.join(backend,'prisma-d1/onboarding-models.prisma'),'utf8')
+for(const [,name,body] of combined.matchAll(/model (\w+) \{([\s\S]*?)\n\}/g)){
   const fields={}
   for(const line of body.split('\n')){
     const field=/^\s*(\w+)\s+([\w[\]?]+)(.*)/.exec(line)
@@ -28,7 +31,7 @@ for(const name of (await readdir(path.join(backend,'prisma-d1/migrations'))).fil
 }
 const tables={}
 for(const {name} of db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all()){
-  if(['D1TxnRevision','D1TxnGuard'].includes(name))continue
+  if(['D1TxnRevision','D1TxnGuard','AuthRate'].includes(name))continue
   for(const event of ['insert','update','delete']){
     const trigger=db.prepare("SELECT sql FROM sqlite_master WHERE type='trigger' AND name=? AND tbl_name=?").get(`D1Revision_${name}_${event}`,name)
     if(!trigger?.sql.includes('"D1TxnRevision"'))throw new Error('D1_REVISION_TRIGGER_REQUIRED:'+name+':'+event)
@@ -36,7 +39,7 @@ for(const {name} of db.prepare("SELECT name FROM sqlite_master WHERE type='table
   const columns=db.prepare(`PRAGMA table_info(${quote(name)})`).all()
   const pk=columns.filter(column=>column.pk).sort((a,b)=>a.pk-b.pk).map(column=>column.name)
   const unique=pk.length?[pk]:[]
-  for(const index of db.prepare(`PRAGMA index_list(${quote(name)})`).all())if(index.unique){
+  for(const index of db.prepare(`PRAGMA index_list(${quote(name)})`).all())if(index.unique&&!index.partial){
     const fields=db.prepare(`PRAGMA index_info(${quote(index.name)})`).all().map(column=>column.name)
     if(!unique.some(existing=>JSON.stringify(existing)===JSON.stringify(fields)))unique.push(fields)
   }

@@ -1,4 +1,6 @@
 import {readFile,realpath,lstat} from 'node:fs/promises'
+import {sourceProvenance,sourceFingerprint} from './checkpoint.js'
+import {inspectSourceIdentity} from './identity.js'
 import path from 'node:path'
 import {execFile} from 'node:child_process'
 import {promisify} from 'node:util'
@@ -45,7 +47,8 @@ export async function loadSource(sourcePath,workdir){
   if(hash(dump)!==manifest.archiveSha256)fail('DUMP_MANIFEST_MISMATCH')
   const pgText=await readFile(path.join(root,'backend/prisma/schema.prisma'),'utf8')
   const d1Text=await readFile(path.join(root,'backend/prisma-d1/schema.prisma'),'utf8')
-  const models=schemaModels(pgText),d1Models=schemaModels(d1Text)
+  // The frozen source predates nullable Local contact and legal-name fields; imported rows leave them unset.
+  const models=schemaModels(pgText),d1Models=schemaModels(d1Text.replace('model UserProfile {\n  firstName String?\n  lastName String?','model UserProfile {').replace('model CompanySettings {\n lineId String?\n instagramUrl String?','model CompanySettings {'))
   const copyFile=path.join(workdir,'source-copy.private.sql')
   await run('/opt/homebrew/opt/libpq/bin/pg_restore',['--data-only','--schema=app_private','--file='+copyFile,path.join(parent,'source-database.private.dump')],{env:localEnvironment(),timeout:30000,maxBuffer:1048576})
   await verified('source-database.private.dump')
@@ -100,11 +103,10 @@ export async function loadSource(sourcePath,workdir){
   if(hash(authBytes)!==authRecord.sha256)fail('AUTH_SNAPSHOT_HASH_MISMATCH')
   const authIds=new Set(authBytes.toString().trimEnd().split('\n').filter(Boolean).map(line=>JSON.parse(line).id))
   const profiles=tables.find(table=>table.name==='UserProfile').rows,customers=tables.find(table=>table.name==='CustomerProfile').rows
-  const identity={sourceAuthUsers:authIds.size,staffProfiles:profiles.length,customerProfiles:customers.length,missingStaffAuth:profiles.filter(row=>!authIds.has(row.id)).length,missingCustomerAuth:customers.filter(row=>!authIds.has(row.authUserId)).length,authCredentialsImported:false}
-  identity.readyForAuthCutover=identity.missingStaffAuth===0&&identity.missingCustomerAuth===0
+  const {identity,identityIssues}=inspectSourceIdentity(authIds,profiles,customers)
   // Preserve source orphan profiles unchanged; never invent an Auth account or discard business rows.
-  const fingerprint=hash([hash(manifestBytes),hash(pgText),hash(d1Text)].join(':'))
-  const summary={sourceRef:manifest.sourceRef,sourceSnapshotAt:manifest.completedAt,fingerprint,tables:tables.length,rows:tables.reduce((n,table)=>n+table.rows.length,0),files:files.length,moneyFields:money.length,identity,stats}
-  const identityIssues={staff:profiles.filter(row=>!authIds.has(row.id)).map(row=>({id:row.id,status:row.status})),customers:customers.filter(row=>!authIds.has(row.authUserId)).map(row=>({id:row.id,authUserId:row.authUserId,status:row.status})),action:'PRESERVED_UNCHANGED_AUTH_CUTOVER_BLOCKED'}
+  const provenance=sourceProvenance(manifestBytes,pgText,d1Text),fingerprint=sourceFingerprint(provenance)
+  const summary={sourceRef:manifest.sourceRef,sourceSnapshotAt:manifest.completedAt,fingerprint,provenance,tables:tables.length,rows:tables.reduce((n,table)=>n+table.rows.length,0),files:files.length,moneyFields:money.length,identity,stats}
+
   return {directory,tables,files,money,summary,identityIssues}
 }

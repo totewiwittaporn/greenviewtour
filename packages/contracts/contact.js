@@ -19,5 +19,21 @@ export function validateCompanyContact(input) {
  const errors={}
  if(input.taxId&&!/^\d{13}$/.test(contactValue(input.taxId)))errors.taxId='Enter a 13-digit tax ID.'
  if(input.phone&&!/^\+?\d{7,15}$/.test(contactValue(input.phone)))errors.phone='Enter 7–15 digits, with an optional + country code.'
+ if(input.lineId&&!safeLineId(input.lineId))errors.lineId='Enter a LINE official account ID starting with @.'
+ if(input.instagramUrl&&!safeInstagramUrl(input.instagramUrl))errors.instagramUrl='Enter an HTTPS Instagram profile URL.'
  return errors
+}
+
+// Restrict customer-facing channels to safe profile destinations.
+export function safeLineId(value) {
+ const text=typeof value==='string'?value.trim():''
+ return /^@[a-zA-Z0-9._-]{1,99}$/.test(text)?text:null
+}
+export function safeInstagramUrl(value) {
+ if(typeof value!=='string'||!value.trim())return null
+ try {
+  const url=new URL(value.trim())
+  if(url.protocol!=='https:'||!['instagram.com','www.instagram.com'].includes(url.hostname)||url.username||url.password||url.port||url.search||url.hash||!/^\/[a-zA-Z0-9._]{1,30}\/?$/.test(url.pathname))return null
+  return `https://www.instagram.com/${url.pathname.split('/')[1]}/`
+ } catch {return null}
 }

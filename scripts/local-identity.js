@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto'
 import path from 'node:path'
 import {root,statePath,configPath,localEnvironment} from './local-cloudflare-policy.js'
 import {localPreflight,acquireStateLock} from './local-cloudflare-safety.js'
+import {migratedDirectoryExpected} from './local-import/directory.js'
 const args=process.argv.slice(2),hash=bytes=>createHash('sha256').update(bytes).digest('hex')
 let release,platform,directory
 try{
@@ -33,10 +34,12 @@ try{
   const db=platform.env.DB,existing=(await db.prepare('SELECT id,email,email_confirmed_at,created_at,last_sign_in_at,provider FROM D1Identity ORDER BY id').all()).results
   if(args[0]==='apply'&&!existing.length)await db.batch(rows.map(row=>db.prepare('INSERT INTO D1Identity(id,email,email_confirmed_at,created_at,last_sign_in_at,provider) VALUES(?,?,?,?,?,?)').bind(row.id,row.email,row.email_confirmed_at,row.created_at,row.last_sign_in_at,row.provider)))
   const stored=(await db.prepare('SELECT id,email,email_confirmed_at,created_at,last_sign_in_at,provider FROM D1Identity ORDER BY id').all()).results
-  if(hash(JSON.stringify(stored))!==fingerprint)throw new Error('IDENTITY_DIRECTORY_DIFFERS_NO_OVERWRITE_ALLOWED')
+  const migrated=(await db.prepare('SELECT id,email FROM AuthUser').all()).results
+  const expected=migratedDirectoryExpected(rows,migrated)
+  if(hash(JSON.stringify(stored))!==hash(JSON.stringify(expected)))throw new Error('IDENTITY_DIRECTORY_DIFFERS_NO_OVERWRITE_ALLOWED')
   const staffMissing=(await db.prepare('SELECT COUNT(*) AS n FROM UserProfile p LEFT JOIN D1Identity i ON i.id=p.id WHERE i.id IS NULL').first()).n
-  const customerMissing=(await db.prepare('SELECT COUNT(*) AS n FROM CustomerProfile p LEFT JOIN D1Identity i ON i.id=p.authUserId WHERE i.id IS NULL').first()).n
-  const report={status:'PASS',environment:'local',rows:stored.length,fingerprint,staffMissing,customerMissing,passwordsImported:false,sessionsImported:false,sourceModified:false}
+  const customerMissing=(await db.prepare('SELECT COUNT(*) AS n FROM CustomerProfile p LEFT JOIN D1Identity i ON i.id=p.authUserId WHERE p.authUserId IS NOT NULL AND i.id IS NULL').first()).n
+  const report={status:'PASS',environment:'local',rows:stored.length,fingerprint,providerLabelsVerified:true,migratedAccounts:migrated.length,staffMissing,customerMissing,passwordsImported:false,sessionsImported:false,sourceModified:false}
   await writeFile(path.join(directory,'result.json'),JSON.stringify(report,null,2),{mode:0o600})
   console.log('LOCAL_IDENTITY_DIRECTORY_PASS',JSON.stringify(report))
  }

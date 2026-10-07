@@ -8,7 +8,7 @@ const addDay = (day, n) => new Date(+dateOnly(day) + n * 86400000).toISOString()
 const key = date => date ? new Date(date).toISOString().slice(0, 10) : null
 const unfinished = new Set(['DRAFT', 'REJECTED', 'PENDING', 'SUBMITTED', 'APPROVED', 'ISSUED', 'DONE'])
 const live = assignment => assignment.status !== 'CANCELLED' && ['CONFIRMED', 'COMPLETED'].includes(assignment.bookingLine.booking.status)
-const crewInclude = { include: { user: { select: { displayName: true } } } }
+const crewInclude = { select: { userId:true, role:true, user: { select: { displayName: true } } } }
 const runInclude = {
  slot: { select: { startsAt:true,vehicle:{select:{name:true,registration:true}} } }, staff: crewInclude,
  assignments: { select: { status:true,adults:true,children:true,dropoffPoint:true,bookingLine:{select:{booking:{select:{status:true,pickupPoint:true,dropoffPoint:true}}}} } },
@@ -33,7 +33,7 @@ export function projectWorkRun(run, href, prepare = false) {
   direction: run.direction, date, startsAt: run.slot.startsAt, capacity: run.capacity,
   vehicle: run.slot.vehicle?.name || null, registration: run.slot.vehicle?.registration || null,
   passengers: assignments.reduce((n, item) => n + item.adults + item.children, 0),
-  crew: run.staff.map(s => ({ role: s.role, name: s.user.displayName })),
+  crew: run.staff.map(s => ({ userId: s.userId, role: s.role, name: s.user.displayName })),
   href: `${href}?date=${date}&runId=${encodeURIComponent(run.id)}`,
  }
  if (run.kind === 'VEHICLE') row.stops = [...new Set(assignments.map(a => run.direction === 'OUTBOUND'
@@ -45,7 +45,7 @@ async function runSection(tx, source, days, allowed) {
  const prepare = source.base.kind === 'BOAT' && (allowed('operations.prepareStock') || allowed('operations.stock'))
  const range = { gte: new Date(days[0] + 'T00:00:00+07:00'), lt: new Date(addDay(days[0], 2) + 'T00:00:00+07:00') }
  const rows = await tx.dispatchRun.findMany({ where: { AND: [source.base, { status: { not: 'CANCELLED' }, slot: { startsAt: range } }] },
-  include: prepare ? { ...preparationInclude, staff: crewInclude } : runInclude,
+  select: { id:true, code:true, name:true, status:true, kind:true, direction:true, capacity:true, ...(prepare ? { ...preparationInclude, staff: crewInclude } : runInclude) },
   orderBy: [{ slot: { startsAt: 'asc' } }, { id: 'asc' }],
  })
  const projected = rows.map(row => projectWorkRun(row, source.href, prepare))

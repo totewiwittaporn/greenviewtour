@@ -29,12 +29,12 @@ export function Shell({ children, user, onLogout, signingOut, canReadUsers, logo
     setResults(links.filter(link => link.textContent.toLocaleLowerCase().includes(value.trim().toLocaleLowerCase())).map(link => ({href: link.getAttribute('href'), label: link.textContent})))
     setSearchOpen(Boolean(value.trim()))
   }
-  const brand = <a className="reference-brand" href="/dashboard"><img src="/images/brand/greenview-logo.png" alt="Greenview Tour" /></a>
+  const brand = <a className="reference-brand" href="/dashboard"><img src="/images/brand/greenview-logo.webp" alt="Greenview Tour" /></a>
   const toggle = <button type="button" className="icon-button menu-toggle" aria-label={t('Toggle navigation')} aria-controls="workspace-navigation" aria-expanded={open} onClick={() => setOpen(!open)}><Icon name="menu" /></button>
   return <div className="workspace workspace-refined workspace-reference"><a className="skip-link" href="#main">{t('Skip to content')}</a>
     <aside ref={sidebar} className={`sidebar ${open ? 'is-open' : ''}`} id="workspace-navigation" onClick={event => { if (event.target.closest('a[href]')) setOpen(false) }} onKeyDown={event => { if (event.key === 'Escape') { setOpen(false); document.querySelector('.menu-toggle')?.focus() } }}>
       <WorkspaceNavigation user={user} canReadUsers={canReadUsers} pageTitle={pageTitle}/>
-      {<div className="reference-sidebar-card"><span>{t(roleLabel)}</span><img src="/images/dashboard/island-hero.png" alt="" /><p>{persona === 'programmer' ? 'Keep The System Running' : 'More Happy Customers'}<small>{persona === 'programmer' ? 'For Better Journeys' : 'A Brighter Tomorrow'}</small></p></div>}
+      {<div className="reference-sidebar-card"><span>{t(roleLabel)}</span><img src="/images/dashboard/island-hero.webp" alt="" /><p>{persona === 'programmer' ? 'Keep The System Running' : 'More Happy Customers'}<small>{persona === 'programmer' ? 'For Better Journeys' : 'A Brighter Tomorrow'}</small></p></div>}
     </aside>
     <div className="workspace-body"><header className="topbar">
       <div className="reference-brand-wrap">{toggle}{brand}</div>
@@ -47,7 +47,7 @@ export function Shell({ children, user, onLogout, signingOut, canReadUsers, logo
         {<button type="button" className="icon-button workspace-notifications" aria-label={t('Notifications')} title={t('Notifications')} onClick={() => setNotificationsOpen(true)}><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a2 2 0 0 1 2 2v.3a7 7 0 0 1 5 6.7v4l2 3H3l2-3v-4a7 7 0 0 1 5-6.7V4a2 2 0 0 1 2-2m-3 18h6a3 3 0 0 1-6 0" /></svg></button>}
         <button type="button" className="icon-button workspace-help" aria-label={t('Dashboard help')} title={t('Dashboard help')} onClick={() => setHelpOpen(true)}><span aria-hidden="true">?</span></button>
         {user && <div className="account-menu"><UserInfo user={user} onEdit={onEditProfile} onLogout={onLogout} signingOut={signingOut} subtitle={t(roleLabel)} /></div>}
-      </div></header><main id="main" tabIndex={-1}><div className="workspace-page">{children}{logoutError && <p className="workspace-notice" role="alert">{t(logoutError)}</p>}</div><footer className="workspace-footer">{<>{brand}<span>{persona === 'programmer' ? '“ Stable System · Happy Team · Better Journeys ”' : '“ Clear Data · Better Decisions · Greater Journeys ”'}</span></>}</footer></main></div>
+      </div></header><main id="main" tabIndex={-1}><div className="workspace-page">{children}{logoutError && <p className="workspace-notice" role="alert">{t(logoutError)}</p>}</div><footer className="workspace-footer">{<><span>{persona === 'programmer' ? '“ Stable System · Happy Team · Better Journeys ”' : '“ Clear Data · Better Decisions · Greater Journeys ”'}</span></>}</footer></main></div>
     {notificationsOpen && <NotificationInbox onClose={()=>setNotificationsOpen(false)}/>}
     {helpOpen && <Dialog title={t('Dashboard help')} onClose={() => setHelpOpen(false)}><div className="workspace-help-copy"><p>{t('Dashboard shows the work and summaries your account is allowed to access.')}</p><p>{t('Use the navigation to change work areas. Your profile, language and sign-out options are in the user menu.')}</p><a className="button" href="/manuals" onClick={()=>setHelpOpen(false)}>{t('User guides')}</a></div></Dialog>}
   </div>

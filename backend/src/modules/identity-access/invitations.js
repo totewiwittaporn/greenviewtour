@@ -22,16 +22,15 @@ export function assertDeliverableInvitationEmail(email) {
   if (domain === 'localhost' || domain === 'local' || domain?.endsWith('.local')) throw new AccessError('INVITATION_EMAIL_UNDELIVERABLE', 400)
 }
 export function validateInvitation(input, actor) {
-  if (!input || Object.keys(input).some(key => !['email', 'displayName', 'department', 'roleCode'].includes(key))) throw new AccessError('INVALID_INVITATION_FIELDS', 400)
+  if (!input || Object.keys(input).some(key => !['email', 'department', 'roleCode'].includes(key))) throw new AccessError('INVALID_INVITATION_FIELDS', 400)
   if (!canInvite(actor)) throw new AccessError('PERMISSION_DENIED')
   if (!invitationRoles(actor).some(role => role.code === input.roleCode)) throw new AccessError('ROLE_ASSIGNMENT_DENIED')
   const email = normalizeEmail(input.email)
   assertDeliverableInvitationEmail(email)
-  if (typeof input.displayName !== 'string' || !input.displayName.trim() || input.displayName.trim().length > 100) throw new AccessError('INVALID_DISPLAY_NAME', 400)
   if (!departments.includes(input.department)) throw new AccessError('INVALID_DEPARTMENT', 400)
   const roleDepartment = { MANAGER: 'MANAGEMENT', HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER', HEAD_HOUSEKEEPING: 'HOUSEKEEPING' }[input.roleCode]
   if (roleDepartment && roleDepartment !== input.department) throw new AccessError('ROLE_DEPARTMENT_MISMATCH', 400)
-  return { email, displayName: input.displayName.trim(), department: input.department, roleCode: input.roleCode }
+  return { email, department: input.department, roleCode: input.roleCode }
 }
 const publicInvite = item => ({ id: item.id, email: item.email, displayName: item.displayName, department: item.department, expiresAt: item.expiresAt, createdAt: item.createdAt,
   status: item.consumedAt ? 'Joined' : item.revokedAt ? 'Revoked' : item.expiresAt <= new Date() ? 'Expired' : item.acceptedAt ? 'Awaiting activation' : 'Pending', roles: item.roles.map(role => role.roleCode) })
@@ -54,7 +53,9 @@ export async function listInvitations(prisma, actorId, params = new URLSearchPar
     ])
     const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / pageSize)))
     const rows = await tx.invitation.findMany({ where, include: { roles: true }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: pageSize, skip: (page - 1) * pageSize })
-    return { invitations: rows.map(publicInvite), total, page, pageSize, summary: { total: all, awaiting, joined, inactive: all - awaiting - joined }, roles: invitationRoles(actor), departments }
+    const progress=await tx.employeeOnboarding.findMany({where:{invitationId:{in:rows.map(row=>row.id)}},select:{invitationId:true,emailVerifiedAt:true,profileCompletedAt:true,passwordSetAt:true,completedAt:true}})
+    const byId=new Map(progress.map(row=>[row.invitationId,row]))
+    return { invitations: rows.map(row=>{const item=byId.get(row.id);return {...publicInvite(row),onboardingState:row.consumedAt?'ACTIVE':item?.passwordSetAt?'PASSWORD_SET':item?.profileCompletedAt?'PROFILE_COMPLETED':item?.emailVerifiedAt?'EMAIL_VERIFIED':'INVITED'}}), total, page, pageSize, summary: { total: all, awaiting, joined, inactive: all - awaiting - joined }, roles: invitationRoles(actor), departments }
   }, { isolationLevel: 'RepeatableRead' })
 }
 export async function createInvitation(prisma, actorId, input) {
@@ -66,7 +67,7 @@ export async function createInvitation(prisma, actorId, input) {
     if (existing.length) throw new AccessError('ACCOUNT_ALREADY_EXISTS', 409)
     if (await tx.invitation.findUnique({ where: { email: data.email } })) throw new AccessError('INVITATION_ALREADY_EXISTS', 409)
     const code = randomBytes(32).toString('hex')
-    const invitation = await tx.invitation.create({ data: { email: data.email, displayName: data.displayName, department: data.department, createdById: actorId, tokenHash: hashToken(code), expiresAt: new Date(Date.now() + ttl), roles: { create: { roleCode: data.roleCode, scope: data.roleCode === 'MANAGER' ? 'COMPANY' : 'SELF' } } }, include: { roles: true } })
+    const invitation = await tx.invitation.create({ data: { email: data.email, displayName: data.email.slice(0,100), department: data.department, createdById: actorId, tokenHash: hashToken(code), expiresAt: new Date(Date.now() + ttl), roles: { create: { roleCode: data.roleCode, scope: data.roleCode === 'MANAGER' ? 'COMPANY' : 'SELF' } } }, include: { roles: true } })
     await tx.auditEvent.create({ data: { actorId, targetId: invitation.id, action: 'invitation.created', details: { email: data.email, roleCode: data.roleCode, department: data.department } } })
     return { invitation: publicInvite(invitation), invitationCode: code }
   })
@@ -95,6 +96,7 @@ export async function lookupInvitation(prisma, code) {
 }
 async function registerInvitedUser(prisma, provider, code, password) {
   const invitation = await lookupInvitation(prisma, code)
+  if (invitation.createdById) throw new AccessError('ONBOARDING_REQUIRED', 403)
   if (invitation.acceptedAt) throw new AccessError('INVITATION_ALREADY_SUBMITTED', 409)
   assertDeliverableInvitationEmail(invitation.email)
   const result = await provider.register(invitation.email, password)

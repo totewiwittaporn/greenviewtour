@@ -11,6 +11,7 @@ try {
   const user = { id: 'fixture', displayName: 'Fixture Manager', email: 'fixture@example.invalid', status: 'ACTIVE', department: 'MANAGEMENT', roles: [{ code: 'MANAGER', name: 'Manager', scope: 'COMPANY' }], management: { company: true }, updatedAt: new Date().toISOString(), createdAt: '2026-09-01T00:00:00Z', primaryPhone: '+66 81 234 5678', emergencyPhone: '089 876 5432', lineId: 'fixture.line', address: '1 Beach Road\nKrabi' }
   let patch, passwordPatch, fail = 409, wrongPassword = true
   await page.route('**/api/me', r => r.fulfill({ json: { user } }))
+  await page.route(/\/api\/me\/line(?:\?.*)?$/,route=>{assert.equal(route.request().method(),'GET');return route.fulfill({json:{"oa":{"name":"Greenview Staff","basicId":"@335bydey"},"available":false,"mode":"disabled","reason":"LINE_LOCAL_ONLY","status":"UNLINKED","version":0,"displayName":null,"linkedAt":null,"pendingUntil":null,"lastAttempt":null,"notificationDeliveryEnabled":false}})})
   await page.route('**/api/me/profile', r => {
     patch = r.request().postDataJSON()
     if (fail) return r.fulfill({ status: fail, json: { code: fail === 409 ? 'PROFILE_CONFLICT' : 'SERVICE_UNAVAILABLE' } })

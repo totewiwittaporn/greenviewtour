@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { databaseConfig, PREVIEW_PROJECT_REF } from '../src/platform/database/config.js'
-import { checkDatabase } from '../src/platform/database/pool.js'
+import { databaseConfig, PREVIEW_PROJECT_REF } from './helpers/legacy-database-config.js'
+import { checkDatabase } from './helpers/legacy-database-health.js'
 
 const base = {
   APP_ENV: 'preview', SUPABASE_PROJECT_REF: PREVIEW_PROJECT_REF,

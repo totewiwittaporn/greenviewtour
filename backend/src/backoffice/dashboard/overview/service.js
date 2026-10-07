@@ -1,3 +1,4 @@
+import {isD1OwnerPage} from './owner-read.js'
 import {cashSummary} from './cash-summary.js'
 import {apiStatus} from '../../../platform/monitoring/api-status.js'
 import {scalarArrayWhere} from '../../../platform/database/scalar-array.js'
@@ -44,14 +45,17 @@ export function dashboardScope(actor) {
  return { company: Boolean(isManager(actor) && management?.company), department }
 }
 
+const ownerOverview=now=>({today:thailandDay(now),timezone:'Asia/Bangkok',generatedAt:now.toISOString(),scope:'Company',systemOverview:apiStatus(now),widgets:[],calendar:null,managementOverview:null,workOverview:null})
+
 // Counts are computed over complete authorized sets, never a paginated list response.
 export async function dashboardOverview(prisma, actorId, now = new Date(), {surface='legacy'} = {}) {
+ if(surface==='page'&&await isD1OwnerPage(prisma,actorId))return ownerOverview(now)
  return readTransaction(prisma,async tx => {
   const actor = await tx.userProfile.findUnique({ where: { id: actorId }, select: accessProfileSelect })
   const scope = dashboardScope(actor), allowed = code => effectiveAccess(actor, code, { now }).allowed
   const today = thailandDay(now), end = addDays(today, 14), date = dateOnly(today)
   const pageMode=surface==='page', pageManager=pageMode&&scope.company
-  if(pageMode&&actor.roles.some(role=>role.roleCode==='ADMIN_MANAGER'&&role.scope==='COMPANY'))return {today,timezone:'Asia/Bangkok',generatedAt:now.toISOString(),scope:'Company',systemOverview:apiStatus(now),widgets:[],calendar:null,managementOverview:null,workOverview:null}
+  if(pageMode&&actor.roles.some(role=>role.roleCode==='ADMIN_MANAGER'&&role.scope==='COMPANY'))return ownerOverview(now)
   const gmWidgetIds=new Set(['guide','driver','guide-crew','driver-crew','guide-allocation','driver-allocation'])
   const bookingRole=actor.roles.some(g=>['SELF','COMPANY'].includes(g.scope)&&['BOOKING','HEAD_BOOKING'].includes(g.roleCode||g.code))
   if(!scope.company&&bookingRole&&allowed('operations.booking')&&allowed('operations.islandBooking'))return {today,through:addDays(today,29),timezone:'Asia/Bangkok',generatedAt:now.toISOString(),bookingOverview:await bookingSummary(tx,actor,today,customerCalendar,{lean:pageMode})}

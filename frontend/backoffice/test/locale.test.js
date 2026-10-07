@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {activateLocale, translate, translateLabel, readLocale, formatDate, formatNumber} from '../src/core/i18n/runtime.js'
-import {catalog, labelFor} from '../../../packages/contracts/catalog.js'
+import {catalog, labelFor, validateCatalog} from '../../../packages/contracts/catalog.js'
 import {workDefinitions, workStatusNames} from '../../../packages/contracts/company-work.js'
 import {personnelFinanceKinds} from '../../../packages/contracts/personnel-finance.js'
 import {accessDefinitions, roleNames} from '../../../packages/contracts/access.js'
@@ -58,4 +58,13 @@ test('Thai headings retain English terms without expanding body copy or business
  assert.equal(translateLabel('Greenview Tour', {}, 'th'), 'Greenview Tour')
  assert.equal(translateLabel('ชื่อทัวร์จากพนักงาน', {}, 'th'), 'ชื่อทัวร์จากพนักงาน')
  assert.equal(translateLabel('ภาพรวมงาน / Dashboard', {}, 'th'), 'ภาพรวมงาน / Dashboard')
+})
+
+test('consumable unit labels localize without changing persisted values',()=>{
+ const labels={BOTTLE:'ขวด',FRUIT:'ลูก',PIECE:'ชิ้น',SACK:'กระสอบ',TIN:'ปี๊บ',BUCKET:'ถัง'}
+ for(const [unit,thai] of Object.entries(labels)){
+  assert.equal(translate(labelFor(unit),{},'th'),thai)
+  assert.equal(translate(labelFor(unit),{},'en'),labelFor(unit))
+  assert.equal(validateCatalog('consumables',{code:'UNIT',name:'Unit',status:'INACTIVE',category:'OTHER',baseUnit:unit}).data.baseUnit,unit)
+ }
 })

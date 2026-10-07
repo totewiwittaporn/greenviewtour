@@ -1,3 +1,4 @@
+import CompanyContactProvider from '../features/company/CompanyContactProvider.jsx'
 import {useEffect} from 'react'
 import {useLocale} from '../core/useLocale.js'
 import {useNavigation} from '../core/useNavigation.js'
@@ -7,6 +8,7 @@ import HomePage from '../features/home/HomePage.jsx'
 import Catalog from '../features/catalog/Catalog.jsx'
 import Popup from '../features/catalog/Popup.jsx'
 import ContentPage from '../features/content/ContentPage.jsx'
+import InformationPage from '../features/content/InformationPage.jsx'
 import {publicInfo} from '../core/publicRoutes.js'
 
 export default function App() {
@@ -22,13 +24,13 @@ export default function App() {
     document.head.appendChild(meta)
     return()=>meta.remove()
   },[locale,route.pathname,route.search])
-  return <>
+  return <CompanyContactProvider>
     <a className="skip-link" href="#content">{label('ข้ามไปเนื้อหา')}</a>
     <SiteHeader/>
-    {publicInfo(route.pathname) ? <ContentPage key={route.pathname} pathname={route.pathname} hash={route.hash}/> : ['/tours', '/promotions'].includes(route.pathname)
+    {route.pathname==='/information' ? <InformationPage/> : publicInfo(route.pathname) ? <ContentPage key={route.pathname} pathname={route.pathname} hash={route.hash}/> : ['/tours', '/promotions'].includes(route.pathname)
       ? <Catalog key={route.pathname + route.search} pathname={route.pathname} search={route.search}/>
       : <HomePage/>}
     <SiteFooter/>
     <Popup/>
-  </>
+  </CompanyContactProvider>
 }

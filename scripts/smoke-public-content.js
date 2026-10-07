@@ -38,7 +38,8 @@ try {
   await page.locator('h1').waitFor()
   await page.evaluate(() => { window.contentShell = [document.querySelector('.site-header'), document.querySelector('.public-footer')] })
   const before = documentReads
-  await page.locator('.public-main-nav a[href="/about"]').click()
+  await page.locator('.public-main-nav a[href="/information"]').click()
+  await page.locator('.information-grid a[href="/about"]').first().click()
   await page.waitForURL(origin + '/about')
   assert.equal(documentReads, before)
   assert.equal(await page.evaluate(() => window.contentShell[0] === document.querySelector('.site-header') && window.contentShell[1] === document.querySelector('.public-footer')), true)
@@ -69,7 +70,7 @@ try {
   assert.equal(await page.locator('#request-confirmation').getAttribute('open'), '')
   await language('th')
   assert.equal(await page.locator('#request-confirmation').getAttribute('open'), '')
-  assert.match(await page.locator('#request-confirmation').innerText(), /ยังไม่เท่ากัน/)
+  assert.match(await page.locator('#request-confirmation').innerText(), /ยังไม่ใช่การยืนยันการจอง/)
   await page.locator('.editorial-sidebar a[href="#group-size"]').click()
   assert.equal(await page.locator('#group-size').getAttribute('open'), '')
   await page.waitForFunction(() => document.activeElement?.id === 'group-size')
@@ -84,7 +85,7 @@ try {
   await page.locator('#company [role="alert"]').waitFor()
   assert.equal(await page.locator('#company a').count(), 0)
   mode = 'ready'
-  await page.locator('#company button').click()
+  await page.locator('#company button').filter({hasText: /ลองอีกครั้ง|Try again/}).click()
   await page.locator('#company h3').waitFor()
   assert.equal(await page.locator('#company h3').innerText(), company.name)
   for (const state of ['empty', 'unsafe']) {
@@ -100,7 +101,8 @@ try {
   await page.locator('#company h3').waitFor()
   await page.screenshot({path: join(evidence, 'contact-mobile.png'), fullPage: true})
   await page.locator('.public-menu-toggle').click()
-  await page.locator('.public-main-nav a[href="/about"]').click()
+  await page.locator('.public-main-nav a[href="/information"]').click()
+  await page.locator('.information-grid a[href="/about"]').first().click()
   await page.waitForURL(origin + '/about')
   assert.equal(await page.locator('.public-menu-toggle').getAttribute('aria-expanded'), 'false')
   assert.deepEqual(errors, []); assert.deepEqual(unexpected, [])

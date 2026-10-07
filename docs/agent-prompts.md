@@ -10,6 +10,6 @@ Work in Greenview Tour at [repository/branch/revision]. Outcome: [observable cha
 
 Audit Greenview Tour changes against [base revision] for [acceptance criteria]. Inspect actual implementation and [relevant domain sources], then apply the audit-only stage in [agent-workflow.md](agent-workflow.md). Report actionable findings with file/line evidence, checks performed and coverage limits. Implementation claims and historical reports are inputs to verify, not proof. Editing authority: [audit only / fixes authorized].
 
-## Preview handoff
+## Local handoff
 
-Greenview Tour revision: [revision plus uncommitted diff, if any]. Outcome: [what changed]. Verification: [commands/results and environment]. Mint review: [findings resolved or remaining]. Preview target and allowed next action: [target/scope]. Apply the Preview criteria in [agent-workflow.md](agent-workflow.md); report local and live Preview evidence separately. Outstanding blockers: [specific items or none]. Production is outside this handoff.
+Greenview Tour revision: [revision and uncommitted changes]. Outcome: [observable change]. Verification: [commands/results; unit, fixture and real Local layers]. Mint review: [resolved findings]. Follow the Local criteria in [agent-workflow.md](agent-workflow.md). Preserve existing state and backups. Do not use/create hosted Preview or create/deploy Production. Outstanding blockers: [specific findings or none].

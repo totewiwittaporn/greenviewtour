@@ -24,6 +24,17 @@ const profiles=await prisma.userProfile.findMany({where:{status:'ACTIVE'},includ
   await create('locations',{code:`${prefix}-H`,name:'Rollback hotel',province:'ภูเก็ต',district:'เมืองภูเก็ต',subdistrict:'ราไวย์',houseNumber:'12',latitude:'7.88',longitude:'98.39'})
   await create('vehicles',{code:`${prefix}-V`,name:'Rollback van',capacity:'10',ownership:'PARTNER',providerId:partner.id})
   await create('channels',{code:`${prefix}-W`,name:'Rollback walk-in'})
+  const season=await create('seasons',{code:`${prefix}-S`,name:'Rollback season',tourId:tour.id,startsOn:'2026-10-15',endsOn:'2027-05-15',onlineStartsOn:'2026-10-15',onlineEndsOn:'2027-05-15',bookingStartsOn:'2026-10-01',bookingEndsOn:'2027-05-14',cutoffDays:'1'})
+  const promotion=await create('promotions',{code:`${prefix}-P`,name:'Rollback promotion',tourId:tour.id,adultPrice:'1400.00',startsOn:'2026-10-01',endsOn:'2026-10-31',serviceStartsOn:'2026-10-15',serviceEndsOn:'2026-10-31'})
+  const popup=await create('popups',{code:`${prefix}-POP`,name:'Rollback popup',imageUrl:'https://example.invalid/local-popup.jpg',imageAlt:'Local popup fixture',title:'Local announcement',startsOn:'2026-10-01',endsOn:'2026-10-31',frequency:'SESSION',priority:'1'})
+  stage='season promotion popup CRUD and permissions'
+  for(const [entity,row] of [['seasons',season],['promotions',promotion],['popups',popup]]){
+    const detail=await listSettings(db,actor.id,entity,new URLSearchParams(`recordId=${row.id}`))
+    assert.equal(detail.rows[0].id,row.id)
+    const edited=(await saveSettings(db,actor.id,entity,{...initialValues(entity,detail.rows[0]),id:row.id,version:row.version,name:row.name+' edited'})).row
+    assert.equal(edited.name,row.name+' edited')
+    await assert.rejects(()=>listSettings(db,randomUUID(),entity,new URLSearchParams()),{code:'PERMISSION_DENIED'})
+  }
   if(before.companySettings===0)await create('company',{name:'Rollback company'})
   const company=(await tx.companySettings.findMany({take:1}))[0]
   const companySaved=await saveSettings(db,actor.id,'company',{...initialValues('company',company),id:company.id,version:company.version,province:'ภูเก็ต',district:'เมืองภูเก็ต',subdistrict:'ราไวย์',postalCode:'99999',phone:'0812345678'})
@@ -64,7 +75,7 @@ const profiles=await prisma.userProfile.findMany({where:{status:'ACTIVE'},includ
   const version=saved.tour.version
   await assert.rejects(()=>saveTourEditor(prisma,actor.id,tour.id,{...payload,program:{...payload.program,version},content:{...payload.content,en:{...payload.content.en,name:'Should not commit'}},media:[{invalid:'reject'}]}))
   assert.equal((await readTourEditor(prisma,actor.id,tour.id)).content.en.name,payload.content.en.name)
-  return {checks:['settings CRUD across seven catalog entities','Thai/English structured addresses and postal-code derivation','per-agent exact prices, null versus zero and unique constraints','stale edit/invalid dependency cannot alter existing records','TH/EN tour editor transaction and content/audit parity']}
+  return {checks:['settings CRUD across ten catalog entities including seasons, promotions and website pop-ups','Thai/English structured addresses and postal-code derivation','per-agent exact prices, null versus zero and unique constraints','stale edit/invalid dependency cannot alter existing records','TH/EN tour editor transaction and content/audit parity']}
 
 }catch(error){console.error('CATALOG_D1_FAILED',stage,error);throw Object.assign(error,{stage})}
 finally{await prisma.$disconnect()}

@@ -1,5 +1,18 @@
 import {publicInfo, normalizePublicPath} from './publicRoutes.js'
 export const messages = {
+  "ติดต่อทีมงาน": "Contact our team",
+  "ปิดหน้าต่างติดต่อ": "Close contact dialog",
+  "เลือกช่องทางติดต่อและส่งข้อความสอบถามให้ทีมงาน": "Choose a contact channel and send your enquiry to our team.",
+  "ข้อความสอบถาม": "Inquiry message",
+  "คัดลอกข้อความสอบถาม": "Copy inquiry message",
+  "คัดลอกแล้ว นำไปวางในแชตกับทีมงานได้เลย": "Copied. Paste it into your chat with our team.",
+  "คัดลอกอัตโนมัติไม่ได้ กรุณาคัดลอกข้อความที่เลือกไว้ด้วยตนเอง": "Automatic copy failed. Please copy the selected message manually.",
+  "การสอบถามยังไม่ใช่การยืนยันการจอง": "An enquiry is not a confirmed booking.",
+  "เลือกวันและสอบถามทีมงาน": "Choose your dates and contact our team.",
+
+  'ข้อมูลการท่องเที่ยว':'Information',
+  'รู้จักเรา รู้จักสุรินทร์ และเตรียมตัวก่อนออกเดินทาง':'Meet Greenview, discover Surin, and plan your visit.',
+  'อ่านเพิ่มเติม':'Read more',
   "เที่ยวหมู่เกาะสุรินทร์กับ Greenview Tour": "Explore the Surin Islands with Greenview Tour",
   "สัมผัสทะเลสวย น้ำใส ธรรมชาติอุดมสมบูรณ์ ออกเดินทางจากคุระบุรี": "Discover clear seas and island nature, departing from Khura Buri.",
   "ดูโปรแกรมทัวร์": "View tours",

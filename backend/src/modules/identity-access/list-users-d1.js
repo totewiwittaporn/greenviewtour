@@ -4,10 +4,11 @@ import {addressKeys} from '../../../../packages/contracts/address.js'
 import {readTransaction} from '../../platform/database/read-transaction.js'
 import {reportRows} from '../../platform/database/sql-dialect.js'
 // The caller passes an already-authorized company or department scope.
-export async function listD1Users(db,{search='',page=1,pageSize=25,department=null,view='detail',recordId=null}={}){
+export async function listD1Users(db,{search='',page=1,pageSize=25,department=null,view='detail',recordId=null,visibility}={}){
+ if(!visibility?.actorId||!visibility.allowedRoleCodes?.length)throw new AccessError('PERMISSION_DENIED')
  return readTransaction(db,async tx=>{
   const from=Prisma.sql`FROM "D1Identity" u JOIN "UserProfile" p ON p.id=u.id`
-  const scope=Prisma.sql`(${department} IS NULL OR p.department=${department})`
+  const scope=Prisma.sql`(${department} IS NULL OR p.department=${department}) AND (p.id=${visibility.actorId} OR ((${visibility.department} IS NULL OR p.department=${visibility.department}) AND EXISTS (SELECT 1 FROM "UserRole" vr WHERE vr."userId"=p.id) AND NOT EXISTS (SELECT 1 FROM "UserRole" vr WHERE vr."userId"=p.id AND vr."roleCode" NOT IN (${Prisma.join(visibility.allowedRoleCodes)}))))`
   const basic=Prisma.raw('u.id,u.email,u.email_confirmed_at,u.created_at,u.last_sign_in_at,p."displayName",p.nickname,p.department,p.status,p."updatedAt",p."primaryPhone",p."emergencyPhone"')
   const contacts=Prisma.raw(`p.address,p."lineId",${addressKeys.map(key=>`p."${key}"`).join(',')}`)
   const roles=Prisma.raw(`COALESCE((SELECT json_group_array(json_object('roleCode',r."roleCode",'scope',r.scope)) FROM "UserRole" r WHERE r."userId"=p.id),'[]') AS roles`)

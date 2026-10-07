@@ -1,3 +1,4 @@
+import {userVisibilityWhere} from '../identity-access/user-visibility.js'
 import {acquireWriteLock} from '../../platform/database/write-lock.js'
 import {validateAgentRefund} from './agent-refund.js'
 import {validateCommission} from './booking-commission.js'
@@ -56,6 +57,7 @@ async function readPersonnelFinance(prisma,actorId,params){
   if(lookup==='bookings'){if(kind!=='BOOKING_COMMISSION')fail('INVALID_LOOKUP',400);const where={status:'COMPLETED',...(q?{OR:[{code:{contains:q,mode:'insensitive'}},{name:{contains:q,mode:'insensitive'}}]}:{})};const total=await prisma.tourBooking.count({where});const rows=await prisma.tourBooking.findMany({where,select:{id:true,code:true,name:true},orderBy:{code:'asc'},take:25,skip:(page-1)*25});return {rows:rows.map(row=>({id:row.id,name:row.code+' · '+row.name})),total,page,pages:Math.max(1,Math.ceil(total/25))}}
   const model=lookup==='employees'?'userProfile':lookup==='runs'?'dispatchRun':'purchaseOrder',field=lookup==='employees'?'displayName':'name'
   const where={status:lookup==='employees'?'ACTIVE':lookup==='runs'?'OPEN':{in:['PART_RECEIVED','RECEIVED']},...(q?{[field]:{contains:q,mode:'insensitive'}}:{})}
+  if(lookup==='employees'){const actor=await prisma.userProfile.findUnique({where:{id:actorId},select:accessProfileSelect});where.AND=[userVisibilityWhere(actor)]}
   const total=await prisma[model].count({where});const rows=await prisma[model].findMany({where,select:{id:true,[field]:true},orderBy:{[field]:'asc'},take:25,skip:(page-1)*25})
   return {rows:rows.map(row=>({id:row.id,name:row[field]})),total,page,pages:Math.max(1,Math.ceil(total/25))}
  }
@@ -145,7 +147,9 @@ export async function exportPayroll(prisma,actorId,params){
  await personnelFinancePermission(prisma,actorId,'PAYROLL')
  const q=(params.get('q')||'').trim().slice(0,100),status=params.get('status')||''
  if(status&&!['DRAFT','SUBMITTED','APPROVED','REJECTED','PAID','CANCELLED'].includes(status))fail('INVALID_STATUS',400)
+ const hiddenOwners=await prisma.userProfile.findMany({where:{id:{not:actorId},roles:{some:{roleCode:'ADMIN_MANAGER'}}},select:{id:true}})
  const where={kind:'PAYROLL',...(q?{title:{contains:q,mode:'insensitive'}}:{}),...(status?{status}:{})}
+ if(hiddenOwners.length)where.employeeId={notIn:hiddenOwners.map(owner=>owner.id)}
  const records=await prisma.financePersonnelRecord.findMany({where,orderBy:[{createdAt:'asc'},{id:'asc'}],take:5001})
  if(records.length>5000)fail('EXPORT_TOO_LARGE',400)
  const employees=await prisma.userProfile.findMany({where:{id:{in:[...new Set(records.map(r=>r.employeeId))]}},select:{id:true,displayName:true}})

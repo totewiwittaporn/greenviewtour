@@ -25,7 +25,7 @@ Search debounces 300ms after composition ends. Clear immediately resets search/p
 
 Business authority: docs/authentication.md and docs/identity-access.md. AuthLayout, FormField and Button under core/ui own all auth screens; core/auth/api.js owns JSON requests and session-expiry handling. AuthPage owns flow copy and validation. Inputs are labeled, errors are linked and focus the first invalid field; sensitive values are masked with explicit show/hide controls. Forms use noValidate, prevent duplicate submission and preserve dimensions while busy. Password fields are intentionally transient and never persisted across navigation.
 
-Sign in returns to the workspace; users without company directory rights see their own welcome screen. Unauthorized API responses never leave the directory accessible. Register is invitation-only and asks users to confirm email before signing in. Reset completes with an explicit sign-in link; it does not silently open the workspace. Inline status/error messages remain in the form. All auth routes have an English document title, keyboard focus and narrow-screen layout. Browser sessions are HttpOnly cookies; no client token persistence.
+Sign in returns to the workspace; users without company directory rights see their own welcome screen. Unauthorized API responses never leave the directory accessible. Employee registration follows the email-first onboarding flow below; owner bootstrap remains invitation-only. Reset completes with an explicit sign-in link; it does not silently open the workspace. Inline status/error messages remain in the form. All auth routes have an English document title, keyboard focus and narrow-screen layout. Browser sessions are HttpOnly cookies; no client token persistence.
 
 The directory supports scoped profile edits, Manager-led invitations and the per-user access editor documented below. Public UI remains Thai; Backoffice remains English.
 
@@ -37,7 +37,9 @@ Capability owners: Dialog → core/ui/Dialog.jsx; User Info → core/ui/UserInfo
 
 ## Invitation and self-profile flows
 
-Business authority: owner request dated 2026-09-08 and docs/authentication.md. All visible copy is English. Add employee creates a private invitation link without sending an email. StaffInvitations owns creation, recent 100 records, new-link generation and revocation. FormField and authored SelectField own fields; Dropdown owns row actions. A successfully created link is shown once with Copy and manual selection fallback. Closing loses the raw link; create a new link to replace it. Regeneration invalidates the old link and is explicitly confirmed; revocation is confirmed. Invitation secrets remain transient and are removed from the URL fragment before assets load. Registration is unavailable without a valid invitation; the email is fixed and only passwords are entered. Existing email verification remains required. Failure preserves entered values; password fields are never persisted.
+Business authority: employee onboarding owner approval dated 2026-10-03 and docs/authentication.md. StaffInvitations owns Email + Role + Department, email send/resend, progress and revocation. No admin-entered employee name or copyable invitation credential is shown. Local delivery is explicitly labeled LocalMail. Resend and revocation retain confirmation and permission checks.
+
+EmployeeOnboardingPage owns `/onboarding` and `/onboarding/line-callback`, using AuthLayout, FormField, AddressFields and Button. The onboarding address must use the same separate province/district/subdistrict, automatic postal code, house/Moo/village and map fields as employee profiles. Email exchange precedes legal name/address/phone, then password confirmation, then required LINE Login and Staff OA friendship. The server owns progress; reload and login resume saved steps. Role and department cannot be changed here. Passwords stay transient. Validation focuses the first invalid field; failures retain safe form values. LINE-disabled Local displays an honest saved-progress state without bypass. Activation redirects into the existing role-authorized dashboard. Both English and Thai, keyboard interaction and narrow screens are supported. Callback credentials are removed from browser history and the document uses no-referrer.
 
 Edit profile in User Info edits the signed-in user's display name only, with optimistic version checking. Send password reset is an explicit, confirmed request for a lower-role user; passwords are never visible. All permission checks are enforced in the BFF. Local links are local-machine-only until hosting is configured.
 
@@ -331,3 +333,23 @@ This supersedes earlier Backoffice “natural document scrolling”, sticky Navb
 - Regression evidence must include actual wheel input, touch gestures, both scroll boundaries, viewport geometry after scrolling, same-document navigation, and stacked-modal lock—not only `window.scrollTo` against a sticky header.
 
 `scripts/smoke-shell-scroll.js` covers 1376×1032 (the owner's recording viewport), 1440×900, 834×900, 390×844 and 320×640. Test data and stress-height content are isolated fixtures; no business records are written.
+
+## Linked LINE presentation in User Info
+
+UserInfo reads the signed-in employee's linkedLineProfile from GET /api/me/line. It uses the LINE display name/photo only for header/menu presentation, with employee nickname/display-name and initial fallbacks. It refreshes after explicit LINE changes/status actions, never on window focus; failed reads discard stale LINE presentation. Profile details retain stored employee values. Mobile header actions share one row in navigation, notifications, help, avatar order; search is below. The same keyboard-accessible Dropdown owns the avatar menu on mobile and desktop.
+
+## Staff account directory visibility
+
+Current owner decision: the owner ADMIN_MANAGER account is hidden from every other employee's account directory and direct profile lookup. Managers see non-owner staff; Heads see only their permitted work line at the same or lower level. Backend results and capability flags own rows, totals, profile lookup and actions. User directory reload clears prior summaries/actions while authorization is checked; denied or missing detail reads do not fall back to cached rows. This account-directory policy does not assert anonymity of names on operational bookings, assignments or audit records.
+
+LINE presentation freshness: focus never rechecks decorative LINE identity. Explicit link/unlink/status refresh still invalidates immediately. The memory cache holds only one current user ID, expires after 60 seconds, and is replaced on account change; logout clears displayed LINE identity. Footer duplicate logo is removed; mobile four-action header remains unchanged.
+
+Final idle-return policy: decorative LINE identity never refreshes on focus/visibility return. Read on initial mount or account change, reuse a one-account 60-second memory cache across remounts, and force-refresh only after explicit LINE connection/status actions. Clear on logout and never persist to browser storage. This cache does not govern authorization.
+
+
+### Users and Invitations compact-cell correction (2026-10-03)
+Users identity cells omit initial avatars. Name and email each own one bounded line,
+with ellipsis only on actual horizontal overflow and a full-value title. The shared
+DataTable multiline clamp must not clip that nested identity layout. Invitations
+show only the status badge in the Status column, including Pending and Joined;
+onboarding state remains server-side but has no secondary text in this table.

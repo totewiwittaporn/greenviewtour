@@ -1,5 +1,11 @@
 # Local / Production migration — 30 September 2026
 
+> Current environment/workflow acceptance: [items 7–8 — Local cleanup and final verification](local-workflow-acceptance-2026-09-30.md). No Cloudflare provisioning or Production deployment is enabled.
+
+> **Latest: items 5–6 accepted on Local.** See [final Auth/API acceptance](local-auth-api-acceptance-2026-09-30.md). The earlier pending-check and missing-customer-Auth statements below are historical and superseded by that verified checkpoint.
+
+> Latest application checkpoint: [Local Auth/API and three-site cutover](local-auth-api-2026-09-30.md). The current launcher uses Worker 8787 and Local D1/R2; seven migrations are applied. The foundation narrative below is historical, including its earlier pending-cutover and legacy-launcher statements. Use [Local development](local-development.md) for current commands.
+
 > Current status: Item 3 is accepted. See [D1 data-layer acceptance](d1-data-layer-acceptance-2026-09-30.md) for the completed SQL/transaction work, SIX applied Local migrations, identity metadata and final tests. Earlier pending data-layer notes below are historical; application cutover remains separate.
 
 > Current data checkpoint: [Local D1/R2 data migration](local-data-migration-2026-09-30.md). Business data and files are now imported and verified. The foundation record below describes the earlier empty-database stage; Auth, business SQL/transactions and application cutover are still pending.

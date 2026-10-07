@@ -1,0 +1,99 @@
+EMPLOYEE ONBOARDING PRODUCTION RELEASE - 2026-10-03 (Bangkok)
+
+Status: DEPLOYED to https://backoffice.greenviewtour.com
+Final Worker version: 4164696f-a913-4b86-a663-01e1ab76b452
+Previous known version: a5ec1284-99f0-4a5e-a3c9-3c9cd0f7fdf6
+Worker: greenviewtour-api; D1: greenviewtour-production.
+Owner explicitly superseded the earlier Local-only instruction and authorized
+Production deployment, LINE Login channel creation and channel publication.
+
+RELEASED
+- Additive migration 0011_employee_onboarding.sql applied successfully: 8 commands.
+  Remote migration list confirms no pending migrations.
+- Email + Role + Department invitation form deployed and inspected in authenticated
+  Safari. No employee names are requested from the administrator. Local-only help
+  copy removed from the Production form.
+- Email-first employee information/password/LINE onboarding and restricted resume
+  sessions deployed. Existing employee sessions and Staff OA bindings preserved.
+- LINE Login HTTP transport changed from redirect:error (unsupported in Workers)
+  to redirect:manual with rejection of non-success responses. Added redirect test.
+
+LINE CONFIGURATION VERIFIED IN LINE DEVELOPERS
+- Provider 2005588057 (Greenview Staff).
+- New LINE Login web channel 2011848467, name Greenview Staff, region Thailand.
+- Published status verified after owner's explicit confirmation.
+- Linked OA @335bydey / Greenview Staff, same existing Messaging API channel.
+- Callback https://backoffice.greenviewtour.com/onboarding/line-callback.
+- Only PROFILE and OPENID_CONNECT; LINE email permission unapplied/unneeded.
+- New LINE_STAFF_LOGIN_CHANNEL_SECRET stored in Cloudflare secret store.
+  Existing AUTH_SECRET and Staff Messaging API secrets retained.
+- Ignored .local/production-release/backoffice.jsonc enables Login and contains
+  provider/channel IDs, not its secret. Local still disables live Login.
+
+VERIFICATION
+- Final npm run check:quiet PASS: 628 backend tests + 60 frontend tests,
+  lint, workflow audit, all three builds and Worker dry-run.
+- node scripts/test-production-runtime.mjs PASS: isolated local workerd with
+  production settings, no external network, real Secure-cookie sessions, role/
+  origin/host/Member protections and owner bootstrap regressions.
+- Live final build asset matches deployed onboarding HTML.
+- Live HTTP: onboarding and callback 200; anonymous me/onboarding API 401;
+  Member remains 503; health remains 404.
+- Authenticated Safari: existing owner still accesses Users/Invitations. New form
+  has exactly Email address, Role, Department and Send invitation email. Final
+  help text is only the 72-hour invitation expiry.
+- Production counts before/after migration: AuthUser 1, UserProfile 1,
+  StaffLineBinding 1, Invitation 1. New EmployeeOnboarding table 0.
+  Foreign-key check empty. No production data import, reset or test employee.
+- Earlier Local/browser/API acceptance remains in
+  employee-onboarding-acceptance-2026-10-03.txt.
+- End-to-end REAL invitation email delivery, employee password entry and LINE
+  consent/activation have NOT been executed in this release. No recipient was
+  supplied for a real staff invitation. Fixture activation tests are not claimed
+  as live provider acceptance. Provider configuration and publication ARE done.
+
+RECOVERY / PRESERVATION
+- Saved Cloudflare D1 pre-migration Time Travel bookmark privately in evidence.
+- Full database download was rejected by automatic approval review because it
+  could export sensitive production data. No export was performed. Used provider
+  recovery bookmark + aggregate counts instead; no alternative data extraction.
+- Prefer code rollback compatible with additive schema and forward repair.
+  Never restore an old user database merely to roll back code: that could erase
+  newly registered permanent employees. No rollback performed.
+- LINE publish control initially rejected by automatic review for missing
+  specific confirmation; owner then explicitly confirmed and publication passed.
+- No Public/Member deploy, DNS changes, broadcast, commit, push, reset or stash.
+  Existing local work and real users preserved.
+
+FILES CHANGED IN THIS FOLLOW-UP
+backend/src/platform/line/staff-login.js
+backend/test/employee-onboarding.test.js
+frontend/backoffice/src/features/settings/users/StaffInvitations.jsx
+frontend/backoffice/src/features/translations.js
+docs/authentication.md
+docs/deployment.md
+docs/employee-onboarding-acceptance-2026-10-03.txt
+docs/employee-onboarding-production-2026-10-03.txt
+Ignored operational config: .local/production-release/backoffice.jsonc
+Private evidence: .local/employee-onboarding-production-20261003
+No provider secret recorded in this report or Git.
+
+
+STRUCTURED ADDRESS CORRECTION - owner live-test feedback, 2026-10-03
+Final version: 975e7d74-4368-4285-bf26-8fd180f2389c
+Onboarding now uses existing AddressFields with dependent province/district/
+subdistrict choices, automatic postcode, house number, Moo, village and map pin.
+Added 0012_onboarding_structured_address.sql: nullable addressDetails JSON only.
+Existing invitation/session/password and text-address fallback retained. Incomplete
+legacy profiles return to information before activation; ACTIVE users untouched.
+Server validates hierarchy/maps and recomputes postcode. Activation copies named
+address fields into UserProfile, not just formatted text.
+Tests: aggregate 631 backend +60 frontend PASS, lint/build/Worker dry-run PASS;
+real copied-D1 auth API 14 groups PASS (activeDataChanged=false); rendered browser
+PASS at 1440 and390 widths, EN/TH, cascading address/postcode, save/reload and LINE
+callback regression. Live build asset matches deployed HTML. Production row counts
+unchanged across migration; foreign-key check empty. No invitation resend or test
+account created. Owner's real invitation continues from the existing mobile page.
+Evidence: /private/tmp/greenview-address-check.log, greenview-address-api.log,
+greenview-address-browser.log, greenview-address-production-migrate.log,
+greenview-address-production-deploy.log; copied API .local/auth-api-tests-5IH6bE.
