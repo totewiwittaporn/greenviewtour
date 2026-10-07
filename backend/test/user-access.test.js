@@ -30,6 +30,9 @@ test('only managers configure ordinary accounts; no self, peer or administrator 
  assert.equal(canConfigureAccess(staff,profile('u',['DRIVER'])),false)
  for(const code of ['MANAGER','ADMIN_MANAGER'])assert.throws(()=>validateAccessInput(manager,{version:1,roles:[code],overrides:[],reason:'test'}),/ROLE_ASSIGNMENT_DENIED/)
  assert.throws(()=>validateAccessInput(manager,{version:1,roles:['BOOKING'],overrides:[{permissionCode:'administrators.manage',effect:'ALLOW'}],reason:'test'}),/INVALID_ACCESS_INPUT/)
+ const bookingTarget={...staff,department:'BOOKING'}
+ assert.throws(()=>validateAccessInput(manager,{version:1,roles:['SALES'],overrides:[],reason:'test'},bookingTarget),/PRIMARY_ROLE_REQUIRED/)
+ assert.equal(validateAccessInput(manager,{version:1,roles:['BOOKING','SALES'],overrides:[],reason:'test'},bookingTarget).roles.length,2)
 })
 test('time windows, duplicates and malformed payloads fail closed',()=>{
  const input={version:1,roles:['BOOKING','SALES'],overrides:[],reason:'Extra sales duties'}

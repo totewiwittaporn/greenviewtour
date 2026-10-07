@@ -5,6 +5,17 @@ export const roleNames = {
  CAPTAIN:'Captain', HEAD_CAPTAIN:'Head Captain', ASSISTANT_CAPTAIN:'Assistant Captain', DRIVER:'Driver', HEAD_DRIVER:'Head Driver',
  HOUSEKEEPING:'Housekeeping', HEAD_HOUSEKEEPING:'Head Housekeeping',
 }
+export const roleDepartments=Object.freeze({
+ ADMIN_MANAGER:'MANAGEMENT',MANAGER:'MANAGEMENT',BOOKING:'BOOKING',HEAD_BOOKING:'BOOKING',SALES:'SALES',ACCOUNT:'ACCOUNT',
+ GUIDE:'GUIDE',HEAD_GUIDE:'GUIDE',ASSISTANT_TOUR_GUIDE:'GUIDE',CAPTAIN:'CAPTAIN',HEAD_CAPTAIN:'CAPTAIN',ASSISTANT_CAPTAIN:'CAPTAIN',
+ DRIVER:'DRIVER',HEAD_DRIVER:'DRIVER',HOUSEKEEPING:'HOUSEKEEPING',HEAD_HOUSEKEEPING:'HOUSEKEEPING',
+})
+const primaryRoleWeight={ADMIN_MANAGER:40,MANAGER:40,HEAD_BOOKING:30,HEAD_GUIDE:30,HEAD_CAPTAIN:30,HEAD_DRIVER:30,HEAD_HOUSEKEEPING:30,BOOKING:20,GUIDE:20,CAPTAIN:20,DRIVER:20,HOUSEKEEPING:20,SALES:20,ACCOUNT:20,ASSISTANT_TOUR_GUIDE:10,ASSISTANT_CAPTAIN:10}
+export function primaryRoleCode(profile){
+ const department=profile?.department||null,codes=(profile?.roles||[]).map(role=>role.roleCode||role.code).filter(Boolean)
+ const matching=codes.filter(code=>roleDepartments[code]===department)
+ return (matching.length?matching:codes).sort((a,b)=>(primaryRoleWeight[b]||0)-(primaryRoleWeight[a]||0)||a.localeCompare(b))[0]||null
+}
 export const dutyPermissions = {
  booking: {label:'Manage bookings', roles:['BOOKING','HEAD_BOOKING']},
  guide: {label:'View boat jobs', roles:['GUIDE','HEAD_GUIDE','ASSISTANT_TOUR_GUIDE','CAPTAIN','HEAD_CAPTAIN','ASSISTANT_CAPTAIN']},

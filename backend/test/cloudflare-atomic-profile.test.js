@@ -90,7 +90,7 @@ function managerProfileFixture({changes=[1,1],afterActorRole='MANAGER',afterTarg
   let transactions=0,reads=0
   const actor=role=>({
     id:'manager',status:'ACTIVE',accessVersion:reads>2?afterActorVersion:7,department:null,
-    roles:[{roleCode:role,scope:'COMPANY',role:{permissions:[{permissionCode:'users.read'},{permissionCode:'users.profile.edit'}]}}],
+    roles:[{roleCode:role,scope:'COMPANY',role:{permissions:[{permissionCode:'users.read'},{permissionCode:'users.profile.edit'},{permissionCode:'users.roles'}]}}],
     permissionOverrides:[],
   })
   const target=role=>({
@@ -128,7 +128,7 @@ function managerProfileFixture({changes=[1,1],afterActorRole='MANAGER',afterTarg
 test('D1 manager profile edit guards actor and target access versions in one atomic batch',async()=>{
   const {editProfile}=await import('../src/modules/identity-access/user-management.js')
   const fx=managerProfileFixture()
-  const result=await editProfile(fx.client,'manager','guide',{displayName:'Guide New',department:'GUIDE',updatedAt:previous.toISOString()})
+  const result=await editProfile(fx.client,'manager','guide',{displayName:'Guide New',primaryRoleCode:'GUIDE',updatedAt:previous.toISOString()})
   assert.deepEqual(result,{ok:true})
   assert.equal(fx.transactions(),0)
   assert.equal(fx.statements.length,2)
@@ -143,6 +143,21 @@ test('D1 manager profile edit guards actor and target access versions in one ato
   assert.equal(update.params.at(-4),d1Date(previous))
   assert.equal(update.params.at(-5),'guide')
   assert.deepEqual(JSON.parse(audit.params[5]).fields,['displayName','department','postalCode'])
+})
+
+test('D1 manager primary-role change replaces the department role and bumps access version atomically',async()=>{
+  const {editProfile}=await import('../src/modules/identity-access/user-management.js')
+  const fx=managerProfileFixture({changes:[1,1,1,1]})
+  const result=await editProfile(fx.client,'manager','guide',{displayName:'Guide New',primaryRoleCode:'DRIVER',updatedAt:previous.toISOString()})
+  assert.deepEqual(result,{ok:true})
+  assert.equal(fx.statements.length,4)
+  const [audit,removeRole,addRole,update]=fx.statements
+  assert.match(removeRole.sql,/DELETE FROM "UserRole"/);assert.equal(removeRole.params[1],'GUIDE')
+  assert.match(addRole.sql,/INSERT INTO "UserRole"/);assert.equal(addRole.params[1],'DRIVER');assert.equal(addRole.params[2],'SELF')
+  assert.match(update.sql,/"department"=\?/);assert.match(update.sql,/"accessVersion"="accessVersion"\+1/)
+  const details=JSON.parse(audit.params[5])
+  assert.deepEqual(details.primaryRole,{from:'GUIDE',to:'DRIVER'})
+  assert.deepEqual(details.department,{from:'GUIDE',to:'DRIVER'})
 })
 
 test('D1 manager edit fails closed when authorization changes before atomic write',async()=>{

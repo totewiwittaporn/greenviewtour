@@ -32,7 +32,7 @@ import { listSettings, saveSettings } from '../modules/service-catalog/settings.
 import { readTourEditor, saveTourEditor } from '../modules/service-catalog/tour-editor.js'
 import {readEmployeeOnboarding} from '../modules/identity-access/employee-onboarding.js'
 import { assertDeliverableInvitationEmail, canInvite, canResetPassword, listInvitations, createInvitation, changeInvitation, lookupInvitation, acceptInvitation, requestUserReset } from '../modules/identity-access/invitations.js'
-import { managementScope, canEditProfile, editProfile, editOwnProfile } from '../modules/identity-access/user-management.js'
+import { assignablePrimaryRoles, managementScope, canEditProfile, editProfile, editOwnProfile } from '../modules/identity-access/user-management.js'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { listUsers } from '../modules/identity-access/list-users.js'
 import { parseUsersQuery } from '../backoffice/settings/users/query.js'
@@ -376,7 +376,7 @@ export function createHandler({ pool, prisma, provider, token, port = 5000, user
       try { filters = parseUsersQuery(url.searchParams) } catch { throw new AccessError('INVALID_FILTER', 400) }
       const directory = await users(pool, { ...filters, department: scope.department, visibility:userVisibility(profile) })
       directory.users = directory.users.map(target => ({ ...target, canConfigureAccess:canConfigureAccess(profile,target), canEdit: canEditProfile(profile,target), canResetPassword: canResetPassword(profile,target) }))
-      return send(200, { ...directory, canChangeDepartment: scope.company, canInvite: canInvite(profile), database: 'UP', environment })
+      return send(200, { ...directory, canChangeDepartment: scope.company, primaryRoles:assignablePrimaryRoles(profile), canInvite: canInvite(profile), database: 'UP', environment })
     } catch (error) {
       if (error instanceof AccessError) return send(error.status, { code: error.code, ...(error.retryAfterSeconds?{retryAfterSeconds:error.retryAfterSeconds}:{}), ...(operationMessages[error.code] ? { message: operationMessages[error.code] } : {}) }, error.status === 401 ? '' : undefined)
       recordApiFailure(error,req.method)

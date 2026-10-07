@@ -51,9 +51,9 @@ export async function identityWrites(env){
   await readUserAccess(db,admin.id,staff.id)
   checks.push('roles, permission overrides and access version remain one guarded write')
   stage='invitation'
-  await assert.rejects(()=>createInvitation(db,admin.id,{email,displayName:tag,department:'BOOKING',roleCode:'BOOKING'}),{code:'ACCOUNT_ALREADY_EXISTS'})
+  await assert.rejects(()=>createInvitation(db,admin.id,{email,roleCode:'BOOKING'}),{code:'ACCOUNT_ALREADY_EXISTS'})
   const recipient=tag.toLowerCase()+'-new@example.invalid'
-  const invite=await createInvitation(db,admin.id,{email:recipient,displayName:tag+' new',department:'BOOKING',roleCode:'BOOKING'})
+  const invite=await createInvitation(db,admin.id,{email:recipient,roleCode:'BOOKING'})
   const rotated=await changeInvitation(db,admin.id,invite.invitation.id,'renew')
   await assert.rejects(()=>lookupInvitation(db,invite.invitationCode),{code:'INVITATION_INVALID'})
   let registered=0,recovered=0

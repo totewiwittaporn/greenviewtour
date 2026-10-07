@@ -88,7 +88,7 @@ export default function UsersPage({ onProfileSaved }) {
     {resetUser && <ResetPassword user={resetUser} onClose={() => setResetUser(null)} />}
     {notice && <p role="status">{t(notice)}</p>}
     {selected?.mode==='access' && <UserAccess user={selected.user} onClose={()=>setSelected(null)} onSaved={()=>{setSelected(null);setNotice('User permissions updated.');setRefresh(n=>n+1);onProfileSaved?.()}}/>}
-    {selected && selected.mode!=='access' && <RecordLoader recordId={selected.user.id} url={'/api/users?'+new URLSearchParams({recordId:selected.user.id})} title='User details' onClose={()=>setSelected(null)}>{(user,details)=><UserActions user={user} initialMode={selected.mode} canChangeDepartment={details.canChangeDepartment} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); setNotice('User profile updated.'); setRefresh(n => n + 1); onProfileSaved?.() }}/>}</RecordLoader>}
+    {selected && selected.mode!=='access' && <RecordLoader recordId={selected.user.id} url={'/api/users?'+new URLSearchParams({recordId:selected.user.id})} title='User details' onClose={()=>setSelected(null)}>{(user,details)=><UserActions user={user} initialMode={selected.mode} canChangeDepartment={details.canChangeDepartment} availablePrimaryRoles={details.primaryRoles||[]} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); setNotice('User profile updated.'); setRefresh(n => n + 1); onProfileSaved?.() }}/>}</RecordLoader>}
     {data && <p style={{ visibility: tab === 'users' ? 'visible' : 'hidden' }} className="last-checked" role="status">{t("Last updated")}{' '}{displayDate(new Date(data.checkedAt), { timeStyle: 'medium', timeZone: 'Asia/Bangkok' })}{' '}{t("· Bangkok time")}</p>}
   </>
 }

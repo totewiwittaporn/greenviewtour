@@ -1,6 +1,6 @@
 import {translateLabel as bilingualLabel} from '../../../core/i18n/runtime.js'
 import { formatDate as displayDate } from '../../../core/i18n/runtime.js'
-import {roleNames} from '../../../../../../packages/contracts/access.js'
+import {accessDefinitions,effectiveAccess,roleDepartments,roleNames} from '../../../../../../packages/contracts/access.js'
 import { translate as t, useLocale } from '../../../core/i18n/locale.jsx'
 import {RefreshButton} from '../../../core/ui/RefreshButton.jsx'
 import { useEffect, useRef, useState } from 'react'
@@ -31,39 +31,41 @@ function InvitationLink({result}) {
 }
 function InviteForm({ catalog, onClose, onCreated }) {
  useLocale();
-  const [values, setValues] = useState({ email: '', roleCode: '', department: '' }), [errors, setErrors] = useState({})
-  const [busy, setBusy] = useState(false), [failure, setFailure] = useState(''), [result, setResult] = useState(null), [discard, setDiscard] = useState(false)
-  const form = useRef(null), lock = useRef(false)
-  const dirty = Object.values(values).some(Boolean)
-  function close() { if (!busy) { if (dirty && !result) setDiscard(true); else onClose() } }
-  const change = key => event => { setValues(old => ({ ...old, [key]: event.target.value })); setErrors(old => ({ ...old, [key]: '' })) }
-  async function submit(event) {
-    event.preventDefault()
-    if (event.nativeEvent.isComposing || lock.current) return
-    const next = {}
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) next.email = 'Enter a valid employee email.'
-    if (!values.roleCode) next.roleCode = 'Choose a role.'
-    if (!values.department) next.department = 'Choose a department.'
-    const expected = { MANAGER: 'MANAGEMENT', HEAD_BOOKING: 'BOOKING', HEAD_GUIDE: 'GUIDE', HEAD_CAPTAIN: 'CAPTAIN', HEAD_DRIVER: 'DRIVER' }[values.roleCode]
-    if (expected && values.department !== expected) next.department = `This role belongs to ${expected}.`
-    setErrors(next)
-    if (Object.keys(next).length) { requestAnimationFrame(() => form.current?.querySelector('[aria-invalid="true"]')?.focus()); return }
-    lock.current = true; setBusy(true); setFailure('')
-    try { const data = await api('/api/invitations', values); setResult(data); onCreated() }
-    catch (error) { setFailure(message(error)) }
-    finally { lock.current = false; setBusy(false) }
-  }
-  return <Dialog title={discard ? bilingualLabel('Discard invitation?') : result ? bilingualLabel('Invitation ready') : bilingualLabel('Add employee')} onClose={close} busy={busy}>
-    {discard ? <><p>{t("This invitation has not been created.")}</p><div className="dialog-actions"><Button autoFocus onClick={() => setDiscard(false)}>{t("Keep editing")}</Button><Button onClick={onClose}>{t("Discard changes")}</Button></div></> : result ? <InvitationLink result={result} /> : <form ref={form} noValidate onSubmit={submit} aria-busy={busy}>
-      <p>{t("Send an invitation email. Employees enter their own legal name and contact details.")}</p>
-      <FormField label={bilingualLabel("Email address")} hint={t("Use an address that can receive the confirmation email.")} type="email" value={values.email} onChange={change('email')} error={errors.email} maxLength={254} autoComplete="off" disabled={busy} />
-      <SelectField label={bilingualLabel("Role")} value={values.roleCode} onChange={change('roleCode')} error={errors.roleCode} disabled={busy}><option value="">{t("Choose a role")}</option>{catalog.roles.map(role => <option key={role.code} value={role.code}>{t(role.name)}</option>)}</SelectField>
-      <SelectField label={bilingualLabel("Department")} value={values.department} onChange={change('department')} error={errors.department} disabled={busy}><option value="">{t("Choose a department")}</option>{catalog.departments.map(department => <option key={department} value={department}>{t(department)}</option>)}</SelectField>
-      <p className="field-help">{t("The invitation expires in 72 hours.")}</p>
-      {failure && <p className="inline-error" role="alert">{t(failure)}</p>}
-      <div className="dialog-actions"><Button type="submit" className="button-primary" busy={busy} disabled={busy}>{t("Send invitation email")}</Button></div>
-    </form>}
-  </Dialog>
+ const [values,setValues]=useState({email:'',roleCode:''}),[errors,setErrors]=useState({})
+ const [busy,setBusy]=useState(false),[failure,setFailure]=useState(''),[result,setResult]=useState(null),[discard,setDiscard]=useState(false)
+ const form=useRef(null),lock=useRef(false)
+ const dirty=Boolean(values.email||values.roleCode),department=roleDepartments[values.roleCode]||''
+ const roleDraft=values.roleCode?{status:'ACTIVE',roles:[{roleCode:values.roleCode,scope:values.roleCode==='MANAGER'?'COMPANY':'SELF'}],permissionOverrides:[]}:null
+ const duties=roleDraft?Object.entries(accessDefinitions).filter(([code])=>effectiveAccess(roleDraft,code).allowed).map(([code,definition])=>({code,label:definition.label})):[]
+ function close(){if(!busy){if(dirty&&!result)setDiscard(true);else onClose()}}
+ const change=key=>event=>{setValues(old=>({...old,[key]:event.target.value}));setErrors(old=>({...old,[key]:''}))}
+ async function submit(event){
+  event.preventDefault();if(event.nativeEvent.isComposing||lock.current)return
+  const next={}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim()))next.email='Enter a valid employee email.'
+  if(!values.roleCode)next.roleCode='Choose a role.'
+  setErrors(next)
+  if(Object.keys(next).length){requestAnimationFrame(()=>form.current?.querySelector('[aria-invalid="true"]')?.focus());return}
+  lock.current=true;setBusy(true);setFailure('')
+  try{const data=await api('/api/invitations',{email:values.email,roleCode:values.roleCode});setResult(data);onCreated()}
+  catch(error){setFailure(message(error))}
+  finally{lock.current=false;setBusy(false)}
+ }
+ return <Dialog title={discard?bilingualLabel('Discard invitation?'):result?bilingualLabel('Invitation ready'):bilingualLabel('Add employee')} onClose={close} busy={busy}>
+  {discard?<><p>{t("This invitation has not been created.")}</p><div className="dialog-actions"><Button autoFocus onClick={()=>setDiscard(false)}>{t("Keep editing")}</Button><Button onClick={onClose}>{t("Discard changes")}</Button></div></>:result?<InvitationLink result={result}/>:<form ref={form} noValidate onSubmit={submit} aria-busy={busy}>
+   <p>{t("Send an invitation email. Employees enter their own legal name and contact details.")}</p>
+   <FormField label={bilingualLabel("Email address")} hint={t("Use an address that can receive the confirmation email.")} type="email" value={values.email} onChange={change('email')} error={errors.email} maxLength={254} autoComplete="off" disabled={busy}/>
+   <SelectField label={bilingualLabel("Primary role")} value={values.roleCode} onChange={change('roleCode')} error={errors.roleCode} disabled={busy}><option value="">{t("Choose a role")}</option>{catalog.roles.map(role=><option key={role.code} value={role.code}>{t(role.name)}</option>)}</SelectField>
+   {values.roleCode&&<section className="invite-role-preview" aria-label={t("Role assignment preview")}>
+    <div className="invite-role-meta"><span>{t("Department")}</span><strong>{t(department)}</strong></div>
+    <p className="field-help">{t("Department is assigned automatically from the selected role.")}</p>
+    <details open={duties.length<=6}><summary>{t("Default duties for this role")}{' '}({duties.length})</summary><ul>{duties.map(duty=><li key={duty.code}>{t(duty.label)}</li>)}</ul></details>
+   </section>}
+   <p className="field-help">{t("The invitation expires in 72 hours.")}</p>
+   {failure&&<p className="inline-error" role="alert">{t(failure)}</p>}
+   <div className="dialog-actions"><Button type="submit" className="button-primary" busy={busy} disabled={busy}>{t("Send invitation email")}</Button></div>
+  </form>}
+ </Dialog>
 }
 function InvitationAction({ selection, onClose, onChanged }) {
  useLocale();

@@ -8,7 +8,7 @@ try {
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[]
  page.on('pageerror',error=>errors.push(error.message))
  const user={id:'00000000-0000-4000-8000-000000000001',displayName:'Manager',email:'manager@example.invalid',status:'ACTIVE',roles:[],management:{company:true}}
- const row={id:'00000000-0000-4000-8000-000000000002',displayName:'Booking and Sales',email:'staff@example.invalid',status:'ACTIVE',roles:[{roleCode:'BOOKING',scope:'SELF'}],canConfigureAccess:true}
+ const row={id:'00000000-0000-4000-8000-000000000002',displayName:'Booking and Sales',email:'staff@example.invalid',status:'ACTIVE',department:'BOOKING',roles:[{roleCode:'BOOKING',scope:'SELF'}],canConfigureAccess:true}
  let failLoad=true,conflict=true,request,saves=0
  await page.route(/\/api\/me\/line(?:\?.*)?$/,route=>route.request().method()==='GET'?route.fulfill({json:{status:'UNLINKED',linkedLineProfile:null}}):route.fallback())
  await page.route('**/api/me',route=>route.fulfill({json:{user}}))
@@ -16,7 +16,7 @@ try {
  await page.route('**/api/users/*/access',async route=>{
   if(route.request().method()==='POST'){request=route.request().postDataJSON();saves++;return route.fulfill(conflict?{status:409,json:{code:'ACCESS_CONFLICT'}}:{json:{ok:true,version:2}})}
   if(failLoad){return route.fulfill({status:503,json:{code:'SERVICE_UNAVAILABLE'}})}
-  return route.fulfill({json:{version:1,roles:row.roles,overrides:[],history:[],availableRoles:Object.entries(roleNames).filter(([code])=>!['ADMIN_MANAGER','MANAGER'].includes(code)).map(([code,name])=>({code,name})),permissions:Object.entries(accessDefinitions).map(([code,d])=>({code,label:d.label}))}})
+  return route.fulfill({json:{version:1,primaryRoleCode:'BOOKING',roles:row.roles,overrides:[],history:[],availableRoles:Object.entries(roleNames).filter(([code])=>!['ADMIN_MANAGER','MANAGER'].includes(code)).map(([code,name])=>({code,name})),permissions:Object.entries(accessDefinitions).map(([code,d])=>({code,label:d.label}))}})
  })
  await page.goto(((process.env.GREENVIEW_TEST_ORIGIN || 'http://localhost:5174') + '/settings/users'))
  await page.getByRole('button',{name:'Actions for staff@example.invalid'}).waitFor()
@@ -25,9 +25,9 @@ try {
  assert.equal((await page.getByRole('button',{name:'Actions for staff@example.invalid'}).boundingBox()).width,28)
  async function open(){await page.getByRole('button',{name:'Actions for staff@example.invalid'}).click();await page.getByRole('menuitem',{name:'Configure permissions'}).click()}
  await open();await page.getByText('Unable to load permissions.',{exact:false}).waitFor();failLoad=false;await page.getByRole('button',{name:'Retry',exact:true}).click()
+ assert.equal(await page.getByRole('checkbox',{name:'Booking Assistant',exact:true}).isDisabled(),true)
  await page.getByRole('checkbox',{name:'Sales',exact:true}).check()
- const payment=page.getByRole('combobox',{name:'Record a booking as paid',exact:true})
- await payment.click();await page.getByRole('option',{name:'Deny for this user'}).click()
+ await page.getByRole('checkbox',{name:'Record a booking as paid',exact:true}).uncheck()
  await page.getByLabel('Reason for change',{exact:true}).fill('Sales duty without collecting payment')
  await page.getByRole('button',{name:'Review changes',exact:true}).click()
  await page.getByRole('button',{name:'Confirm permissions',exact:true}).click()
