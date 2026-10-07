@@ -15,7 +15,7 @@
     "check:quiet": "node scripts/check-quiet.mjs",
     "db:check": "node scripts/local-health.js",
     "test:backend": "npm run test --workspace @greenviewtour/api",
-    "postinstall": "npm run prisma:generate --workspace @greenviewtour/api",
+    "postinstall": "npm run prisma:generate --workspace @greenviewtour/api && npm run cloudflare:d1:generate",
     "db:migrate": "node scripts/local-cloudflare.js migrate",
     "owner:invite": "node scripts/retired-source-command.js",
     "test:frontend": "node --test frontend/backoffice/test/*.test.js frontend/member/test/*.test.js frontend/public-web/test/*.test.js",

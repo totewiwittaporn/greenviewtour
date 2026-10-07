@@ -34,3 +34,8 @@ test('development and migration CLIs reject hosted flags without starting servic
  for(const args of [['scripts/dev.js','--remote'],['scripts/local-cloudflare.js','migrate','--remote'],['scripts/local-cloudflare.js','deploy']])assert.throws(()=>execFileSync(process.execPath,args,{cwd:root,env:environment,stdio:'pipe',timeout:5000}),error=>{assert.equal(error.status,1);return true})
  assert.throws(()=>execFileSync(process.execPath,['scripts/dev.js'],{cwd:root,env:{...environment,APP_ENV:'production'},stdio:'pipe',timeout:5000}),error=>{assert.match(error.stderr.toString(),/PRODUCTION_CONTEXT_FORBIDDEN/);return true})
 })
+test('fresh installs regenerate both reference and ignored D1 Prisma clients',()=>{
+ const pkg=JSON.parse(readFileSync(path.join(root,'package.json'),'utf8'))
+ assert.match(pkg.scripts.postinstall,/prisma:generate --workspace @greenviewtour\/api/)
+ assert.match(pkg.scripts.postinstall,/cloudflare:d1:generate/)
+})
