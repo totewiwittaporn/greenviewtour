@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import worker from '../src/cloudflare/public-worker.js'
-const env=()=>({APP_ENV:'production',PRODUCTION_ENABLED:'true',PUBLIC_ORIGIN:'https://greenviewtour.com',BACKOFFICE_ORIGIN:'https://backoffice.greenviewtour.com',ASSETS:{fetch:async()=>new Response('<html>Public</html>',{headers:{'content-type':'text/html'}})},API:{fetch:async()=>new Response('{}')}})
+const env=()=>({APP_ENV:'production',PRODUCTION_ENABLED:'true',PUBLIC_ORIGIN:'https://greenviewtour.com',BACKOFFICE_ORIGIN:'https://backoffice.greenviewtour.com',ASSETS:{fetch:async()=>new Response('<html>Public</html>',{headers:{'content-type':'text/html'}})},API:{fetch:async()=>Response.json({rows:[],total:0,page:1,pageSize:12})}})
 const request=(path='/',options={})=>new Request('https://greenviewtour.com'+path,options)
 test('Public deployment fails closed for disabled or invalid origin configuration',async()=>{
  for(const override of [{PRODUCTION_ENABLED:'false'},{APP_ENV:'local'},{PUBLIC_ORIGIN:'http://greenviewtour.com'},{BACKOFFICE_ORIGIN:'https://backoffice.greenviewtour.com/'},{BACKOFFICE_ORIGIN:'https://greenviewtour.com'}])assert.equal((await worker.fetch(request(),{...env(),...override})).status,503)
@@ -96,4 +96,9 @@ test('Crawler files are genuine and enumerate only canonical public routes',asyn
 
 test('Asset service failure remains unavailable, not not-found',async()=>{
  assert.equal((await worker.fetch(request('/missing'),{...env(),ASSETS:{fetch:async()=>new Response('',{status:503})}})).status,503)
+})
+
+test('Catalog filter combinations receive noindex while plain page URLs remain indexable',async()=>{
+ for(const path of ['/tours?ownership=PARTNER&page=2','/promotions?duration=day'])assert.equal((await worker.fetch(request(path),env())).headers.get('x-robots-tag'),'noindex, follow')
+ assert.equal((await worker.fetch(request('/tours?page=2'),env())).headers.get('x-robots-tag'),null)
 })

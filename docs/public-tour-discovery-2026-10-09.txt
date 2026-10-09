@@ -1,0 +1,78 @@
+PUBLIC TOUR DISCOVERY — 9 OCTOBER 2026
+
+Owner approved future automatic discovery and public release. Owner confirms NO tour
+programs are currently published. All multi-tour records used here are local fixtures;
+no real tour publication, seeding, business edits or GSC actions performed.
+Base: deployed d4b9e9f7991281eba3a6cdf62191a50a3c684820, clean at start.
+Branch feat/public-tour-discovery, stacked on fix/public-not-found, not newer main.
+
+SITEMAP
+Existing /sitemap.xml keeps27 canonical static public URLs and appends deduplicated
+/tours?tour=<encoded-slug> URLs from every existing publicCatalog cards page, without
+an ownership filter. That backend contract already enforces ACTIVE+PUBLISHED and
+includes GREENVIEW and PARTNER. No backend API/schema/auth changes needed.
+Use lean existing cards data (12 rows/page), never editable/detail graphs. Validate
+page/total/size, expected row count, ownership/id/slug and repeated IDs. Changed totals,
+missing pages, invalid JSON, upstream errors, timeout or bounds return503 no-store
+with Retry-After60; never return a successful partial/static-only fallback on failure.
+A valid empty catalog returns200 with exactly27 static URLs and no invented tours.
+Slugs are URI-encoded, full loc values XML-escaped; no private hosts or date/pax/filter
+variants enter the sitemap. Sorting/deduplication is deterministic.
+
+Resource bound: maximum100 catalog pages/1200 rows per build and a shared10second
+fetch deadline. Exceeding the bound is503, not silent truncation. Future growth beyond
+this limit needs a paginated sitemap/index design before crossing the threshold.
+Complete successful results only are cached for60seconds in Cloudflare Cache API
+under a versioned internal key, with public max-age60. HEAD has the same status/MIME
+without body. Cache failure falls back to fresh generation. Publishing/unpublishing
+can take up to cache TTL to appear; all data is read-only and public-filtered.
+The existing paginated API does not offer a cross-page transactional snapshot:
+detected count/duplicate/shape drift fails closed; equal-count concurrent edits may
+be reflected on the next rebuild. No stronger snapshot consistency is claimed.
+
+PAGINATION / INDEXING
+Public own/Partner catalog and promotions parse page from URL; active numbered and
+previous/next controls are real anchors, preserving filters/date/pax/other query
+values. First-page links omit page. Existing known-route navigation handles SPA
+transitions and browser back/forward; direct visits/reloads use the same page.
+Private-app pagination and shared backend read models unchanged.
+Plain /tours?page=N and /promotions?page=N are self-canonical; page1 canonical omits
+page. Filter/travel/unknown query combinations receive noindex,follow at Worker and
+rendered metadata. Filtered canonical preserves ownership/duration/page, drops travel
+inputs. Out-of-range page responses use backend-clamped canonical plus noindex in
+rendered UI. No new redirects. Both detail entry routes canonicalize to
+/tours?tour=<slug>; query variants and /promotions detail aliases are noindex,follow.
+Plain valid tour details remain indexable. Missing/unavailable detail protections
+from PR32 remain. React metadata cleans up between routes.
+These are rendered SPA anchors/metadata, not server-rendered HTML expansion.
+
+TESTS / LIMITS
+Focused sitemap tests: multiple pages, both ownerships, dedup/escaping, missing or
+changing pages, invalid/failed/oversized responses, successful-only cache, HEAD and
+zero-record static-only behavior. Backend publicCatalog fixture test verifies draft
+and inactive records excluded across27 published records/three pages.
+Catalog URL tests cover preserving parameters, valid page parsing, page canonical,
+filter noindex, detail canonical and out-of-range clamping.
+New smoke-public-discovery.mjs runs actual Public Worker + built frontend through
+local HTTP adapter with54 fixture tours; checks complete sitemap, own/Partner and
+promotions pagination, direct/reload/back/forward, headers/metadata, mobile overflow,
+and clean zero-tour UI/sitemap. Included in existing full CI browser fixture runner.
+Existing commerce browser fixture updated only to expect links on public pagination;
+member retains button expectations. Existing 404 browser regression also run.
+Local Prisma generation remains blocked by binaries.prisma.sh; local aggregate and
+full backend tests cannot be certified here. GitHub full CI is required before release.
+PASS locally:36 focused tests,65 frontend tests, lint, Public build, Worker bundle,
+discovery browser and404 regression. Aggregate passes workflow/lint then143 backend
+pass/68 fail due missing generated Prisma.
+Local evidence /workspace/discovery-*.log; screenshots /tmp/greenview-public-discovery.
+
+RELEASE HANDOFF
+No deployment by implementation task. Authenticated release must deploy exact reviewed
+commit, public-worker.js bundle and public-web/dist together. Keep verified public
+origins/API binding and assets.not_found_handling=none, run_worker_first=true.
+Preserve deployed version3a9b68c9-e63a-4028-8d80-5571af274235 and assets for rollback;
+no DB rollback or private app deployment. No member/backoffice inclusion in sitemap.
+Check current zero-published production state remains27 XML URLs and clean empty
+catalog; exercise only harmless HTTP requests/navigation. Future publication through
+Back Office should be checked once real content is intentionally published by owner.
+Do not create test Production tours to demonstrate discovery.
