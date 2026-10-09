@@ -7,7 +7,12 @@ export async function publicSitemap(request,env,cache=globalThis.caches?.default
  const key=new Request(env.PUBLIC_ORIGIN+'/sitemap.xml?__public_catalog=v1')
  try{
   const hit=await cache?.match(key)
-  if(hit?.status===200&&hit.headers.get('content-type')?.startsWith('application/xml'))return new Response(request.method==='HEAD'?null:hit.body,hit)
+  if(hit?.status===200&&hit.headers.get('content-type')?.startsWith('application/xml')){
+   // Cache hits can expose Cloudflare's browser TTL instead of the stored TTL.
+   const headers=new Headers(hit.headers)
+   headers.set('cache-control','public, max-age=60')
+   return new Response(request.method==='HEAD'?null:hit.body,{status:hit.status,headers})
+  }
  }catch{/* Cache availability must not prevent a fresh complete build. */}
  try{
   if(!env.API)throw Error('Catalog unavailable')

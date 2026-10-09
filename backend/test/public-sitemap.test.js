@@ -50,3 +50,31 @@ test('Zero published tours yields the valid static-only sitemap without fabricat
  assert.equal([...xml.matchAll(/<loc>/g)].length,27)
  assert.doesNotMatch(xml,/\?tour=/)
 })
+
+test('Cache-hit GET and HEAD restore60second freshness without extending the stored entry',async()=>{
+ const {env,reads}=fixture([]);let stored,puts=0
+ const cache={
+  put:async(_key,response)=>{stored=response;puts++},
+  match:async()=>{
+   if(!stored)return
+   const response=stored.clone(),headers=new Headers(response.headers)
+   headers.set('cache-control','public, max-age=14400');headers.set('age','17')
+   return new Response(response.body,{status:response.status,headers})
+  },
+ }
+ const fresh=await publicSitemap(request('GET'),env,cache),xml=await fresh.text()
+ assert.equal(fresh.headers.get('cache-control'),'public, max-age=60')
+ assert.equal(stored.headers.get('cache-control'),'public, max-age=60')
+ for(const method of ['GET','HEAD']){
+  const hit=await publicSitemap(request(method),env,cache)
+  assert.equal(hit.status,200);assert.equal(hit.headers.get('content-type'),'application/xml; charset=utf-8')
+  assert.equal(hit.headers.get('cache-control'),'public, max-age=60');assert.equal(hit.headers.get('age'),'17')
+  assert.equal(await hit.text(),method==='HEAD'?'':xml)
+ }
+ assert.equal(reads.length,1);assert.equal(puts,1)
+ for(const method of ['GET','HEAD']){
+  const failed=await publicSitemap(request(method),{...env,API:null},null)
+  assert.equal(failed.status,503);assert.equal(failed.headers.get('cache-control'),'no-store')
+  if(method==='HEAD')assert.equal(await failed.text(),'')
+ }
+})
