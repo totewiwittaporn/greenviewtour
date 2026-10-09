@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import {tmpdir} from 'node:os'
+import {join} from 'node:path'
 import {chromium} from 'playwright'
 const browser=await chromium.launch({headless:true}),base=process.env.GREENVIEW_TEST_ORIGIN||'http://localhost:5174'
 try{
@@ -31,12 +33,12 @@ try{
    assert.equal(await page.locator('.account-name').isVisible(),false)
   }else assert.equal(await page.locator('.account-name').textContent(),name)
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth))
-  if(width===390)await page.screenshot({path:'/private/tmp/greenview-line-user-info-390-closed.png'})
+  if(width===390)await page.screenshot({path:join(tmpdir(),'greenview-line-user-info-390-closed.png')})
   await trigger.focus();await page.keyboard.press('ArrowDown');await page.getByRole('menu',{name:'User menu',exact:true}).waitFor()
   assert.equal(await page.locator('.dropdown-heading>strong').textContent(),name)
   assert.ok((await page.locator('.user-info-details').textContent()).includes('Stored Employee'))
   assert.ok((await page.locator('.user-info-details').textContent()).includes('LINE'))
-  await page.screenshot({path:'/private/tmp/greenview-line-user-info-'+width+'.png'})
+  await page.screenshot({path:join(tmpdir(),'greenview-line-user-info-'+width+'.png')})
   await page.keyboard.press('Escape');assert.equal(await trigger.evaluate(el=>el===document.activeElement),true)
  }
  badImage=true;await page.evaluate(()=>window.dispatchEvent(new Event('greenview:line-changed')))
