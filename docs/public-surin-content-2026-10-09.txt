@@ -1,0 +1,112 @@
+SURIN INFORMATION CONTENT — 9 OCTOBER 2026
+
+Status: implemented; local checks recorded below. NOT PUBLISHED.
+User authorized this Work/Codex environment and a content-only Production release,
+superseding older Mac-only/no-deploy instructions for this task. No ESC or Mac used.
+
+Preserved base: 1e806a24e5bc7fbcec38042bddb3b05968d01d97.
+Initial branch: work; initial working tree clean. Remote main matched this SHA.
+This is an implementation base, NOT a verified deployed Production baseline.
+
+INPUT AND REVIEW
+The Library ZIP could not be downloaded: the helper returned "library file
+transfer failed: download failed" on the initial attempt and one permitted retry.
+The parent supplied the reviewed copy directly in five complete four-article
+messages. All five were saved outside the repository and parsed successfully.
+No new research pass was performed. Original ZIP/file byte hashes are not claimed
+verified; reconstruction changes formatting and omits top-level editorial prose.
+Canonical articles-only SHA-256 (UTF-8, sorted keys, compact JSON, no newline):
+cb88c45909543ac7ebdb956c33bfbccaa8ea5666b75e03f62204e5cc86273e0c
+
+The supplied independent review covered copy, sources and TH/EN parity; corrections
+A–F were already applied. Implementation received a separate same-agent diff and
+contract review, not a newly commissioned independent reviewer.
+
+RUNTIME CONTRACT
+- 20 concise TH/EN Surin topics: 2 existing routes updated, 18 added.
+- publicRoutes.js owns title/description, and features/content/pages.js registers
+  each module. InformationPage automatically exposes all 23 editorial pages.
+- Each new/updated Surin module keeps two sections and one paragraph per section
+  per language. Review date: 9 October 2026. Existing locale URLs are unchanged.
+- Optional sources: [{url, label: {th, en}}] uses the actual publisher and document
+  label. Historical DNP notices explicitly say they are not current access info.
+  DNP source query HTML entities are decoded to actual ampersands in href values.
+  Editorial caveats/status/verification metadata are not shipped in the runtime.
+- relatedPaths supplies 2–3 curated links per Surin article (52 total). Legacy
+  About/FAQ/Contact keep their existing five related destinations and behavior.
+- The old single source URL with fixed TAT label remains compatible; these 20
+  articles use labeled sources instead. Paragraphs remain plain React text.
+- No layout redesign, new assets, CMS, redirects, locale overhaul or SEO refactor.
+- About, FAQ, Contact, CompanyLocation and API-owned operational data unchanged.
+
+PATHS
+/surin-islands
+/surin-islands/getting-there
+/surin-islands/piers
+/surin-islands/best-time
+/surin-islands/weather
+/surin-islands/how-many-days
+/surin-islands/costs
+/surin-islands/accommodation
+/surin-islands/facilities
+/surin-islands/snorkeling
+/surin-islands/beginner-snorkeling
+/surin-islands/marine-life
+/surin-islands/coral-reefs
+/surin-islands/beaches
+/surin-islands/moken-community
+/surin-islands/with-children
+/surin-islands/travel-guide
+/surin-islands/park-rules
+/surin-islands/responsible-travel
+/surin-islands/surin-vs-similan
+
+VALIDATION
+PASS: saved-input comparison against all 20 runtime pages/routes (all original
+TH/EN titles, descriptions, section text, review dates, images and 52 related links).
+PASS: focused content tests 7/7; Public tests 18/18; all frontend tests 62/62.
+PASS: workflow audit (134 checks), ESLint, Public/Backoffice/Member builds,
+and git diff --check. Count assertions changed deliberately to 23 pages/24 routes;
+original FAQ/payment/contact/security assertions remain in force.
+PASS: local Playwright content fixtures at http://localhost:5173: all 23 articles
+and the Information hub in TH/EN at widths 1440, 834, 390, 320 (184 article states).
+Checks include one h1/title/description, decoded images, no horizontal overflow,
+no framework overlay, exact bilingual source labels/hrefs, exact curated related
+links, all hub cards, persistent shell, related navigation without document reload,
+locale/anchor interaction, FAQ keyboard/hash state, company error/retry/empty/unsafe
+map handling and mobile menu closure. Runtime errors 0; business writes 0.
+Desktop English and 320px Thai article screenshots and the mobile Information hub
+were visually inspected. Evidence: /tmp/greenview-public-content-20260928/.
+The fixtures block external resources; source destination availability and
+Production typography/provider behavior are not claimed tested.
+
+ENVIRONMENT BLOCKERS
+npm ci installs packages but postinstall cannot generate Prisma: binaries.prisma.sh
+checksum download returns HTTP 403 Forbidden. No checksum bypass was used.
+Consequently npm run check passes workflow/lint, then backend tests fail due to the
+missing generated Prisma export (134 pass, 68 fail; no backend edits). Separate
+cloudflare:check also stops at generation (EAI_AGAIN for binaries.prisma.sh).
+Full smoke-browser-fixtures stops in smoke-shell-scroll.js at the same missing
+Prisma export. It does not reach the previously reported PR30 issue where
+smoke-line-user-info.mjs writes /private/tmp on Ubuntu. That issue is unchanged;
+PR30 was neither modified nor merged.
+Pinned Playwright Chromium download was denied HTTP 403 "Domain forbidden".
+Local UI tests use installed /usr/bin/chromium 151.0.7922.173 via a temporary
+outside-repository preload. Browser plugin unavailable; no app dependency change.
+
+PRODUCTION / RECOVERY
+No Cloudflare credentials or private Production release configuration exist in
+this executor. No Cloudflare connector is exposed. GitHub deployment lookup using
+gh returns Forbidden. A read-only request to greenviewtour.com/information returns
+a proxy tunnel 403, so no live URL or current deployment version is verified.
+Recent repository release records concern Backoffice and explicitly exclude a
+Public deployment; they do not establish the Public deployed source baseline.
+No deployment occurred, no hosted Preview created, and no databases, credentials,
+DNS, security settings or operational records changed. Publication remains blocked
+by access and baseline identification, not by missing user approval.
+
+Keep the content commit isolated. Before any later release, identify the actual
+Public Worker version, matching source/build and preserved rollback version;
+apply only this content diff to that verified base and repeat required validation.
+Do not deploy current main wholesale. Code rollback must retain the previous Public
+Worker/assets version and must not restore or modify Production databases.

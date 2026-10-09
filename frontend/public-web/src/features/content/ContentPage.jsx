@@ -19,6 +19,7 @@ export default function ContentPage({pathname, hash = ''}) {
     if (target?.tagName === 'DETAILS') target.open = true
   }, [page?.faq, hash])
   if (!page || !meta) return null
+  const relatedPaths = page.relatedPaths ?? ['/information', '/about', '/surin-islands', '/surin-islands/travel-guide', '/faq', '/contact-us'].filter(path => path !== pathname)
   const paragraphs = section => section.paragraphs[language].map((text, index) => <p key={index}>{text}</p>)
   return <main id="content" className="editorial-page">
     <div className="editorial-container editorial-hero">
@@ -34,10 +35,11 @@ export default function ContentPage({pathname, hash = ''}) {
           : <section id={section.id} key={section.id}><h2>{section.title[language]}</h2>{paragraphs(section)}</section>)}
         <p className="editorial-notice">{copy('notice')}</p>
         {page.source && <p className="editorial-source"><a href={page.source} target="_blank" rel="noreferrer">{copy('source')} ↗</a></p>}
+        {page.sources && <section className="editorial-sources" aria-labelledby="editorial-sources"><h2 id="editorial-sources">{copy('sources')}</h2><p className="editorial-source">{copy('sourceScope')}</p><ul>{page.sources.map(source => <li className="editorial-source" key={source.url}><a href={source.url} target="_blank" rel="noreferrer">{source.label[language]} ↗</a></li>)}</ul></section>}
         <a className="home-text-link editorial-home-link" href={`/#${page.homeAnchor}`}>{copy('overview')} <span aria-hidden="true">↗</span></a>
       </article>
     </div>
     {page.contact && <CompanyLocation/>}
-    <nav className="editorial-container editorial-related" aria-labelledby="editorial-related"><h2 id="editorial-related">{copy('related')}</h2><div>{Object.entries(publicInfoRoutes).filter(([path]) => path !== pathname).map(([path, info]) => <a key={path} href={path}><span>{info.title[language]}</span><span aria-hidden="true">→</span></a>)}</div></nav>
+    <nav className="editorial-container editorial-related" aria-labelledby="editorial-related"><h2 id="editorial-related">{copy('related')}</h2><div>{relatedPaths.map(path => <a key={path} href={path}><span>{publicInfoRoutes[path].title[language]}</span><span aria-hidden="true">→</span></a>)}</div></nav>
   </main>
 }

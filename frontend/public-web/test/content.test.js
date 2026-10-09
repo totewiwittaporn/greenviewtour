@@ -6,8 +6,8 @@ import {contentPages, editorialCopy} from '../src/features/content/pages.js'
 import {pageTitle} from '../src/core/locale.js'
 const editorialRoutes=Object.fromEntries(Object.entries(publicInfoRoutes).filter(([path])=>path!=='/information'))
 
-test('five editorial paths have complete bilingual sections and unique document anchors', () => {
-  assert.equal(Object.keys(editorialRoutes).length, 5)
+test('23 editorial paths have complete bilingual sections and unique document anchors', () => {
+  assert.equal(Object.keys(editorialRoutes).length, 23)
   assert.deepEqual(Object.keys(contentPages).sort(), Object.keys(editorialRoutes).sort())
   for (const [path, page] of Object.entries(contentPages)) {
     assert.ok(page.sections.length >= 2)
@@ -37,7 +37,7 @@ test('legacy FAQ/contact paths keep trailing-slash support without taking over u
 test('editorial titles are localized and distinct while commercial titles remain unchanged', () => {
   for (const locale of ['th', 'en']) {
     const titles = Object.keys(editorialRoutes).map(path => pageTitle(locale, path))
-    assert.equal(new Set(titles).size, 5)
+    assert.equal(new Set(titles).size, 23)
     assert.ok(titles.every(title => title.includes('Greenview Tour')))
   }
   assert.notEqual(pageTitle('th', '/faq'), pageTitle('en', '/faq'))
@@ -56,13 +56,43 @@ test('editorial copy contains no stale contact, payment account, fake staff or g
 test('Information is a hub and preserves all five existing editorial URLs',()=>{
  assert.equal(ownsPublicPath('/information/'),true)
  assert.equal(pageTitle('en','/information'),'Information | Greenview Tour')
- assert.equal(Object.keys(publicInfoRoutes).length,6)
+ assert.equal(Object.keys(publicInfoRoutes).length,24)
  for(const path of ['/about','/surin-islands','/surin-islands/travel-guide','/faq','/contact-us'])assert.ok(contentPages[path])
  const source=readFileSync(new URL('../src/core/ui/SiteNavigation.jsx',import.meta.url),'utf8')
  assert.ok(source.includes("const links=[['/','หน้าแรก'],['/tours','โปรแกรมทัวร์'],['/information','ข้อมูลการท่องเที่ยว']]"))
  assert.equal(source.includes('customerLogin'),false)
  assert.equal(source.includes('<CustomerAccess/>'),false)
  assert.ok(source.includes('className="staff-login"'))
+})
+
+test('20 reviewed Surin articles retain concise bilingual copy and curated related links', () => {
+  const suffixes = ['', '/getting-there', '/piers', '/best-time', '/weather', '/how-many-days', '/costs', '/accommodation', '/facilities', '/snorkeling', '/beginner-snorkeling', '/marine-life', '/coral-reefs', '/beaches', '/moken-community', '/with-children', '/travel-guide', '/park-rules', '/responsible-travel', '/surin-vs-similan']
+  const paths = suffixes.map(suffix => '/surin-islands' + suffix)
+  assert.deepEqual(Object.keys(contentPages).filter(path => path.startsWith('/surin-islands')).sort(), paths.sort())
+  for (const path of paths) {
+    const page = contentPages[path]
+    assert.equal(page.sections.length, 2)
+    assert.equal(page.reviewed.en, 'Content reviewed 9 October 2026')
+    assert.equal(page.reviewed.th, 'ตรวจเนื้อหา 9 ตุลาคม 2026')
+    assert.equal(page.homeAnchor, 'surin')
+    assert.equal(page.source, undefined, 'Do not use the legacy fixed TAT label')
+    assert.ok(page.relatedPaths.length >= 2 && page.relatedPaths.length <= 3)
+    assert.equal(new Set(page.relatedPaths).size, page.relatedPaths.length)
+    for (const related of page.relatedPaths) assert.ok(related !== path && paths.includes(related))
+    for (const section of page.sections) for (const locale of ['th', 'en']) assert.equal(section.paragraphs[locale].length, 1)
+    assert.ok(page.sources.length > 0)
+    for (const source of page.sources) {
+      assert.equal(new URL(source.url).protocol, 'https:')
+      assert.ok(!source.url.includes('&amp;'), 'HTML entities must be decoded in href values')
+      assert.ok(source.label.th.length > 5 && source.label.en.length > 5)
+      if (source.url.includes('news.dnp.go.th')) {
+        assert.match(source.label.en, /historical.*26 December 2021.*not current/)
+        assert.match(source.label.th, /ย้อนหลัง.*2021.*ไม่ใช่/)
+      }
+      if (!source.url.includes('tourismthailand.org')) assert.doesNotMatch(source.label.en, /Tourism Authority of Thailand/)
+    }
+  }
+  assert.equal(paths.reduce((total, path) => total + contentPages[path].relatedPaths.length, 0), 52)
 })
 
 test('phase-one guidance uses staff confirmation and does not direct customers to Member payments',()=>{
