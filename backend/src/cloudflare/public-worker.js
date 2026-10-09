@@ -1,3 +1,4 @@
+import {publicTourResult} from '../../../packages/contracts/public-tour-result.js'
 import {ownsPublicPath, normalizePublicPath, publicInfoRoutes} from '../../../packages/contracts/public-routes.js'
 
 const json=(code,status)=>new Response(JSON.stringify({code}),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}})
@@ -29,10 +30,7 @@ async function tourStatus(slug,env){
   target.search=new URLSearchParams({slug,view:'detail'}).toString()
   const response=await env.API.fetch(new Request(target,{headers:{accept:'application/json',origin:env.PUBLIC_ORIGIN},redirect:'manual',signal:AbortSignal.timeout(10000)}))
   if(!response.ok)return 503
-  const data=await response.json()
-  if(!Array.isArray(data.rows)||!Number.isInteger(data.total)||data.total<0)return 503
-  if(data.rows.length===0)return data.total===0?404:503
-  return data.rows.some(row=>row.slug===slug)?200:503
+  return publicTourResult(await response.json(),slug).status
  }catch{return 503}
 }
 function crawlerFile(request,env){
@@ -77,7 +75,7 @@ export default {
   const path=normalizePublicPath(url.pathname)
   if(ownsPublicPath(path)){
    const slug=url.searchParams.get('tour')
-   const status=path==='/tours'&&slug?await tourStatus(slug,env):200
+   const status=['/tours','/promotions'].includes(path)&&slug?await tourStatus(slug,env):200
    return shell(request,env,status)
   }
   const asset=await env.ASSETS.fetch(request)

@@ -1,3 +1,4 @@
+import {publicTourResult} from '../../../../../packages/contracts/public-tour-result.js'
 import {useEffect,useMemo,useState} from 'react'
 import NotFound from '../content/NotFound.jsx'
 import {useLocale} from '../../core/useLocale.js'
@@ -30,7 +31,7 @@ export default function TourDetail({slug,search=''}){
   useEffect(()=>{
     const controller=new AbortController();setState({loading:true})
     fetch('/api/public/tours?'+new URLSearchParams({slug,view:'detail'}),{signal:controller.signal}).then(async response=>{if(!response.ok)throw Error();return response.json()})
-      .then(data=>{if(!Array.isArray(data.rows))throw Error();if(!controller.signal.aborted)setState({tour:data.rows[0]||null})}).catch(()=>{if(!controller.signal.aborted)setState({error:true})})
+      .then(data=>{const result=publicTourResult(data,slug);if(result.status===503)throw Error();if(!controller.signal.aborted)setState({tour:result.tour||null})}).catch(()=>{if(!controller.signal.aborted)setState({error:true})})
     return()=>controller.abort()
   },[slug,attempt])
   const tour=state.tour,content=tour?tourContent(tour,locale):null

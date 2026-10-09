@@ -11,7 +11,7 @@ missing static assets retain404. GET/HEAD supported. Existing alias, origin,
 method and private-API guards retained. No bulk redirects or removal requests.
 Route metadata moved unchanged into a browser-safe shared contract, re-exported
 at the existing frontend import path. All 20 articles and contact copy preserved.
-/tours?tour=<slug> uses the existing clean read-only public catalog service lookup:
+Both /tours?tour=<slug> and /promotions?tour=<slug> use the existing clean read-only public catalog service lookup:
 published matching slug ->200, successful empty result ->404, unavailable/invalid
 response ->503. No upstream browser credentials. Ten-second fetch abort signal.
 Frontend missing tour shows not-found; failed request retains retry error.
@@ -67,3 +67,11 @@ passes workflow/lint then backend137 pass/68 fail due missing generated Prisma.
 cloudflare:check stops at Prisma generation (EAI_AGAIN); full browser suite likewise
 stops at missing Prisma export. GitHub full CI is required release evidence.
 Evidence logs: /workspace/404-*.log; screenshots /tmp/greenview-public-not-found/.
+
+REVIEW CORRECTION
+Both Catalog entry routes now apply identical server tour-existence semantics.
+Worker and browser regressions cover /tours and /promotions for absent404,
+unavailable503 and existing200; no redirects or unrelated behavior changes.
+Worker and TourDetail share public-tour-result validation: only a valid empty result
+is not-found; malformed totals/rows or mismatched slugs remain unavailable/retry.
+Both routes exercise malformed and mismatched fixture responses plus GET/HEAD.

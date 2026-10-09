@@ -23,6 +23,8 @@ const env={APP_ENV:'production',PRODUCTION_ENABLED:'true',PUBLIC_ORIGIN:'https:/
   const url=new URL(request.url)
   if(url.pathname==='/api/public/company')return Response.json({company:null})
   if(url.searchParams.has('slug')&&mode==='unavailable')return new Response('',{status:503})
+  if(url.searchParams.has('slug')&&mode==='malformed')return Response.json({rows:[],total:1})
+  if(url.searchParams.has('slug')&&mode==='mismatch')return Response.json({rows:[{slug:'different'}],total:1})
   if(url.searchParams.has('slug')&&mode==='valid')return Response.json({rows:[{slug:url.searchParams.get('slug')}],total:1})
   return Response.json({rows:[],total:0,page:1,pageSize:12})
  }}
@@ -68,16 +70,21 @@ try{
  await page.locator('.editorial-related a').first().click()
  await page.waitForURL('**/surin-islands/piers')
  await page.goBack();await page.waitForURL('**/surin-islands/getting-there')
+ for(const path of ['/tours','/promotions']){
  mode='missing'
- assert.equal((await page.goto(origin+'/tours?tour=absent')).status(),404)
+ assert.equal((await page.goto(origin+path+'?tour=absent')).status(),404)
  await page.getByRole('heading',{name:'Page not found'}).waitFor()
- mode='unavailable'
- assert.equal((await page.goto(origin+'/tours?tour=absent')).status(),503)
+ for(const failureMode of ['unavailable','malformed','mismatch']){
+ mode=failureMode
+ assert.equal((await page.goto(origin+path+'?tour=absent')).status(),503)
  await page.getByRole('alert').waitFor()
  assert.equal(await page.getByRole('heading',{name:'Page not found'}).count(),0)
+ }
+ }
  for(const method of ['GET','HEAD']){
   for(const path of ['/not-a-page','/assets/missing.js'])assert.equal((await fetch(origin+path,{method})).status,404)
-  mode='valid';assert.equal((await fetch(origin+'/tours?tour=live&date=2026-10-10&pax=2',{method})).status,200)
+  for(const path of ['/tours','/promotions'])for(const [testMode,status] of [['missing',404],['unavailable',503],['malformed',503],['mismatch',503]]){mode=testMode;assert.equal((await fetch(origin+path+'?tour=absent',{method})).status,status)}
+  mode='valid';for(const path of ['/tours','/promotions'])assert.equal((await fetch(origin+path+'?tour=live&date=2026-10-10&pax=2',{method})).status,200)
  }
  assert.equal((await fetch(origin+'/api/private')).status,404)
  const robots=await fetch(origin+'/robots.txt');assert.match(robots.headers.get('content-type'),/text\/plain/)
