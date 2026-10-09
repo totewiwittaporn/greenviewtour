@@ -1,0 +1,69 @@
+PUBLIC 404 / CRAWLER FILE CORRECTION — 9 OCTOBER 2026
+
+Base: deployed PR31 f7f4fb7a2a9c024ae563a0719abe4928c9105250.
+Branch: fix/public-not-found; stack against codex/surin-information-2026-10-09.
+Owner approved correction and eventual public release; this task does not deploy.
+
+BEHAVIOR
+Public Worker serves the application only for registered public page paths.
+Unknown pages return HTTP404 with bilingual not-found UI and recovery navigation;
+missing static assets retain404. GET/HEAD supported. Existing alias, origin,
+method and private-API guards retained. No bulk redirects or removal requests.
+Route metadata moved unchanged into a browser-safe shared contract, re-exported
+at the existing frontend import path. All 20 articles and contact copy preserved.
+/tours?tour=<slug> uses the existing clean read-only public catalog service lookup:
+published matching slug ->200, successful empty result ->404, unavailable/invalid
+response ->503. No upstream browser credentials. Ten-second fetch abort signal.
+Frontend missing tour shows not-found; failed request retains retry error.
+This adds a public catalogue read on direct tour detail navigation (including HEAD).
+Normal tour lists, filters, date/pax parameters and operations are unchanged.
+
+/robots.txt is text/plain with public Allow and canonical sitemap URL.
+/sitemap.xml is application/xml, derived from 27 known public routes (home, tours,
+promotions, Information, 23 editorial pages). No guessed dynamic tour slugs, query
+variants, member or backoffice URLs. Valid tour details remain crawlable via links;
+complete dynamic-tour sitemap discovery is outside this minimal correction.
+Trailing-slash compatibility retained; no normalization redirect changes.
+
+RELEASE REQUIREMENT — PUBLIC WORKER AND ASSETS TOGETHER
+Authenticated release task must set assets.not_found_handling="none" in its verified
+private PUBLIC config and keep assets.run_worker_first=true. The checked-in example
+is updated; it is not the actual private release config. DO NOT retain SPA fallback:
+that would turn unknown asset lookup into200 and defeat the404 correction.
+Build exact correction commit; deploy public-worker.js plus public-web/dist only.
+Preserve API service binding, origins, aliases, security settings and all DB state.
+Retain currently deployed version45760dd3-a7f8-471a-b68e-f7261f3f6f86 for rollback.
+Rollback Worker+assets+asset-routing configuration together; no database restore.
+Public post-release checks: GET/HEAD unknown/nested/old.html/missing assets404;
+known pages200; valid tour200, absent404, service failure503; MIME-correct robots/XML;
+private API404; bilingual recovery navigation and contact unchanged.
+
+PRIVATE HOST EXCLUSION AUDIT — NO PRIVATE APP CHANGES
+Both frontend/member/public/robots.txt and frontend/backoffice/public/robots.txt:
+User-agent:* Disallow:/; both index.html files contain noindex/nofollow/noarchive/
+nosnippet; both public/_headers set X-Robots-Tag equivalently on /*.
+Staff Worker preserves asset response headers. These crawler directives do not
+replace auth: backend/src/app/http.js authenticates member protected routes after
+public login/recovery entrypoints (line130), enforces customer purpose and scoped
+customer handlers; staff routes use authenticateStaff and workspace purpose guards.
+No auth code changed or account used. Member production pause remains untouched.
+Read-only requests to both hosts' robots.txt blocked by environment proxy403;
+live-host policy/header parity NOT verified. No source correction identified here;
+if parent finds live drift, handle that as a separate bounded private-app release.
+
+VALIDATION
+PASS: Worker tests10/10, Public tests18/18, all frontend tests62/62; lint;
+public build; isolated Worker bundle; git diff --check.
+PASS: scripts/smoke-public-not-found.mjs runs actual Worker through a local HTTP
+adapter against built assets and read-only fixture API responses. HTTP404/503/200,
+TH/EN404, 390px mobile, metadata cleanup on recovery navigation, deep article link,
+related navigation/back, missing assets, GET/HEAD, genuine crawler files, private
+API guard. Runtime errors0, mutations0. Screenshots visually inspected.
+Browser plugin unavailable; installed Chromium via GREENVIEW_CHROMIUM_EXECUTABLE
+used locally, external resources stubbed; no live backend used. Script included in
+full smoke-browser-fixtures CI runner, which uses default installed Playwright.
+Local npm ci postinstall fails Prisma checksum fetch403; no bypass. npm run check
+passes workflow/lint then backend137 pass/68 fail due missing generated Prisma.
+cloudflare:check stops at Prisma generation (EAI_AGAIN); full browser suite likewise
+stops at missing Prisma export. GitHub full CI is required release evidence.
+Evidence logs: /workspace/404-*.log; screenshots /tmp/greenview-public-not-found/.
