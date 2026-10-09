@@ -1,3 +1,4 @@
+import {useCatalogMetadata} from './useCatalogMetadata.js'
 import {publicTourResult} from '../../../../../packages/contracts/public-tour-result.js'
 import {useEffect,useMemo,useState} from 'react'
 import NotFound from '../content/NotFound.jsx'
@@ -26,6 +27,7 @@ function ComponentList({rows,t,number,money,showPrice=false}){
 
 export default function TourDetail({slug,search=''}){
   const {locale,t,label,number,money,date}=useLocale()
+  useCatalogMetadata(location.pathname.replace(/\/+$/,''),search)
   const [state,setState]=useState({loading:true}),[attempt,setAttempt]=useState(0),[related,setRelated]=useState([])
   const params=useMemo(()=>new URLSearchParams(search),[search])
   useEffect(()=>{

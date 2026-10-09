@@ -1,5 +1,7 @@
+import {publicSitemap} from './public-sitemap.js'
+import {catalogIndexing} from '../../../packages/contracts/public-catalog-url.js'
 import {publicTourResult} from '../../../packages/contracts/public-tour-result.js'
-import {ownsPublicPath, normalizePublicPath, publicInfoRoutes} from '../../../packages/contracts/public-routes.js'
+import {ownsPublicPath, normalizePublicPath} from '../../../packages/contracts/public-routes.js'
 
 const json=(code,status)=>new Response(JSON.stringify({code}),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}})
 const validOrigin=value=>{
@@ -14,8 +16,6 @@ function secure(response){
  headers.set('strict-transport-security','max-age=31536000')
  return new Response(response.body,{status:response.status,headers})
 }
-// Reuse the pure frontend route registry; never admit arbitrary path prefixes.
-const publicPaths=['/', '/tours', '/promotions', ...Object.keys(publicInfoRoutes)]
 async function shell(request,env,status=200){
  const response=await env.ASSETS.fetch(new Request(new URL('/',request.url),{method:request.method}))
  if(!response.ok)return secure(response)
@@ -36,12 +36,6 @@ async function tourStatus(slug,env){
 function crawlerFile(request,env){
  const path=new URL(request.url).pathname
  if(path==='/robots.txt')return secure(new Response(request.method==='HEAD'?null:`User-agent: *\nAllow: /\nSitemap: ${env.PUBLIC_ORIGIN}/sitemap.xml\n`,{headers:{'content-type':'text/plain; charset=utf-8'}}))
- if(path==='/sitemap.xml'){
-  // Only canonical public routes. Private hosts and unverified dynamic slugs are excluded.
-  const escape=value=>value.replace(/[<>&"']/g,char=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[char]))
-  const xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${publicPaths.map(path=>`<url><loc>${escape(env.PUBLIC_ORIGIN+path)}</loc></url>`).join('')}</urlset>\n`
-  return secure(new Response(request.method==='HEAD'?null:xml,{headers:{'content-type':'application/xml; charset=utf-8'}}))
- }
 }
 export default {
  async fetch(request,env){
@@ -70,13 +64,16 @@ export default {
   }
   if(!['GET','HEAD'].includes(request.method))return json('METHOD_NOT_ALLOWED',405)
   if(!env.ASSETS)return json('SERVICE_UNAVAILABLE',503)
+  if(url.pathname==='/sitemap.xml')return secure(await publicSitemap(request,env))
   const crawler=crawlerFile(request,env)
   if(crawler)return crawler
   const path=normalizePublicPath(url.pathname)
   if(ownsPublicPath(path)){
    const slug=url.searchParams.get('tour')
    const status=['/tours','/promotions'].includes(path)&&slug?await tourStatus(slug,env):200
-   return shell(request,env,status)
+   const response=await shell(request,env,status)
+   if(['/tours','/promotions'].includes(path)&&catalogIndexing(path,url.search).noindex)response.headers.set('x-robots-tag','noindex, follow')
+   return response
   }
   const asset=await env.ASSETS.fetch(request)
   if(asset.status!==404)return secure(asset)

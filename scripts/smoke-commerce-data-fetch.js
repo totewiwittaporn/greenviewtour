@@ -56,8 +56,8 @@ try{
   }
   await page.goto(origin+'/tours');await page.getByRole('heading',{name:'Lean Island Tour 0',exact:true}).waitFor()
   assert.ok(reads.some(url=>url.startsWith('/api/public/tours?')&&url.includes('view=cards')))
-  await page.locator('main').getByRole('button',{name:/Next|ถัดไป/,exact:true}).click();await page.getByRole('heading',{name:'Lean Island Tour 12',exact:true}).waitFor()
-  await page.locator('main').getByRole('button',{name:/Next|ถัดไป/,exact:true}).click();await page.getByRole('heading',{name:'Lean Island Tour 30',exact:true}).waitFor()
+  await page.locator('main').getByRole(member?'button':'link',{name:/Next|ถัดไป/,exact:true}).click();await page.getByRole('heading',{name:'Lean Island Tour 12',exact:true}).waitFor()
+  await page.locator('main').getByRole(member?'button':'link',{name:/Next|ถัดไป/,exact:true}).click();await page.getByRole('heading',{name:'Lean Island Tour 30',exact:true}).waitFor()
   assert.ok(await page.locator('main').getByRole('button',{name:/Next|ถัดไป/,exact:true}).isDisabled())
   await page.goto(origin+'/tours?tour=lean-tour');await page.getByText('Full itinerary is retained',{exact:true}).waitFor()
   await page.getByText('Full cancellation terms are retained',{exact:true}).first().waitFor()

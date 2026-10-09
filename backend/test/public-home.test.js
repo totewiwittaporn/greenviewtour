@@ -49,3 +49,17 @@ test('duration combines with ownership before totals and page clamping',async()=
 test('invalid duration is rejected rather than silently broadening the result',async()=>{
  for(const duration of ['', 'all','DAY','0','day,overnight'])await assert.rejects(()=>publicCatalog({},new URLSearchParams({duration})),{message:'INVALID_INPUT',status:400})
 })
+
+test('Unfiltered sitemap catalog pages include own and partner publications but exclude drafts and inactive tours',async()=>{
+ const records=Array.from({length:27},(_,i)=>({id:String(i),slug:'published-'+i,ownership:i%2?'PARTNER':'GREENVIEW',status:'ACTIVE',publicStatus:'PUBLISHED'}))
+ records.push({id:'draft',status:'ACTIVE',publicStatus:'DRAFT'},{id:'inactive',status:'INACTIVE',publicStatus:'PUBLISHED'})
+ const matching=where=>records.filter(row=>row.status===where.status&&row.publicStatus===where.publicStatus)
+ const db={tourProgram:{count:async({where})=>matching(where).length,findMany:async({where,select,skip,take})=>{assert.equal(where.ownership,undefined);assert.equal(select.slug,true);return matching(where).slice(skip,skip+take)}}}
+ const found=[]
+ for(let page=1;page<=3;page++){
+  const data=await publicCatalog(db,new URLSearchParams({view:'cards',page:String(page)}))
+  assert.equal(data.total,27);found.push(...data.rows)
+ }
+ assert.equal(found.length,27);assert.ok(found.some(row=>row.ownership==='PARTNER'));assert.ok(found.some(row=>row.ownership==='GREENVIEW'))
+ assert.ok(found.every(row=>row.status==='ACTIVE'&&row.publicStatus==='PUBLISHED'))
+})
