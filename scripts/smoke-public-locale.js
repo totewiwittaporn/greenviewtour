@@ -124,7 +124,7 @@ try {
   await page.locator('.public-main-nav a[href="/information"]').click()
   await page.locator('.information-grid a[href="/surin-islands"]').first().click()
   await page.waitForURL(`${origin}/surin-islands`)
-  await page.getByRole('heading', {name: 'Discover the Surin Islands', exact: true}).waitFor()
+  await page.getByRole('heading', {name: 'Surin Islands: a first-time guide', exact: true}).waitFor()
   await assertShell()
   await page.locator('.editorial-home-link[href="/#surin"]').click()
   await page.waitForURL(`${origin}/#surin`)
