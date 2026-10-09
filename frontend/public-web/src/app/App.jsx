@@ -16,7 +16,7 @@ export default function App() {
   const {locale, label} = useLocale()
   const route = useNavigation()
   useEffect(() => {
-    const tourDetail=route.pathname==='/tours'&&new URLSearchParams(route.search).has('tour')
+    const tourDetail=['/tours','/promotions'].includes(route.pathname)&&new URLSearchParams(route.search).has('tour')
     if(!tourDetail&&ownsPublicPath(route.pathname))document.title=pageTitle(locale,route.pathname)
     const info=publicInfo(route.pathname)
     if(!info)return

@@ -74,6 +74,12 @@ try{
  mode='missing'
  assert.equal((await page.goto(origin+path+'?tour=absent')).status(),404)
  await page.getByRole('heading',{name:'Page not found'}).waitFor()
+ for(const [language,title] of [['TH','ไม่พบหน้าที่คุณต้องการ'],['EN','Page not found']]){
+  await page.locator('.language-selector > button').click()
+  await page.locator('.language-options button').filter({hasText:language}).click()
+  await page.getByRole('heading',{name:title}).waitFor()
+  assert.equal(await page.title(),title+' | Greenview Tour')
+ }
  for(const failureMode of ['unavailable','malformed','mismatch']){
  mode=failureMode
  assert.equal((await page.goto(origin+path+'?tour=absent')).status(),503)
