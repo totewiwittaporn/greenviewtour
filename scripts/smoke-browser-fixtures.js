@@ -30,7 +30,7 @@ try {
     const appVite = await createViteServer({root:appRoot, mode:app==='member'?'member-regression':'development', server:{port,strictPort:true}, configFile:`${appRoot}vite.config.js`})
     try {
       await appVite.listen()
-      for(const testScript of [script,'smoke-commerce-data-fetch.js',...(app==='public-web'?['smoke-public-content.js','smoke-public-contact.js']:[])])await new Promise((resolve, reject) => {
+      for(const testScript of [script,'smoke-commerce-data-fetch.js',...(app==='public-web'?['smoke-public-content.js','smoke-public-contact.js','smoke-public-not-found.mjs']:[])])await new Promise((resolve, reject) => {
         const child = spawn(process.execPath, [fileURLToPath(new URL(testScript, import.meta.url))], {stdio:'inherit',env:{...process.env,[env]:`http://localhost:${port}`,GREENVIEW_COMMERCE_SURFACE:app}})
         child.once('error',reject)
         child.once('exit',code=>code===0?resolve():reject(new Error(`${testScript} failed`)))

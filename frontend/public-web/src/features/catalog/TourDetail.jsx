@@ -1,4 +1,6 @@
+import {publicTourResult} from '../../../../../packages/contracts/public-tour-result.js'
 import {useEffect,useMemo,useState} from 'react'
+import NotFound from '../content/NotFound.jsx'
 import {useLocale} from '../../core/useLocale.js'
 import {Button} from '../../core/ui/Controls.jsx'
 import ImageGallery from '../../core/ui/ImageGallery.jsx'
@@ -29,7 +31,7 @@ export default function TourDetail({slug,search=''}){
   useEffect(()=>{
     const controller=new AbortController();setState({loading:true})
     fetch('/api/public/tours?'+new URLSearchParams({slug,view:'detail'}),{signal:controller.signal}).then(async response=>{if(!response.ok)throw Error();return response.json()})
-      .then(data=>{if(!controller.signal.aborted)setState({tour:data.rows?.[0]||null})}).catch(()=>{if(!controller.signal.aborted)setState({error:true})})
+      .then(data=>{const result=publicTourResult(data,slug);if(result.status===503)throw Error();if(!controller.signal.aborted)setState({tour:result.tour||null})}).catch(()=>{if(!controller.signal.aborted)setState({error:true})})
     return()=>controller.abort()
   },[slug,attempt])
   const tour=state.tour,content=tour?tourContent(tour,locale):null
@@ -53,7 +55,8 @@ export default function TourDetail({slug,search=''}){
     return()=>{meta.remove();ogTitle.remove();ogDescription.remove()}
   },[content])
   if(state.loading)return <main id="content" className="tour-detail-v2"><p className="tour-detail-state" role="status">{t('กำลังโหลด…')}</p></main>
-  if(state.error||!tour)return <main id="content" className="tour-detail-v2"><section className="tour-detail-state" role="alert"><p>{t('โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง')}</p><Button onClick={()=>setAttempt(n=>n+1)}>{t('ลองอีกครั้ง')}</Button></section></main>
+  if(!state.error&&!tour)return <NotFound/>
+  if(state.error)return <main id="content" className="tour-detail-v2"><section className="tour-detail-state" role="alert"><p>{t('โหลดข้อมูลไม่สำเร็จ กรุณาลองอีกครั้ง')}</p><Button onClick={()=>setAttempt(n=>n+1)}>{t('ลองอีกครั้ง')}</Button></section></main>
   const media=tourMedia(tour,locale),cover=tourCover(tour,locale)
   const highlightRows=highlights(tour,locale),steps=itinerary(tour,locale),faqRows=faqs(tour,locale),badge=badgeText(tour.homeBadge,t)
   const season=tour.seasons?.[0],included=lines(content.inclusions),excluded=lines(content.exclusions),components=packageComponents(tour)
