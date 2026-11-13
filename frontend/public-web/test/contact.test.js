@@ -13,3 +13,10 @@ test('legacy CMS destinations redirect to contact while staff and public links r
  for(const value of ['https://member.greenviewtour.com/tours','http://localhost:5175/tours','//member.greenviewtour.com','/member/tours','/checkout','/payment','/register','/login'])assert.equal(isPausedContactLink(value),true,value)
  for(const value of ['/tours','/contact-us','/information','https://www.instagram.com/greenviewtour/'])assert.equal(isPausedContactLink(value),false,value)
 })
+
+test('public enquiry never invents a departure location or nationality from the display fare',()=>{
+ for(const locale of ['th','en']){
+  const text=inquiryMessage({tour:'Surin',priceZone:'Khaolak',priceNationality:'FOREIGN'},locale)
+  assert.doesNotMatch(text,/Khao Lak|Foreign visitor|เขาหลัก|ต่างชาติ|Visitor group|Departure zone/)
+ }
+})

@@ -14,7 +14,7 @@ const lines=value=>(value||'').split('\n').map(item=>item.trim()).filter(Boolean
 function RelatedCard({tour,locale,t,money}){
   const content=tourContent(tour,locale),cover=tourCover(tour,locale)
   const href='/tours?tour='+encodeURIComponent(tour.slug)
-  return <article className="tour-related-card"><a href={href}>{cover&&<img src={cover.url} alt={cover.alt||content.name} loading="lazy"/>}<div><strong>{content.name}</strong><span>{tour.durationDays!=null?tour.durationDays+' '+t('วัน'):typeText(tour.tourType,t)}</span><b>{t('เริ่มต้น')} {money(tourStartingPrice(tour))}</b></div></a></article>
+  return <article className="tour-related-card"><a href={href}>{cover&&<img src={cover.url} alt={cover.alt||content.name} loading="lazy"/>}<div><strong>{content.name}</strong><span>{tour.durationDays!=null?tour.durationDays+' '+t('วัน'):typeText(tour.tourType,t)}</span><b>{t('ผู้ใหญ่')} {money(tourStartingPrice(tour))}</b><span>{t('เด็ก')} {money(tourStartingPrice(tour,'child'))}</span></div></a></article>
 }
 function ComponentList({rows,t,number,money,showPrice=false}){
   return <ul className="tour-component-list">{rows.map(row=>{
@@ -79,7 +79,7 @@ export default function TourDetail({slug,search=''}){
           {content.suitableFor&&<><dt>{t('เหมาะสำหรับ')}</dt><dd>{content.suitableFor}</dd></>}
           {tour.ownership==='PARTNER'&&tour.operator?.name&&<><dt>{t('ผู้จัดโปรแกรม')}</dt><dd>{tour.operator.name}</dd></>}
         </dl>
-        <aside className="tour-booking-panel"><p>{t('เริ่มต้นเพียง')}</p><div className="tour-start-price"><strong>{money(tourStartingPrice(tour))}</strong><span>/ {t('ผู้ใหญ่')}</span></div>{tour.childPrice!=null&&<small>{t('เด็ก')} {money(tour.childPrice)}</small>}<TourAvailability tour={tour} initialDate={initialDate} initialAdults={initialAdults}/></aside>
+        <aside className="tour-booking-panel"><TourAvailability tour={tour} initialDate={initialDate} initialAdults={initialAdults}/></aside>
       </div>
     </section>
     <section className="tour-detail-main">

@@ -41,3 +41,16 @@ test('program components keep package semantics separated for Public rendering',
   assert.equal(componentBasisText('PER_PERSON',t),'per person')
   assert.equal(componentBasisText('PER_BOOKING',t),'per booking')
 })
+
+test('public rates select only the standard Khao Lak international fare without mutating stored prices', async()=>{
+ const {tourDirectPrice,tourStartingPrice,publicPriceSelection}=await import('../src/features/catalog/tourPresentation.js')
+ const tour={adultPrice:50,childPrice:20,directPriceMatrix:{Kuraburi:{TH:{adult:100,child:80},FOREIGN:{adult:200,child:150}},Khaolak:{TH:{adult:300,child:250},FOREIGN:{adult:400,child:350}}}}
+ const original=JSON.stringify(tour)
+ assert.deepEqual(publicPriceSelection,{priceZone:'Khaolak',priceNationality:'FOREIGN'})
+ assert.deepEqual(tourDirectPrice(tour),{adultPrice:400,childPrice:350})
+ assert.equal(tourStartingPrice(tour),400)
+ assert.equal(tourStartingPrice(tour,'child'),350)
+ assert.equal(JSON.stringify(tour),original)
+ assert.deepEqual(tourDirectPrice({directPriceMatrix:{}}),{adultPrice:null,childPrice:null})
+ assert.deepEqual(tourDirectPrice({adultPrice:70,childPrice:0}),{adultPrice:70,childPrice:0})
+})

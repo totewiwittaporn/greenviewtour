@@ -1,4 +1,4 @@
-// Read-only browser fixtures for the pricing behavior already deployed on 10 October.
+// Public standard fare regression: no visitor or departure pricing selectors.
 import assert from 'node:assert/strict'
 import {createServer} from 'node:http'
 import {readFile} from 'node:fs/promises'
@@ -19,7 +19,7 @@ const server=createServer(async(req,res)=>{
   else if(url.pathname==='/api/public/quote'){
    const p=url.searchParams;quotes.push(Object.fromEntries(p))
    const prices=tour.directPriceMatrix[p.get('priceZone')]?.[p.get('priceNationality')]
-   assert.ok(prices,'quote before both price selectors')
+   assert.ok(prices,'standard fare quote context missing')
    data={packageTotal:String(Number(prices.adult)*Number(p.get('adults'))+Number(prices.child)*Number(p.get('children'))),availability:{legs:[],groupSize:Number(p.get('adults'))+Number(p.get('children')),canConfirm:true}}
   }
   if(data){res.setHeader('content-type','application/json');return res.end(JSON.stringify(data))}
@@ -36,30 +36,41 @@ try{
   await context.addInitScript(lang=>localStorage.setItem('greenview.locale',lang),lang)
   await context.route('**/*',route=>route.request().url().startsWith(origin+'/')?route.continue():route.abort())
   const page=await context.newPage();page.on('pageerror',error=>errors.push(error.message))
-  const prior=quotes.length
+
   await page.goto(origin+'/tours?tour=fixture&date=2026-11-20&pax=2')
   await page.locator('.tour-direct-prices').waitFor()
-  assert.equal(await page.locator('.tour-direct-prices tbody tr').count(),4)
-  await page.waitForTimeout(450);assert.equal(quotes.length,prior)
-  const selectors=page.locator('.tour-direct-prices select')
-  await selectors.nth(0).selectOption('Kuraburi')
-  await page.waitForTimeout(450);assert.equal(quotes.length,prior)
-  await selectors.nth(1).selectOption('TH')
-  await page.waitForFunction(()=>document.querySelector('.tour-quote-total strong')?.textContent.includes('3,000'))
-  assert.equal(quotes.at(-1).priceZone,'Kuraburi');assert.equal(quotes.at(-1).priceNationality,'TH')
-  await selectors.nth(0).selectOption('Khaolak');await selectors.nth(1).selectOption('FOREIGN')
+  assert.equal(await page.locator('.tour-direct-prices tbody tr').count(),1)
+  assert.equal(await page.locator('.tour-direct-prices select').count(),0)
+  const table=await page.locator('.tour-direct-prices').innerText()
+  assert.match(table,/2,500/);assert.match(table,/1,900/)
+  assert.doesNotMatch(table,/Thai|Foreign|Khao Lak|Khura Buri|คนไทย|ต่างชาติ|เขาหลัก|คุระบุรี/)
   await page.waitForFunction(()=>document.querySelector('.tour-quote-total strong')?.textContent.includes('5,000'))
   assert.equal(quotes.at(-1).priceZone,'Khaolak');assert.equal(quotes.at(-1).priceNationality,'FOREIGN')
+  await page.locator('.capacity-public-counts input').nth(1).fill('1')
+  await page.waitForFunction(()=>document.querySelector('.tour-quote-total strong')?.textContent.includes('6,900'))
   await page.locator('.tour-availability > button').last().click()
   const text=await page.locator('dialog textarea').inputValue()
-  assert.match(text,lang==='en'?/Khao Lak/:/เขาหลัก/);assert.match(text,lang==='en'?/Foreign visitor/:/ต่างชาติ/)
+  assert.doesNotMatch(text,/Khao Lak|Foreign visitor|เขาหลัก|ต่างชาติ/);assert.match(text,/Surin fixture/)
   await page.keyboard.press('Escape')
   assert.equal(await page.locator('dialog[open]').count(),0)
-  await selectors.nth(1).selectOption('')
+  await page.locator('.capacity-public-counts input').nth(0).fill('')
   await page.waitForTimeout(450);assert.equal(await page.locator('.tour-quote-total').count(),0)
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'pricing overflow')
+
+  if(process.env.GREENVIEW_QA_SCREENSHOTS){
+    await page.locator('.tour-booking-panel').screenshot({path:process.env.GREENVIEW_QA_SCREENSHOTS+'/detail-'+lang+'-'+width+'.png'})
+  }
+  for(const [path,selector] of [['/','.featured-tour-bottom'],['/tours','.catalog-trip-price']]){
+   await page.goto(origin+path)
+   await page.locator(selector).first().waitFor()
+   const priceText=await page.locator(selector).first().innerText()
+   assert.match(priceText,/2,500/);assert.match(priceText,/1,900/)
+   assert.doesNotMatch(priceText,/1,500|9999|8,888|Foreign|Thai|Khao Lak|ต่างชาติ|คนไทย|เขาหลัก/)
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'card price overflow')
+   if(process.env.GREENVIEW_QA_SCREENSHOTS)await page.locator(selector).first().screenshot({path:process.env.GREENVIEW_QA_SCREENSHOTS+'/'+(path==='/'?'home':'catalog')+'-'+lang+'-'+width+'.png'})
+  }
   await context.close()
  }
  assert.deepEqual(errors,[]);assert.deepEqual(writes,[])
- console.log('PASS: live pricing parity, four matrix fares, no quote until both selectors, re-quote and stale-total removal, inquiry fields, TH/EN at 1440/834/390; zero mutations.')
+ console.log('PASS: single standard public fare, adult and child labels, automatic quote context, re-quote and stale-total removal, neutral enquiry, TH/EN at 1440/834/390; zero mutations.')
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve))}

@@ -37,7 +37,7 @@ export default function PublishedHighlights() {
         </div>
         {content.summary&&<p>{content.summary}</p>}
         <div className="featured-tour-bottom">
-          <div><small>{t('เริ่มต้น')}</small><strong>{money(tourStartingPrice(tour))}</strong><span> / {t('ผู้ใหญ่')}</span></div>
+          <div><small>{t('ผู้ใหญ่')}</small><strong>{money(tourStartingPrice(tour))}</strong><small>{t('เด็ก')} {money(tourStartingPrice(tour,'child'))}</small></div>
           <a className="featured-tour-cta" href={href}>{t('ดูรายละเอียด')} <span aria-hidden="true">→</span></a>
         </div>
       </div>

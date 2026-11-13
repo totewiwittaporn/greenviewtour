@@ -1,15 +1,13 @@
-// Restored from the currently deployed public pricing behavior (9a5cb956).
-export const directPriceZones = ['Kuraburi','Khaolak']
-export const directPriceNationalities = ['TH','FOREIGN']
-export function tourDirectPrice(tour, zone, nationality) {
-  if (!tour.directPriceMatrix) return {adultPrice:tour.adultPrice ?? null,childPrice:tour.childPrice ?? null}
-  if (!directPriceZones.includes(zone) || !directPriceNationalities.includes(nationality)) return {adultPrice:null,childPrice:null}
-  return {adultPrice:tour.directPriceMatrix[zone]?.[nationality]?.adult ?? null,childPrice:tour.directPriceMatrix[zone]?.[nationality]?.child ?? null}
+// Public display uses the owner's selected standard fare; stored rate matrices remain unchanged.
+export const publicPriceSelection = Object.freeze({priceZone:'Khaolak',priceNationality:'FOREIGN'})
+export function tourDirectPrice(tour) {
+  const rate=tour.directPriceMatrix?.[publicPriceSelection.priceZone]?.[publicPriceSelection.priceNationality]
+  return tour.directPriceMatrix
+    ? {adultPrice:rate?.adult ?? null,childPrice:rate?.child ?? null}
+    : {adultPrice:tour.adultPrice ?? null,childPrice:tour.childPrice ?? null}
 }
 export function tourStartingPrice(tour, age='adult') {
-  if (!tour.directPriceMatrix) return tour[age==='adult'?'adultPrice':'childPrice'] ?? null
-  const values=directPriceZones.flatMap(zone=>directPriceNationalities.map(nationality=>tour.directPriceMatrix[zone]?.[nationality]?.[age])).filter(value=>value!=null&&value!==''&&Number.isFinite(Number(value)))
-  return values.length?Math.min(...values.map(Number)).toFixed(2):null
+  return tourDirectPrice(tour)[age==='adult'?'adultPrice':'childPrice']
 }
 export function tourContent(tour, locale='th') {
   const rows=Array.isArray(tour?.publicContent)?tour.publicContent:[]
