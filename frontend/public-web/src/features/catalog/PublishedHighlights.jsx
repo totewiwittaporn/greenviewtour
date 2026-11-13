@@ -1,7 +1,7 @@
 import {useLocale} from '../../core/useLocale.js'
 import {useEffect,useState} from 'react'
 import {Button} from '../../core/ui/Controls.jsx'
-import {badgeText,tourContent,tourCover,typeText} from './tourPresentation.js'
+import {badgeText,tourContent,tourCover,typeText,tourStartingPrice} from './tourPresentation.js'
 import './PublishedHighlights.css'
 
 export default function PublishedHighlights() {
@@ -37,7 +37,7 @@ export default function PublishedHighlights() {
         </div>
         {content.summary&&<p>{content.summary}</p>}
         <div className="featured-tour-bottom">
-          <div><small>{t('เริ่มต้น')}</small><strong>{money(tour.adultPrice)}</strong><span> / {t('ผู้ใหญ่')}</span></div>
+          <div><small>{t('เริ่มต้น')}</small><strong>{money(tourStartingPrice(tour))}</strong><span> / {t('ผู้ใหญ่')}</span></div>
           <a className="featured-tour-cta" href={href}>{t('ดูรายละเอียด')} <span aria-hidden="true">→</span></a>
         </div>
       </div>

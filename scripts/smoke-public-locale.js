@@ -34,7 +34,7 @@ let tourMode = 'ready'
 let popupMode = false
 const tourQueries = []
 const company = {name: 'Greenview fixture company', address: 'Fixture address', phone: '+66 123 4567', email: 'fixture@example.com', mapUrl: 'https://maps.google.com/?q=Surin'}
-const browser = await chromium.launch({ headless: true })
+const browser = await chromium.launch({ headless: true, ...(process.env.GREENVIEW_CHROMIUM_EXECUTABLE ? {executablePath:process.env.GREENVIEW_CHROMIUM_EXECUTABLE} : {}) })
 try {
   const context = await browser.newContext({ serviceWorkers: 'block' })
   const page = await context.newPage()
@@ -124,7 +124,7 @@ try {
   await page.locator('.public-main-nav a[href="/information"]').click()
   await page.locator('.information-grid a[href="/surin-islands"]').first().click()
   await page.waitForURL(`${origin}/surin-islands`)
-  await page.getByRole('heading', {name: 'Surin Islands: a first-time guide', exact: true}).waitFor()
+  await page.getByRole('heading', {name: 'A guide to the Surin Islands', exact: true}).waitFor()
   await assertShell()
   await page.locator('.editorial-home-link[href="/#surin"]').click()
   await page.waitForURL(`${origin}/#surin`)
@@ -173,7 +173,7 @@ try {
   await page.goto(`${origin}/promotions`)
   await page.waitForFunction(() => document.title === 'Tour promotions | Greenview Tour')
   await page.goto(origin)
-  await page.waitForFunction(() => document.title === 'Greenview Tour \u2014 Surin Islands trips')
+  await page.waitForFunction(() => document.title === 'Greenview Tour | Surin Islands tours from Khura Buri')
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false)
   for (const locale of ['th','en']) {
     await chooseLanguage(locale.toUpperCase())

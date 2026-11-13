@@ -1,10 +1,10 @@
-// Reviewed bilingual editorial content; operational details remain API-owned.
+// Bilingual editorial information; confirm operational details with providers.
 export const surin = {
   "image": "surin-hero.webp",
   "homeAnchor": "surin",
   "reviewed": {
-    "th": "ตรวจเนื้อหา 9 ตุลาคม 2026",
-    "en": "Content reviewed 9 October 2026"
+    "th": "ทบทวนเนื้อหา 13 พฤศจิกายน 2026",
+    "en": "Content reviewed 13 November 2026"
   },
   "sections": [
     {
@@ -49,7 +49,14 @@ export const surin = {
   ],
   "relatedPaths": [
     "/surin-islands/getting-there",
-    "/surin-islands/how-many-days",
+    "/surin-islands/accommodation",
+    "/surin-islands/best-time",
+    "/surin-islands/snorkeling",
+    "/surin-islands/moken-community",
     "/surin-islands/travel-guide"
-  ]
+  ],
+  "heading": {
+    "th": "คู่มือเที่ยวหมู่เกาะสุรินทร์",
+    "en": "A guide to the Surin Islands"
+  }
 }

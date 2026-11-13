@@ -1,10 +1,10 @@
-// Reviewed bilingual editorial content; operational details remain API-owned.
+// Bilingual editorial information; confirm operational details with providers.
 export const gettingThere = {
   "image": "surin-hero.webp",
   "homeAnchor": "surin",
   "reviewed": {
-    "th": "ตรวจเนื้อหา 9 ตุลาคม 2026",
-    "en": "Content reviewed 9 October 2026"
+    "th": "ทบทวนเนื้อหา 13 พฤศจิกายน 2026",
+    "en": "Content reviewed 13 November 2026"
   },
   "sections": [
     {
@@ -36,6 +36,23 @@ export const gettingThere = {
           "A trip described as departing from Phuket or Khao Lak may refer to a vehicle pickup rather than the boat’s pier. Request the pier name, map pin, pickup and return point. Leave a buffer before an onward flight or bus; do not assume a daily public ferry exists."
         ]
       }
+    },
+    {
+      "id": "mainland-options",
+      "title": {
+        "th": "เลือกวิธีเดินทางจากจุดเริ่มต้น",
+        "en": "Choose your mainland connection"
+      },
+      "paragraphs": {
+        "th": [
+          "จากกรุงเทพฯ เลือกเดินทางด้วยรถโดยสารไปคุระบุรี หรือบินลงภูเก็ตแล้วต่อรถทางบก จากภูเก็ตและเขาหลักสามารถจัดรถรับส่งหรือสอบถามเส้นทางรถโดยสารที่ผ่านคุระบุรีได้ แต่ต้องยืนยันจุดขึ้นลงจริงกับผู้ให้บริการ ไม่ถือว่าสนามบินมีรถตรงถึงท่าเรือทุกเที่ยว",
+          "หากขับรถมาเอง ให้ใช้เส้นทางถนนเพชรเกษมเข้าสู่อำเภอคุระบุรี แล้วตามหมุดท่าเรือที่ยืนยันในเอกสารจอง ชื่อท่าเรือใกล้กันอาจเป็นคนละจุดนัดพบ สอบถามที่จอดรถก่อนเดินทาง และพิจารณาพักบนฝั่งคืนก่อนขึ้นเรือหากเวลาต่อรถไม่พอ"
+        ],
+        "en": [
+          "From Bangkok, consider an intercity bus to Khura Buri or a flight to Phuket followed by a road connection. From Phuket or Khao Lak, arrange a transfer or ask about buses serving Khura Buri. Confirm actual boarding and drop-off points; do not assume every airport arrival has a direct pier service.",
+          "If driving, follow Phet Kasem Road to Khura Buri and use the pier map pin confirmed with your booking. Similar pier names can refer to different meeting points. Check parking arrangements and consider staying on the mainland the night before if your connections are too tight."
+        ]
+      }
     }
   ],
   "sources": [
@@ -51,5 +68,9 @@ export const gettingThere = {
     "/surin-islands/piers",
     "/surin-islands/weather",
     "/surin-islands/costs"
-  ]
+  ],
+  "heading": {
+    "th": "ไปเกาะสุรินทร์อย่างไร",
+    "en": "How to get to the Surin Islands"
+  }
 }

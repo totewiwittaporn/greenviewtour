@@ -71,15 +71,17 @@ test('20 reviewed Surin articles retain concise bilingual copy and curated relat
   assert.deepEqual(Object.keys(contentPages).filter(path => path.startsWith('/surin-islands')).sort(), paths.sort())
   for (const path of paths) {
     const page = contentPages[path]
-    assert.equal(page.sections.length, 2)
-    assert.equal(page.reviewed.en, 'Content reviewed 9 October 2026')
-    assert.equal(page.reviewed.th, 'ตรวจเนื้อหา 9 ตุลาคม 2026')
+    const expanded=['/surin-islands/getting-there','/surin-islands/accommodation'].includes(path)
+    const revised=expanded||path==='/surin-islands'
+    assert.equal(page.sections.length, expanded?3:2)
+    assert.equal(page.reviewed.en, revised?'Content reviewed 13 November 2026':'Content reviewed 9 October 2026')
+    assert.ok(page.reviewed.th.includes(revised?'13 พฤศจิกายน 2026':'9 ตุลาคม 2026'))
     assert.equal(page.homeAnchor, 'surin')
     assert.equal(page.source, undefined, 'Do not use the legacy fixed TAT label')
-    assert.ok(page.relatedPaths.length >= 2 && page.relatedPaths.length <= 3)
+    assert.ok(page.relatedPaths.length >= 2 && page.relatedPaths.length <= (path==='/surin-islands'?6:3))
     assert.equal(new Set(page.relatedPaths).size, page.relatedPaths.length)
     for (const related of page.relatedPaths) assert.ok(related !== path && paths.includes(related))
-    for (const section of page.sections) for (const locale of ['th', 'en']) assert.equal(section.paragraphs[locale].length, 1)
+    for (const section of page.sections) for (const locale of ['th', 'en']) assert.equal(section.paragraphs[locale].length, expanded && ['mainland-options','booking-accommodation'].includes(section.id)?2:1)
     assert.ok(page.sources.length > 0)
     for (const source of page.sources) {
       assert.equal(new URL(source.url).protocol, 'https:')
@@ -92,7 +94,7 @@ test('20 reviewed Surin articles retain concise bilingual copy and curated relat
       if (!source.url.includes('tourismthailand.org')) assert.doesNotMatch(source.label.en, /Tourism Authority of Thailand/)
     }
   }
-  assert.equal(paths.reduce((total, path) => total + contentPages[path].relatedPaths.length, 0), 52)
+  assert.equal(paths.reduce((total, path) => total + contentPages[path].relatedPaths.length, 0), 55)
 })
 
 test('phase-one guidance uses staff confirmation and does not direct customers to Member payments',()=>{

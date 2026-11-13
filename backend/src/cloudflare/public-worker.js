@@ -1,3 +1,4 @@
+import {publicLegacyTarget} from '../../../packages/contracts/public-legacy-redirects.js'
 import {publicSitemap} from './public-sitemap.js'
 import {catalogIndexing} from '../../../packages/contracts/public-catalog-url.js'
 import {publicTourResult} from '../../../packages/contracts/public-tour-result.js'
@@ -46,7 +47,8 @@ export default {
    if(!validOrigin(env.PUBLIC_ALIAS_ORIGIN)||env.PUBLIC_ALIAS_ORIGIN===env.PUBLIC_ORIGIN||env.PUBLIC_ALIAS_ORIGIN===env.BACKOFFICE_ORIGIN)return json('PRODUCTION_CONFIGURATION_REQUIRED',503)
    if(url.origin===env.PUBLIC_ALIAS_ORIGIN){
     if(!['GET','HEAD'].includes(request.method))return json('METHOD_NOT_ALLOWED',405)
-    return secure(Response.redirect(env.PUBLIC_ORIGIN+url.pathname+url.search,308))
+    const legacy=publicLegacyTarget(url.pathname)
+    return secure(Response.redirect(env.PUBLIC_ORIGIN+(legacy??url.pathname)+url.search,legacy?301:308))
    }
   }
   if(url.origin!==env.PUBLIC_ORIGIN)return json('HOST_DENIED',403)
@@ -63,6 +65,8 @@ export default {
    try{return secure(await env.API.fetch(upstream))}catch{return json('SERVICE_UNAVAILABLE',503)}
   }
   if(!['GET','HEAD'].includes(request.method))return json('METHOD_NOT_ALLOWED',405)
+  const legacy=publicLegacyTarget(url.pathname)
+  if(legacy)return secure(Response.redirect(env.PUBLIC_ORIGIN+legacy+url.search,301))
   if(!env.ASSETS)return json('SERVICE_UNAVAILABLE',503)
   if(url.pathname==='/sitemap.xml')return secure(await publicSitemap(request,env))
   const crawler=crawlerFile(request,env)

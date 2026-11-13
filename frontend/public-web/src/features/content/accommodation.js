@@ -1,10 +1,10 @@
-// Reviewed bilingual editorial content; operational details remain API-owned.
+// Bilingual editorial information; confirm operational details with providers.
 export const accommodation = {
   "image": "surin-hero.webp",
   "homeAnchor": "surin",
   "reviewed": {
-    "th": "ตรวจเนื้อหา 9 ตุลาคม 2026",
-    "en": "Content reviewed 9 October 2026"
+    "th": "ทบทวนเนื้อหา 13 พฤศจิกายน 2026",
+    "en": "Content reviewed 13 November 2026"
   },
   "sections": [
     {
@@ -36,6 +36,23 @@ export const accommodation = {
           "Confirm that the accommodation is operating on your dates, what bedding is supplied and where the bathrooms are. Check meals, drinking water, luggage arrangements and boat transfers separately from the room or tent reservation. Old photographs and category names are not current facility descriptions."
         ]
       }
+    },
+    {
+      "id": "booking-accommodation",
+      "title": {
+        "th": "จองที่พักให้ตรงกับแผนเดินทาง",
+        "en": "Match your accommodation to your travel plan"
+      },
+      "paragraphs": {
+        "th": [
+          "ตรวจบ้านพักและพื้นที่เต็นท์กับระบบจองของกรมอุทยานฯ หรือช่องทางอุทยานที่เป็นทางการก่อนชำระเงิน โดยตรวจชื่อพื้นที่ วันเข้าพัก จำนวนคน และเงื่อนไขการจอง หากเลือกแพ็กเกจ ให้ตรวจว่ารวมที่พักชนิดใด เครื่องนอน มื้ออาหาร และเรือรับส่งครบหรือไม่ การมีเรือไม่ได้หมายความว่ามีที่พักให้แล้ว",
+          "สำหรับการค้างคืน ให้ถามจุดชาร์จไฟและช่วงที่ใช้งานได้ สัญญาณโทรศัพท์ ห้องน้ำ และแหล่งน้ำดื่มของจุดพักจริง เตรียมแบตเตอรี่สำรองและของใช้จำเป็นตามข้อกำหนด ไม่ใช้เวลาเปิดบริการหรือราคาจากบทความเก่าเป็นข้อมูลยืนยัน"
+        ],
+        "en": [
+          "Check bungalows and camping through the Department of National Parks booking service or official park channels before paying. Confirm the location, dates, party size and reservation conditions. For a package, verify the accommodation type, bedding, meals and boat transfers included. A boat reservation does not itself secure a place to stay.",
+          "For an overnight visit, ask about charging points and availability, phone reception, bathrooms and drinking water at your actual accommodation. Prepare a power bank and essentials within the applicable rules. Do not rely on operating hours or prices quoted in old articles."
+        ]
+      }
     }
   ],
   "sources": [
@@ -51,5 +68,9 @@ export const accommodation = {
     "/surin-islands/facilities",
     "/surin-islands/travel-guide",
     "/surin-islands/how-many-days"
-  ]
+  ],
+  "heading": {
+    "th": "ที่พักและจุดกางเต็นท์บนหมู่เกาะสุรินทร์",
+    "en": "Accommodation and camping on the Surin Islands"
+  }
 }

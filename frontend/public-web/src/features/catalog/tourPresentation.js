@@ -1,3 +1,16 @@
+// Restored from the currently deployed public pricing behavior (9a5cb956).
+export const directPriceZones = ['Kuraburi','Khaolak']
+export const directPriceNationalities = ['TH','FOREIGN']
+export function tourDirectPrice(tour, zone, nationality) {
+  if (!tour.directPriceMatrix) return {adultPrice:tour.adultPrice ?? null,childPrice:tour.childPrice ?? null}
+  if (!directPriceZones.includes(zone) || !directPriceNationalities.includes(nationality)) return {adultPrice:null,childPrice:null}
+  return {adultPrice:tour.directPriceMatrix[zone]?.[nationality]?.adult ?? null,childPrice:tour.directPriceMatrix[zone]?.[nationality]?.child ?? null}
+}
+export function tourStartingPrice(tour, age='adult') {
+  if (!tour.directPriceMatrix) return tour[age==='adult'?'adultPrice':'childPrice'] ?? null
+  const values=directPriceZones.flatMap(zone=>directPriceNationalities.map(nationality=>tour.directPriceMatrix[zone]?.[nationality]?.[age])).filter(value=>value!=null&&value!==''&&Number.isFinite(Number(value)))
+  return values.length?Math.min(...values.map(Number)).toFixed(2):null
+}
 export function tourContent(tour, locale='th') {
   const rows=Array.isArray(tour?.publicContent)?tour.publicContent:[]
   const row=rows.find(item=>item.locale===locale)||rows.find(item=>item.locale==='th')||rows.find(item=>item.locale==='en')||{}
@@ -54,7 +67,7 @@ export function badgeText(value,t){
   return value==='BEST_SELLER'?t('ขายดี'):value==='RECOMMENDED'?t('แนะนำ'):value==='SIGNATURE'?t('ซิกเนเจอร์'):''
 }
 export function typeText(value,t){
-  return ({DAY_TRIP:t('Day Trip'),OVERNIGHT:t('Overnight'),PRIVATE:t('Private Tour'),JOIN:t('Join Tour'),TRANSFER:t('Boat Ticket')})[value]||''
+  return ({DAY_TRIP:t('ทัวร์วันเดียว'),OVERNIGHT:t('ทัวร์ค้างคืน'),PRIVATE:t('ทัวร์ส่วนตัว'),JOIN:t('ทัวร์ร่วมกลุ่ม'),TRANSFER:t('ตั๋วเรือ')})[value]||''
 }
 export function journeyText(value,t){
   return ({FIXED:t('ไป–กลับตามโปรแกรม'),OPEN_RETURN:t('ไป–กลับแบบ Open Return'),OUTBOUND_ONLY:t('เที่ยวเดียว · ขาไป'),RETURN_ONLY:t('เที่ยวเดียว · ขากลับ')})[value]||''

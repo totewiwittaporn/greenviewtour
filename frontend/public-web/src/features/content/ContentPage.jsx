@@ -23,7 +23,7 @@ export default function ContentPage({pathname, hash = ''}) {
   const paragraphs = section => section.paragraphs[language].map((text, index) => <p key={index}>{text}</p>)
   return <main id="content" className="editorial-page">
     <div className="editorial-container editorial-hero">
-      <div className="editorial-intro"><nav className="editorial-breadcrumb" aria-label={copy('guide')}><a href="/">{copy('home')}</a><span aria-hidden="true">/</span><span>{meta.title[language]}</span></nav><p className="section-eyebrow">GREENVIEW TOUR</p><h1>{meta.title[language]}</h1><p className="editorial-lead">{meta.description[language]}</p><a href="/tours" className="public-button">{copy('tours')} <span aria-hidden="true">→</span></a></div>
+      <div className="editorial-intro"><nav className="editorial-breadcrumb" aria-label={copy('guide')}><a href="/">{copy('home')}</a><span aria-hidden="true">/</span><span>{meta.title[language]}</span></nav><p className="section-eyebrow">GREENVIEW TOUR</p><h1>{page.heading?.[language] ?? meta.title[language]}</h1><p className="editorial-lead">{meta.description[language]}</p><a href="/tours" className="public-button">{copy('tours')} <span aria-hidden="true">→</span></a></div>
       <figure><img src={`/images/home/${page.image}`} alt={copy('photo')} width="1448" height="1086" fetchPriority="high"/><figcaption>{copy('photo')}</figcaption></figure>
     </div>
     <div className="editorial-container editorial-layout">

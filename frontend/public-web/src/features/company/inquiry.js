@@ -1,9 +1,11 @@
-export function inquiryMessage({tour, promotion, date, adults, children} = {}, locale = 'th') {
+export function inquiryMessage({tour, promotion, date, adults, children, priceZone, priceNationality} = {}, locale = 'th') {
   const en = locale === 'en'
   return [en ? 'Hello Greenview Tour, I would like to enquire about a trip.' : 'สวัสดี Greenview Tour สนใจสอบถามทริปค่ะ/ครับ',
     tour && `${en ? 'Programme' : 'โปรแกรม'}: ${tour}`,
     promotion && `${en ? 'Promotion' : 'โปรโมชั่น'}: ${promotion}`,
     date && `${en ? 'Travel date' : 'วันเดินทาง'}: ${date}`,
+    priceZone && `${en ? 'Departure zone' : 'โซนเดินทาง'}: ${priceZone === 'Kuraburi' ? (en ? 'Khura Buri' : 'คุระบุรี') : (en ? 'Khao Lak' : 'เขาหลัก')}`,
+    priceNationality && `${en ? 'Visitor group' : 'ประเภทผู้เดินทาง'}: ${priceNationality === 'TH' ? (en ? 'Thai' : 'คนไทย') : (en ? 'Foreign visitor' : 'ต่างชาติ')}`,
     adults && `${en ? 'Adults' : 'ผู้ใหญ่'}: ${adults}`,
     children != null && children !== '' && `${en ? 'Children' : 'เด็ก'}: ${children}`,
     en ? 'Please check availability and details. This is an enquiry, not a confirmed booking.' : 'รบกวนตรวจสอบที่ว่างและรายละเอียด ข้อความนี้เป็นการสอบถาม ยังไม่ใช่การยืนยันการจอง',

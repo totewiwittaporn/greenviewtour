@@ -30,6 +30,11 @@ export const messages = {
   "แนะนำ": "Recommended",
   "ซิกเนเจอร์": "Signature",
   "Day Trip": "Day Trip",
+  "ทัวร์วันเดียว": "Day Trip",
+  "ทัวร์ค้างคืน": "Overnight",
+  "ทัวร์ส่วนตัว": "Private Tour",
+  "ทัวร์ร่วมกลุ่ม": "Join Tour",
+  "ตั๋วเรือ": "Boat Ticket",
   "Overnight": "Overnight",
   "Private Tour": "Private Tour",
   "Join Tour": "Join Tour",
@@ -258,7 +263,7 @@ export function pageTitle(locale, pathname) {
   if (info) return `${info.title[locale === 'en' ? 'en' : 'th']} | Greenview Tour`
   pathname = normalizePublicPath(pathname)
   const titles = {
-    '/': ['Greenview Tour — \u0e17\u0e23\u0e34\u0e1b\u0e2b\u0e21\u0e39\u0e48\u0e40\u0e01\u0e32\u0e30\u0e2a\u0e38\u0e23\u0e34\u0e19\u0e17\u0e23\u0e4c', 'Greenview Tour — Surin Islands trips'],
+    '/': ['กรีนวิวทัวร์ ทัวร์หมู่เกาะสุรินทร์ | Greenview Tour', 'Greenview Tour | Surin Islands tours from Khura Buri'],
     '/tours': ['\u0e42\u0e1b\u0e23\u0e41\u0e01\u0e23\u0e21\u0e17\u0e31\u0e27\u0e23\u0e4c | Greenview Tour', 'Tours | Greenview Tour'],
     '/promotions': ['\u0e42\u0e1b\u0e23\u0e42\u0e21\u0e0a\u0e31\u0e48\u0e19\u0e17\u0e31\u0e27\u0e23\u0e4c | Greenview Tour', 'Tour promotions | Greenview Tour'],
   }
