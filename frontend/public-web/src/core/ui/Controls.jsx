@@ -1,5 +1,5 @@
 
-import {useLocale} from '../useLocale.js'
+/* Standalone agent development acceptance 010. */ import {useLocale} from '../useLocale.js'
 import {useId,useLayoutEffect,useRef} from 'react'
 export function Button({children,...props}){return <button type="button" className="public-button" {...props}>{children}</button>}
 export function CloseButton({label,onClick,className=''}){return <button type="button" className={`public-close-button ${className}`.trim()} aria-label={label} onClick={onClick}><span aria-hidden="true">×</span></button>}
