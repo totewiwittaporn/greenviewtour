@@ -1,6 +1,17 @@
 # Greenview Tour
 
-> Current environment/workflow acceptance: [items 7–8 — Local cleanup and final verification](docs/local-workflow-acceptance-2026-09-30.md). No Cloudflare provisioning or Production deployment is enabled.
+> Current production architecture (verified 2026-11-13): React + Vite frontends; Cloudflare Workers with Static Assets for the current public and API/backoffice release; Cloudflare D1 through the Prisma D1 adapter; R2 files. Production is live. The [September Local acceptance](docs/local-workflow-acceptance-2026-09-30.md) is historical Local evidence, not the current production status.
+
+## Production and historical boundaries
+
+- Public release: `backend/src/cloudflare/public-worker.js`, serving `frontend/public-web/dist` through Workers Static Assets and forwarding API calls through the `API` service binding to `greenviewtour-api`.
+- API/backoffice: `backend/src/cloudflare/worker.ts`; the current release configuration serves backoffice assets and binds D1 as `DB` and R2 as `FILES`.
+- Database access: `backend/src/platform/database/d1-client.ts` and `@prisma/adapter-d1`. Prisma here does not imply PostgreSQL or Supabase.
+- The repository contains public-web, backoffice and member frontend sources. Source presence alone does not establish the deployment state of each application.
+- `wrangler*.production.jsonc.example` files are templates with intentionally disabled placeholders, not copies of active production configuration.
+- PostgreSQL/Supabase schemas and earlier connection guides are historical/reference material. Do not use them as current production startup or migration instructions.
+
+See [backend architecture](backend/README.md). The 2026-11-13 public release was verified separately from API/database changes; a public frontend deployment does not imply a backend redeployment.
 
 Company-management monorepo with independent public-web, backoffice, and member UI cores.
 
